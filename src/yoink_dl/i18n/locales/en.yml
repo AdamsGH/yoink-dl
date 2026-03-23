@@ -1,0 +1,271 @@
+download:
+  no_url: "No URL found. Please send a link starting with <b>https://</b> or <b>http://</b>"
+  starting: "⏳ Starting download..."
+  progress: "⬇️ Downloading: {percent}%\n{speed} · {eta} left"
+  uploading: "⬆️ Uploading to Telegram..."
+  uploading_progress: "⬆️ Uploading: {percent}%\n{speed}"
+  complete: "✅ <b>Upload complete</b> - {count} file(s) uploaded."
+  complete_single: "✅ <b>Done!</b>"
+  error: "❌ Download failed: {error}"
+  timeout: "⏱ Download timed out after {seconds}s."
+  file_too_large: "❌ File is too large ({size}). Maximum allowed: {max_size}."
+  live_stream: "❌ Live streams are not supported."
+  unsupported: "❌ This URL is not supported."
+  blacklisted: "❌ This domain is not allowed."
+  already_downloading: "⏳ Already downloading something. Please wait."
+  splitting: "✂️ Splitting into {count} parts..."
+  part: "Part {n}/{total}"
+
+format:
+  current: "Current quality: <b>{quality}</b>\nCodec: <b>{codec}</b>\nContainer: <b>{container}</b>"
+  set_quality: "Quality set to <b>{quality}</b> ✅"
+  ask_mode: "Quality: <b>Always ask</b> ✅"
+  set_codec: "Codec set to <b>{codec}</b> ✅"
+  set_container: "Container set to <b>{container}</b> ✅"
+  choose_quality: "Choose video quality:"
+  choose_codec: "Choose codec:"
+  buttons:
+    best: "🏆 Best"
+    ask: "❓ Always ask"
+    codec_avc: "H.264 (AVC)"
+    codec_av1: "AV1"
+    codec_vp9: "VP9"
+    container_mp4: "MP4"
+    container_mkv: "MKV"
+
+cookie:
+  prompt: "Send me your cookie file for <b>{domain}</b> (Netscape format .txt):"
+  saved: "🍪 Cookie saved for <b>{domain}</b>"
+  invalid: "❌ Invalid cookie format. Please export in Netscape format."
+  too_large: "❌ Cookie file too large (max 100KB)."
+  checking: "🔍 Checking cookie..."
+  valid: "✅ Cookie is valid"
+  expired: "⚠️ Cookie appears to be expired or invalid"
+  deleted: "🗑 Cookie deleted for <b>{domain}</b>"
+  no_cookie: "No cookie saved for <b>{domain}</b>"
+  download_started: "⏳ Downloading cookie for <b>{domain}</b>..."
+  download_ok: "✅ Cookie downloaded and saved for <b>{domain}</b>"
+  download_error: "❌ Failed to download cookie: {error}"
+  rate_limited: "⏳ Too many cookie operations. Please wait {seconds}s."
+
+proxy:
+  enabled: "🔀 Proxy <b>enabled</b> for all downloads ✅"
+  disabled: "🔀 Proxy <b>disabled</b> ✅"
+  not_configured: "❌ No proxy configured. Ask admin."
+  menu_title: "Proxy settings:"
+
+subs:
+  enabled: "📝 Subtitles <b>enabled</b> (language: {lang}) ✅"
+  disabled: "📝 Subtitles <b>disabled</b> ✅"
+  not_available: "⚠️ No subtitles available for this video."
+  auto_enabled: "Auto-generated subtitles: <b>enabled</b> ✅"
+  auto_disabled: "Auto-generated subtitles: <b>disabled</b> ✅"
+  choose_language: "Choose subtitle language:"
+  embedded: "Subtitles embedded ✅"
+  embed_error: "⚠️ Could not embed subtitles: {error}"
+
+args:
+  title: "⚙️ <b>Custom yt-dlp arguments</b>\n\nCurrent settings:"
+  saved: "✅ Settings saved"
+  reset: "✅ Settings reset to defaults"
+  invalid_value: "❌ Invalid value for <b>{field}</b>: {error}"
+  import_ok: "✅ Settings imported"
+  import_error: "❌ Import failed: {error}"
+  parse_error: "❌ Parse error: {error}"
+  validation_errors: "❌ Errors:\n{errors}"
+
+keyboard:
+  set: "⌨️ Keyboard layout set to <b>{mode}</b> ✅"
+  hidden: "⌨️ Keyboard hidden ✅"
+
+clean:
+  done: "🧹 Cleaned: {what}"
+  all_done: "🧹 All data cleaned ✅"
+  nothing: "Nothing to clean."
+
+settings:
+  title: "⚙️ <b>Your settings:</b>\n\nLanguage: {language}\nQuality: {quality}\nCodec: {codec}\nContainer: {container}\nProxy: {proxy}\nKeyboard: {keyboard}\nSubtitles: {subs}\nSplit size: {split_size}\nNSFW blur: {nsfw_blur}\nMediainfo: {mediainfo}"
+  use_command: "Use /{command} to change this setting."
+
+lang:
+  set: "✅ Language set to <b>{lang}</b>"
+  choose: "🌍 Choose language:"
+  buttons:
+    en: "🇺🇸 English"
+    ru: "🇷🇺 Русский"
+    ar: "🇸🇦 العربية"
+    hi: "🇮🇳 हिन्दी"
+    zh: "🇨🇳 中文"
+    ja: "🇯🇵 日本語"
+
+split:
+  set: "✂️ Split size set to <b>{size}</b> ✅"
+  choose: "Choose split size:"
+  buttons:
+    500mb: "500 MB"
+    1gb: "1 GB"
+    1_5gb: "1.5 GB"
+    2gb: "2 GB (default)"
+    custom: "Custom..."
+
+nsfw:
+  blur_on: "🔞 NSFW content will be <b>blurred</b> (spoiler) ✅"
+  blur_off: "🔞 NSFW blur <b>disabled</b> ✅"
+  paid_required: "🔞 NSFW content requires {cost}⭐ Stars"
+
+mediainfo:
+  enabled: "ℹ️ MediaInfo reports <b>enabled</b> ✅"
+  disabled: "ℹ️ MediaInfo reports <b>disabled</b> ✅"
+
+tags:
+  cleared: "🏷 Tags cleared ✅"
+
+link:
+  title: "🔗 <b>Direct links for:</b>\n{title}"
+  no_url: "⚠️ Could not get direct link: {error}"
+  browser: "🌐 Browser"
+  vlc_ios: "🎬 VLC (iOS)"
+  vlc_android: "🎬 VLC (Android)"
+  mpv: "▶️ MPV"
+  quality_set: "Quality: <b>{quality}</b>"
+
+list_formats:
+  title: "📋 <b>Available formats for:</b>\n{title}"
+  empty: "No formats found for this URL."
+  hint: "Use <code>/format id {id}</code> to download a specific format."
+  file_caption: "📋 Full format list"
+
+search:
+  prompt: "🔍 Enter search query:"
+  results_title: "🔍 <b>Search results for:</b> {query}"
+  no_results: "No results found for: {query}"
+  choose: "Choose a result to download:"
+
+cut:
+  usage_group: "Usage: <code>/cut &lt;url&gt; [start] [end]</code>"
+  end_before_start_detail: "❌ End (<code>{end}</code>) must be after start (<code>{start}</code>). Try again:"
+  usage_private: |
+    ✂️ <b>/cut</b>  - trim a video to a time range.
+
+    <b>Usage:</b>
+    <code>/cut URL</code>  - interactive mode
+    <code>/cut URL 01:23 02:45</code>  - direct cut
+    <code>/cut URL 01:23 90</code>  - start + duration in seconds
+  end_after_start: "❌ End time must be after start time."
+  prompt_end: "✂️ Start: <code>{start}</code>\n\nSend <b>end time</b> or <b>duration</b>:\n<code>02:45</code>  or  <code>90</code> (seconds)"
+  invalid_time: "❌ Use <code>MM:SS</code>, <code>HH:MM:SS</code>, or seconds. /cancel to abort."
+
+playlist:
+  no_url: "❌ Please provide a valid URL."
+
+link:
+  no_url: "❌ Please provide a valid URL."
+  fetching: "⏳ Extracting links…"
+
+list_formats:
+  no_url: "❌ Please provide a valid URL."
+  fetching: "⏳ Fetching format list…"
+  fetch_error: "❌ Failed to get formats:\n<code>{error}</code>"
+
+pipeline:
+  fetching: "Fetching…"
+  welcome_pending: "<b>Welcome!</b>\n\nYour account is pending approval. An admin will grant you access shortly."
+  nsfw_blocked: "🔞 NSFW content is not allowed in this group."
+  uploading: "Uploading {size}…"
+
+vid:
+  help: |
+    <b>/vid</b> - download with range support
+
+    <b>Usage:</b>
+    <code>/vid URL</code> - single video
+    <code>/vid 1-5 URL</code> - items 1 to 5
+    <code>/vid -1-5 URL</code> - last 5 items (1 to 5 from end)
+
+always_ask:
+  choose_quality: "🎬 <b>{title}</b>\n\nChoose quality:"
+  choose_action: "What would you like to download?"
+  processing: "⏳ Processing your choice..."
+  buttons:
+    audio: "🎵 Audio only"
+    link: "🔗 Direct link"
+    subs: "📝 Subtitles"
+    image: "🖼 Images"
+    cancel: "❌ Cancel"
+
+image:
+  starting: "🖼 Downloading images..."
+  progress: "🖼 Downloaded {n}/{total} images"
+  complete: "✅ {count} image(s) uploaded"
+  error: "❌ Image download failed: {error}"
+  no_images: "No images found at this URL."
+  album_caption: "{count} images"
+  range_hint: "Use <code>/img 1-10 URL</code> to download a specific range"
+
+usage:
+  title: "📊 <b>Your usage statistics</b>"
+  downloads: "Downloads: <b>{count}</b>"
+  total_size: "Total size: <b>{size}</b>"
+  today: "Today: <b>{count}</b>"
+  period: "Last {days} days: <b>{count}</b>"
+
+admin:
+  cache_reloaded: "✅ Cache reloaded."
+  cache_not_available: "Cache not available."
+  cache_cleared: "✅ Cache cleared for:\n<code>{url}</code>"
+  cache_not_found: "⚠️ No cache entry found for:\n<code>{url}</code>"
+  cache_error: "❌ Cache reload failed: {error}"
+  logs_title: "📋 Logs for user {user_id}:"
+  no_logs: "No logs for user {user_id}."
+
+url_handler:
+  invalid_time: "Invalid time format: {error}\nUse HH:MM:SS, MM:SS, or plain seconds."
+  clip_end_prompt: "Start time: <b>{start}</b>\nSend end time or duration (e.g. <code>00:26:10</code> or <code>60</code>):"
+  clip_invalid_time: "Invalid format. Use HH:MM:SS, MM:SS, or plain seconds."
+  clip_end_before_start: "End time must be after start time."
+
+errors:
+  download_failed: "❌ Download failed: {error}"
+  upload_failed: "❌ Upload failed: {error}"
+  cookie_required: "🍪 This content requires authentication. Use /cookie to set up cookies."
+  geo_blocked: "🌍 This content is not available in your region. Try enabling /proxy."
+  private_content: "🔒 This content is private. Upload cookies with /cookie."
+  rate_limited: "⏳ Rate limit reached. Please wait."
+  disk_full: "❌ Not enough disk space."
+  unknown: "❌ An unexpected error occurred. Please try again."
+
+help_sections:
+  download:
+    title: "Download"
+  settings:
+    title: "Settings"
+    footer: "Send any URL directly in private chat to download."
+  moderator:
+    title: "Moderator"
+  admin:
+    title: "Admin"
+  owner:
+    title: "Owner"
+
+commands:
+  - {command: video,      description: "Download video",                scope: default}
+  - {command: audio,      description: "Download audio",                scope: default}
+  - {command: image,      description: "Download image",                scope: default}
+  - {command: playlist,   description: "Download playlist",             scope: default}
+  - {command: search,     description: "Search YouTube",                scope: default}
+  - {command: cut,        description: "Cut video by time range",       scope: default}
+  - {command: link,       description: "Get direct media URL",          scope: default}
+  - {command: settings,   description: "Your preferences",              scope: private}
+  - {command: format,     description: "Video quality and codec",       scope: private}
+  - {command: args,       description: "Custom yt-dlp arguments",       scope: private}
+  - {command: subs,       description: "Subtitle language settings",    scope: private}
+  - {command: split,      description: "Split video into parts",        scope: private}
+  - {command: mediainfo,  description: "Show media info",               scope: private}
+  - {command: proxy,      description: "Set download proxy",            scope: private}
+  - {command: cookie,     description: "Manage site cookies",           scope: private}
+  - {command: tags,       description: "Toggle filename tags",          scope: private}
+  - {command: clean,      description: "Clean up bot messages",         scope: private}
+  - {command: get_log,    description: "Get user download log",         scope: private, min_role: moderator}
+  - {command: usage,      description: "User usage stats",              scope: private, min_role: moderator}
+  - {command: uncache,      description: "Remove URL from file cache",  scope: private, min_role: admin}
+  - {command: reload_cache, description: "Reload file cache",           scope: private, min_role: admin}

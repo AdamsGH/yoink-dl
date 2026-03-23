@@ -1,0 +1,244 @@
+download:
+  no_url: "URL не найден. Отправьте ссылку, начинающуюся с <b>https://</b> или <b>http://</b>"
+  starting: "⏳ Начинаю загрузку..."
+  progress: "⬇️ Загрузка: {percent}%\n{speed} · осталось {eta}"
+  uploading: "⬆️ Отправляю в Telegram..."
+  uploading_progress: "⬆️ Отправка: {percent}%\n{speed}"
+  complete: "✅ <b>Загрузка завершена</b> — отправлено {count} файл(ов)."
+  complete_single: "✅ <b>Готово!</b>"
+  error: "❌ Ошибка загрузки: {error}"
+  timeout: "⏱ Загрузка прервана по таймауту ({seconds}с)."
+  file_too_large: "❌ Файл слишком большой ({size}). Максимум: {max_size}."
+  live_stream: "❌ Прямые трансляции не поддерживаются."
+  unsupported: "❌ Этот URL не поддерживается."
+  blacklisted: "❌ Этот домен заблокирован."
+  already_downloading: "⏳ Уже идёт загрузка. Пожалуйста, подождите."
+  splitting: "✂️ Разбиваю на {count} частей..."
+  part: "Часть {n}/{total}"
+
+format:
+  current: "Текущее качество: <b>{quality}</b>\nКодек: <b>{codec}</b>\nКонтейнер: <b>{container}</b>"
+  set_quality: "Качество установлено: <b>{quality}</b> ✅"
+  ask_mode: "Качество: <b>Спрашивать каждый раз</b> ✅"
+  set_codec: "Кодек установлен: <b>{codec}</b> ✅"
+  set_container: "Контейнер установлен: <b>{container}</b> ✅"
+  choose_quality: "Выберите качество видео:"
+  choose_codec: "Выберите кодек:"
+  buttons:
+    best: "🏆 Лучшее"
+    ask: "❓ Спрашивать"
+    codec_avc: "H.264 (AVC)"
+    codec_av1: "AV1"
+    codec_vp9: "VP9"
+    container_mp4: "MP4"
+    container_mkv: "MKV"
+
+cookie:
+  prompt: "Отправьте файл cookie для <b>{domain}</b> (формат Netscape .txt):"
+  saved: "🍪 Cookie сохранены для <b>{domain}</b>"
+  invalid: "❌ Неверный формат cookie. Экспортируйте в формате Netscape."
+  too_large: "❌ Файл cookie слишком большой (макс. 100 КБ)."
+  checking: "🔍 Проверяю cookie..."
+  valid: "✅ Cookie действительны"
+  expired: "⚠️ Cookie истекли или недействительны"
+  deleted: "🗑 Cookie для <b>{domain}</b> удалены"
+  no_cookie: "Cookie для <b>{domain}</b> не сохранены"
+  download_started: "⏳ Скачиваю cookie для <b>{domain}</b>..."
+  download_ok: "✅ Cookie скачаны и сохранены для <b>{domain}</b>"
+  download_error: "❌ Не удалось скачать cookie: {error}"
+  rate_limited: "⏳ Слишком много операций с cookie. Подождите {seconds}с."
+
+proxy:
+  enabled: "🔀 Прокси <b>включён</b> для всех загрузок ✅"
+  disabled: "🔀 Прокси <b>выключен</b> ✅"
+  not_configured: "❌ Прокси не настроен. Обратитесь к администратору."
+  menu_title: "Настройки прокси:"
+
+subs:
+  enabled: "📝 Субтитры <b>включены</b> (язык: {lang}) ✅"
+  disabled: "📝 Субтитры <b>выключены</b> ✅"
+  not_available: "⚠️ Субтитры для этого видео недоступны."
+  auto_enabled: "Автосубтитры: <b>включены</b> ✅"
+  auto_disabled: "Автосубтитры: <b>выключены</b> ✅"
+  choose_language: "Выберите язык субтитров:"
+  embedded: "Субтитры встроены ✅"
+  embed_error: "⚠️ Не удалось встроить субтитры: {error}"
+
+args:
+  title: "⚙️ <b>Пользовательские аргументы yt-dlp</b>\n\nТекущие настройки:"
+  saved: "✅ Настройки сохранены"
+  reset: "✅ Настройки сброшены"
+  invalid_value: "❌ Неверное значение для <b>{field}</b>: {error}"
+  import_ok: "✅ Настройки импортированы"
+  import_error: "❌ Ошибка импорта: {error}"
+  parse_error: "❌ Ошибка разбора: {error}"
+  validation_errors: "❌ Ошибки:\n{errors}"
+
+keyboard:
+  set: "⌨️ Раскладка клавиатуры: <b>{mode}</b> ✅"
+  hidden: "⌨️ Клавиатура скрыта ✅"
+
+clean:
+  done: "🧹 Очищено: {what}"
+  all_done: "🧹 Все данные очищены ✅"
+  nothing: "Нечего очищать."
+
+settings:
+  title: "⚙️ <b>Ваши настройки:</b>\n\nЯзык: {language}\nКачество: {quality}\nКодек: {codec}\nКонтейнер: {container}\nПрокси: {proxy}\nКлавиатура: {keyboard}\nСубтитры: {subs}\nРазмер сегмента: {split_size}\nРазмытие NSFW: {nsfw_blur}\nMediainfo: {mediainfo}"
+  use_command: "Используйте /{command} для изменения этой настройки."
+
+cut:
+  usage_group: "Использование: <code>/cut &lt;url&gt; [начало] [конец]</code>"
+  usage_private: |
+    ✂️ <b>/cut</b>  - обрезка видео по временному диапазону.
+
+    <b>Использование:</b>
+    <code>/cut URL</code>  - интерактивный режим
+    <code>/cut URL 01:23 02:45</code>  - прямая обрезка
+    <code>/cut URL 01:23 90</code>  - начало + длительность в секундах
+  end_after_start: "❌ Конец должен быть позже начала."
+  prompt_end: "✂️ Начало: <code>{start}</code>\n\nОтправьте <b>время окончания</b> или <b>длительность</b>:\n<code>02:45</code>  или  <code>90</code> (секунд)"
+  invalid_time: "❌ Используйте <code>ММ:СС</code>, <code>ЧЧ:ММ:СС</code> или секунды. /cancel для отмены."
+  end_before_start_detail: "❌ Конец (<code>{end}</code>) должен быть позже начала (<code>{start}</code>). Попробуйте ещё раз:"
+
+playlist:
+  no_url: "❌ Укажите корректный URL."
+
+link:
+  title: "🔗 <b>Прямые ссылки для:</b>\n{title}"
+  no_url: "❌ Укажите корректный URL."
+  fetching: "⏳ Извлекаю ссылки…"
+  no_url_error: "⚠️ Не удалось получить прямую ссылку: {error}"
+  browser: "🌐 Браузер"
+  vlc_ios: "🎬 VLC (iOS)"
+  vlc_android: "🎬 VLC (Android)"
+  mpv: "▶️ MPV"
+  quality_set: "Качество: <b>{quality}</b>"
+
+list_formats:
+  title: "📋 <b>Доступные форматы для:</b>\n{title}"
+  empty: "Форматы для этого URL не найдены."
+  hint: "Используйте <code>/format id {id}</code> для загрузки конкретного формата."
+  file_caption: "📋 Полный список форматов"
+  no_url: "❌ Укажите корректный URL."
+  fetching: "⏳ Получаю список форматов…"
+  fetch_error: "❌ Не удалось получить форматы:\n<code>{error}</code>"
+
+pipeline:
+  fetching: "Получаю…"
+  welcome_pending: "<b>Добро пожаловать!</b>\n\nВаш аккаунт ожидает подтверждения. Администратор предоставит вам доступ."
+  nsfw_blocked: "🔞 NSFW контент в этой группе запрещён."
+  uploading: "Отправляю {size}…"
+
+url_handler:
+  invalid_time: "Неверный формат времени: {error}\nИспользуйте ЧЧ:ММ:СС, ММ:СС или секунды."
+  clip_end_prompt: "Начало: <b>{start}</b>\nОтправьте время окончания или длительность (напр. <code>00:26:10</code> или <code>60</code>):"
+  clip_invalid_time: "Неверный формат. Используйте ЧЧ:ММ:СС, ММ:СС или секунды."
+  clip_end_before_start: "Время окончания должно быть позже начала."
+
+search:
+  prompt: "🔍 Введите поисковый запрос:"
+  results_title: "🔍 <b>Результаты поиска:</b> {query}"
+  no_results: "Ничего не найдено: {query}"
+  choose: "Выберите результат для загрузки:"
+
+vid:
+  help: |
+    <b>/vid</b> - загрузка с поддержкой диапазона
+
+    <b>Использование:</b>
+    <code>/vid URL</code> - одно видео
+    <code>/vid 1-5 URL</code> - элементы с 1 по 5
+    <code>/vid -1-5 URL</code> - последние 5 элементов
+
+always_ask:
+  choose_quality: "🎬 <b>{title}</b>\n\nВыберите качество:"
+  choose_action: "Что вы хотите скачать?"
+  processing: "⏳ Обрабатываю выбор..."
+  buttons:
+    audio: "🎵 Только аудио"
+    link: "🔗 Прямая ссылка"
+    subs: "📝 Субтитры"
+    image: "🖼 Изображения"
+    cancel: "❌ Отмена"
+
+image:
+  starting: "🖼 Скачиваю изображения..."
+  progress: "🖼 Скачано {n}/{total} изображений"
+  complete: "✅ Загружено {count} изображений"
+  error: "❌ Ошибка загрузки изображений: {error}"
+  no_images: "По этому URL изображения не найдены."
+  album_caption: "{count} изображений"
+  range_hint: "Используйте <code>/img 1-10 URL</code> для загрузки диапазона"
+
+usage:
+  title: "📊 <b>Ваша статистика</b>"
+  downloads: "Загрузок: <b>{count}</b>"
+  total_size: "Общий объём: <b>{size}</b>"
+  today: "Сегодня: <b>{count}</b>"
+  period: "За {days} дней: <b>{count}</b>"
+
+admin:
+  cache_reloaded: "✅ Кэш перезагружен."
+  cache_not_available: "Кэш недоступен."
+  cache_cleared: "✅ Кэш очищен для:\n<code>{url}</code>"
+  cache_not_found: "⚠️ Запись в кэше не найдена для:\n<code>{url}</code>"
+  cache_error: "❌ Ошибка перезагрузки кэша: {error}"
+  logs_title: "📋 Логи пользователя {user_id}:"
+  no_logs: "Логов для пользователя {user_id} нет."
+
+errors:
+  download_failed: "❌ Ошибка загрузки: {error}"
+  upload_failed: "❌ Ошибка отправки: {error}"
+  cookie_required: "🍪 Для этого контента требуется авторизация. Настройте cookies через /cookie."
+  geo_blocked: "🌍 Этот контент недоступен в вашем регионе. Попробуйте включить /proxy."
+  private_content: "🔒 Контент является приватным. Загрузите cookies через /cookie."
+  rate_limited: "⏳ Достигнут лимит запросов. Пожалуйста, подождите."
+  disk_full: "❌ Недостаточно места на диске."
+  unknown: "❌ Произошла непредвиденная ошибка. Попробуйте ещё раз."
+
+help_sections:
+  download:
+    title: "Загрузка"
+  settings:
+    title: "Настройки"
+    footer: "Отправьте любую ссылку в личные сообщения для загрузки."
+  moderator:
+    title: "Модератор"
+  admin:
+    title: "Администратор"
+  owner:
+    title: "Владелец"
+
+lang:
+  set: "✅ Язык установлен: <b>{lang}</b>"
+  choose: "🌍 Выберите язык:"
+  buttons:
+    en: "🇺🇸 English"
+    ru: "🇷🇺 Русский"
+    ar: "🇸🇦 العربية"
+    hi: "🇮🇳 हिन्दी"
+    zh: "🇨🇳 中文"
+    ja: "🇯🇵 日本語"
+
+split:
+  set: "✂️ Размер сегмента: <b>{size}</b> ✅"
+  choose: "Выберите размер сегмента:"
+  buttons:
+    500mb: "500 МБ"
+    1gb: "1 ГБ"
+    1_5gb: "1.5 ГБ"
+    2gb: "2 ГБ (по умолчанию)"
+    custom: "Другой..."
+
+nsfw:
+  blur_on: "🔞 NSFW контент будет <b>размыт</b> (спойлер) ✅"
+  blur_off: "🔞 Размытие NSFW <b>отключено</b> ✅"
+  paid_required: "🔞 NSFW контент стоит {cost}⭐ Stars"
+
+mediainfo:
+  enabled: "ℹ️ Отчёты MediaInfo <b>включены</b> ✅"
+  disabled: "ℹ️ Отчёты MediaInfo <b>выключены</b> ✅"
+
+tags:
+  cleared: "🏷 Теги очищены ✅"

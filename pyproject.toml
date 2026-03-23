@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yoink-dl"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "yoink-core>=0.1.0",
+    "yt-dlp>=2024.1.1",
+    "gallery-dl>=1.27",
+    "pyyaml>=6.0",
+    "mutagen>=1.47",
+]
+
+[project.scripts]
+yoink-dl = "yoink_dl.standalone:main"
+
+[project.entry-points."yoink.plugins"]
+dl = "yoink_dl:DownloaderPlugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["src/tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src"]
