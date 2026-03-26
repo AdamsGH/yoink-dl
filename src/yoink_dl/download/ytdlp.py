@@ -190,13 +190,10 @@ def build_ytdlp_opts(
             [], [[c.start_sec, c.end_sec] for c in clips]
         )
         opts["force_keyframes_at_cuts"] = True
-        opts["external_downloader"] = "native"
-        # android client is incompatible with native downloader + download_ranges;
-        # restrict to web only for clip downloads
-        ea = opts.setdefault("extractor_args", {})
-        yt_clients = ea.get("youtube", {}).get("player_client")
-        if yt_clients and "android" in yt_clients:
-            ea["youtube"]["player_client"] = ["web"]
+        # Do NOT set external_downloader="native" here: the native downloader
+        # cannot merge DASH streams (separate video+audio), which causes
+        # "Requested format is not available" for most YouTube videos.
+        # yt-dlp's default ffmpeg downloader handles both DASH and download_ranges.
 
     # Extra opts (caller overrides)
     if extra_opts:
