@@ -40,7 +40,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 from yoink.core.i18n import t
 from yoink_dl.bot.middleware import get_user_repo, is_blocked
 from yoink_dl.commands.media import _is_group
-from yoink_dl.url.clip import ClipSpec, parse_time
+from yoink_dl.url.clip import ClipSpec, parse_time, extract_t_param
 from yoink_dl.url.extractor import extract_url
 from yoink_dl.utils.safe_telegram import delete_many
 
@@ -87,6 +87,22 @@ def _parse_url_and_times(args: list[str]) -> tuple[str | None, int | None, int |
 
     start: int | None = None
     end: int | None = None
+
+    t_param = extract_t_param(url)
+
+    if len(time_tokens) == 1 and t_param is not None:
+        # URL has ?t=N and user gave one token - treat ?t= as start, token as end/duration.
+        # e.g. /cut https://youtu.be/xyz?t=263 10  ->  start=263, end=263+10=273
+        start = t_param
+        try:
+            val = parse_time(time_tokens[0])
+            if ":" not in time_tokens[0]:
+                end = start + val
+            else:
+                end = val
+        except (ValueError, IndexError):
+            pass
+        return url, start, end
 
     if len(time_tokens) >= 1:
         try:
