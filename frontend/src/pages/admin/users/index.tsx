@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
@@ -54,6 +55,7 @@ function UserStatsSheet({
   onClose: () => void
   onEdit: (u: User) => void
 }) {
+  const { t } = useTranslation()
   const [stats, setStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -63,7 +65,7 @@ function UserStatsSheet({
     apiClient
       .get<UserStats>(`/users/${user.id}/stats`)
       .then((r) => setStats(r.data))
-      .catch(() => toast.error('Failed to load stats'))
+      .catch(() => toast.error(t('users.update_error')))
       .finally(() => setLoading(false))
   }, [user?.id])
 
@@ -74,7 +76,7 @@ function UserStatsSheet({
           <>
             <SheetHeader className="pb-4">
               <SheetTitle className="flex items-center gap-2">
-                <span>{user.first_name ?? `User ${user.id}`}</span>
+                <span>{user.first_name ?? String(user.id)}</span>
                 <Badge variant={roleBadgeVariant(user.role)} className="ml-1">{user.role}</Badge>
               </SheetTitle>
               {user.username && (
@@ -85,21 +87,21 @@ function UserStatsSheet({
 
             <div className="space-y-5">
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Account</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">{t('users.account')}</h3>
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Joined</span>
+                    <span className="text-muted-foreground">{t('users.col_joined')}</span>
                     <span>{formatDate(user.created_at)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Last seen</span>
+                    <span className="text-muted-foreground">{t('users.last_seen')}</span>
                     <span>{formatDate(user.updated_at)}</span>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Downloads</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">{t('users.downloads')}</h3>
                 {loading ? (
                   <div className="grid grid-cols-3 gap-2">
                     {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
@@ -107,13 +109,13 @@ function UserStatsSheet({
                 ) : stats ? (
                   <>
                     <div className="grid grid-cols-3 gap-2">
-                      <StatCell label="Total" value={stats.total.toLocaleString()} />
-                      <StatCell label="This week" value={stats.this_week.toLocaleString()} />
-                      <StatCell label="Today" value={stats.today.toLocaleString()} />
+                      <StatCell label=t('users.total') value={stats.total.toLocaleString()} />
+                      <StatCell label=t('users.this_week') value={stats.this_week.toLocaleString()} />
+                      <StatCell label=t('users.today') value={stats.today.toLocaleString()} />
                     </div>
                     {stats.top_domains.length > 0 && (
                       <div className="space-y-1.5 pt-1">
-                        <p className="text-xs text-muted-foreground">Top domains</p>
+                        <p className="text-xs text-muted-foreground">{t('users.top_domains')}</p>
                         <div className="space-y-1">
                           {stats.top_domains.map((d) => (
                             <div key={d.domain} className="flex items-center justify-between text-sm">
@@ -125,7 +127,7 @@ function UserStatsSheet({
                       </div>
                     )}
                     {stats.total === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-2">No downloads yet</p>
+                      <p className="text-sm text-muted-foreground text-center py-2">{t('users.no_downloads')}</p>
                     )}
                   </>
                 ) : null}
@@ -133,7 +135,7 @@ function UserStatsSheet({
 
               <div className="flex gap-2 pt-2">
                 <Button className="flex-1" onClick={() => { onClose(); onEdit(user) }}>
-                  Edit user
+                  {t('users.edit_user_btn')}
                 </Button>
               </div>
             </div>
@@ -145,6 +147,7 @@ function UserStatsSheet({
 }
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<User[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -170,7 +173,7 @@ export default function AdminUsersPage() {
     apiClient
       .get<PaginatedResponse<User>>('/users', { params })
       .then((r) => { setItems(r.data.items); setTotal(r.data.total) })
-      .catch(() => toast.error('Failed to load users'))
+      .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoading(false))
   }
 
@@ -203,11 +206,11 @@ export default function AdminUsersPage() {
       const body: UserUpdateRequest = { role: editRole }
       if (banUntil) body.ban_until = new Date(banUntil).toISOString()
       await apiClient.patch(`/users/${selected.id}`, body)
-      toast.success('User updated')
+      toast.success(t('users.role_updated'))
       setSelected(null)
       load()
     } catch {
-      toast.error('Failed to update user')
+      toast.error(t('users.update_error'))
     } finally {
       setSaving(false)
     }
@@ -218,7 +221,7 @@ export default function AdminUsersPage() {
       await apiClient.patch(`/users/${user.id}`, { role: 'banned' } as UserUpdateRequest)
       toast.success(`${user.first_name ?? user.id} banned`)
       load()
-    } catch { toast.error('Failed to ban user') }
+    } catch { toast.error(t('users.update_error')) }
   }
 
   const quickUnban = async (user: User) => {
@@ -226,12 +229,12 @@ export default function AdminUsersPage() {
       await apiClient.patch(`/users/${user.id}`, { role: 'user' } as UserUpdateRequest)
       toast.success(`${user.first_name ?? user.id} unbanned`)
       load()
-    } catch { toast.error('Failed to unban user') }
+    } catch { toast.error(t('users.update_error')) }
   }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Users</h1>
+      <h1 className="text-2xl font-bold">{t('users.title')}</h1>
 
       <Card>
         <CardContent className="pt-4">
@@ -243,31 +246,31 @@ export default function AdminUsersPage() {
                 onKeyDown={(e) => e.key === 'Enter' && apply()} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Role</Label>
+              <Label className="text-xs text-muted-foreground">{t('users.col_role')}</Label>
               <Select value={filters.role} onValueChange={(v: string) => setFilters((f) => ({ ...f, role: v as UserRole | 'all' }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All roles</SelectItem>
+                  <SelectItem value="all">{t('users.filter_all_roles')}</SelectItem>
                   {ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Label className="text-xs text-muted-foreground">{t('users.filter_status')}</Label>
               <Select value={filters.status} onValueChange={(v: string) => setFilters((f) => ({ ...f, status: v as StatusFilter }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="restricted">Restricted</SelectItem>
-                  <SelectItem value="banned">Banned</SelectItem>
+                  <SelectItem value="active">{t('users.filter_active')}</SelectItem>
+                  <SelectItem value="restricted">{t('users.filter_restricted')}</SelectItem>
+                  <SelectItem value="banned">{t('users.filter_banned')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div className="mt-3 flex gap-2">
-            <Button size="sm" onClick={apply}>Apply</Button>
-            {hasActive && <Button size="sm" variant="outline" onClick={resetFilters}>Clear</Button>}
+            <Button size="sm" onClick={apply}>{t('users.filter_apply')}</Button>
+            {hasActive && <Button size="sm" variant="outline" onClick={resetFilters}>{t('users.filter_clear')}</Button>}
           </div>
         </CardContent>
       </Card>
@@ -283,17 +286,17 @@ export default function AdminUsersPage() {
           {loading ? (
             <div className="flex justify-center py-12 text-muted-foreground">Loading…</div>
           ) : items.length === 0 ? (
-            <div className="flex justify-center py-12 text-muted-foreground">No users found</div>
+            <div className="flex justify-center py-12 text-muted-foreground">{t('users.no_users')}</div>
           ) : (
             <>
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Joined</TableHead>
+                      <TableHead>{t('users.col_user')}</TableHead>
+                      <TableHead>{t('users.col_id')}</TableHead>
+                      <TableHead>{t('users.col_role')}</TableHead>
+                      <TableHead>{t('users.col_joined')}</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -313,11 +316,11 @@ export default function AdminUsersPage() {
                         <TableCell className="text-xs text-muted-foreground">{formatDate(user.created_at)}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(user)}>Edit</Button>
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(user)}>{t('common.edit')}</Button>
                             {user.role === 'banned' ? (
-                              <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700" onClick={() => quickUnban(user)}>Unban</Button>
+                              <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700" onClick={() => quickUnban(user)}>{t('users.quick_unban')}</Button>
                             ) : user.role !== 'owner' ? (
-                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => quickBan(user)}>Ban</Button>
+                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => quickBan(user)}>{t('users.quick_ban')}</Button>
                             ) : null}
                           </div>
                         </TableCell>
@@ -342,11 +345,11 @@ export default function AdminUsersPage() {
                       <Badge variant={roleBadgeVariant(user.role)} className="shrink-0">{user.role}</Badge>
                     </div>
                     <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(user)}>Edit</Button>
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(user)}>{t('common.edit')}</Button>
                       {user.role === 'banned' ? (
-                        <Button variant="outline" size="sm" className="flex-1 text-green-600 border-green-600/30" onClick={() => quickUnban(user)}>Unban</Button>
+                        <Button variant="outline" size="sm" className="flex-1 text-green-600 border-green-600/30" onClick={() => quickUnban(user)}>{t('users.quick_unban')}</Button>
                       ) : user.role !== 'owner' ? (
-                        <Button variant="outline" size="sm" className="flex-1 text-destructive border-destructive/30" onClick={() => quickBan(user)}>Ban</Button>
+                        <Button variant="outline" size="sm" className="flex-1 text-destructive border-destructive/30" onClick={() => quickBan(user)}>{t('users.quick_ban')}</Button>
                       ) : null}
                     </div>
                   </div>
@@ -359,10 +362,10 @@ export default function AdminUsersPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+          <span className="text-sm text-muted-foreground">{t('users.page_of', { page, total: totalPages })}</span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>{t('users.prev')}</Button>
+            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>{t('users.next')}</Button>
           </div>
         </div>
       )}
@@ -376,7 +379,7 @@ export default function AdminUsersPage() {
       <Dialog open={!!selected} onOpenChange={(open: boolean) => !open && setSelected(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit user #{selected?.id}</DialogTitle>
+            <DialogTitle>{t('users.edit_title', { id: selected?.id })}</DialogTitle>
           </DialogHeader>
           {selected && (
             <div className="space-y-4">
@@ -385,7 +388,7 @@ export default function AdminUsersPage() {
                 {selected.username && <p className="text-xs text-muted-foreground">@{selected.username}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Role</Label>
+                <Label>{t('users.col_role')}</Label>
                 <Select value={editRole} onValueChange={(v: string) => setEditRole(v as UserRole)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -394,15 +397,15 @@ export default function AdminUsersPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ban-until">Temporary ban until (optional)</Label>
+                <Label htmlFor="ban-until">{t('users.ban_until_label')}</Label>
                 <Input id="ban-until" type="datetime-local" value={banUntil} onChange={(e) => setBanUntil(e.target.value)} />
-                <p className="text-xs text-muted-foreground">Leave blank to use role only.</p>
+                <p className="text-xs text-muted-foreground">{t('users.ban_until_hint')}</p>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelected(null)}>Cancel</Button>
-            <Button onClick={saveUser} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            <Button variant="outline" onClick={() => setSelected(null)}>{t('common.cancel')}</Button>
+            <Button onClick={saveUser} disabled={saving}>{saving ? t('common.loading') : t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

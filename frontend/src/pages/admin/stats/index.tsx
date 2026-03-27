@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -28,31 +29,28 @@ function chartColors(): string[] {
   return _chartColors
 }
 
-const PERIOD_OPTIONS = [
-  { label: '7d', value: 7 },
-  { label: '30d', value: 30 },
-  { label: '90d', value: 90 },
-] as const
+const PERIOD_OPTIONS = [7, 30, 90] as const
 
 type Period = (typeof PERIOD_OPTIONS)[number]['value']
 
 function PeriodToggle({ value, onChange }: { value: Period; onChange: (v: Period) => void }) {
+  const { t } = useTranslation()
   return (
     <div className="flex rounded-md border overflow-hidden">
       {PERIOD_OPTIONS.map((opt) => (
         <Button
-          key={opt.value}
+          key={opt}
           variant="ghost"
           size="sm"
-          onClick={() => onChange(opt.value)}
+          onClick={() => onChange(opt)}
           className={cn(
             'rounded-none border-0 px-3 h-8 text-xs',
-            value === opt.value
+            value === opt
               ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
               : 'text-muted-foreground',
           )}
         >
-          {opt.label}
+          {t(`admin_stats.period_${opt}` as Parameters<typeof t>[0])}
         </Button>
       ))}
     </div>
@@ -94,6 +92,7 @@ function StatCardSkeleton() {
 }
 
 export default function AdminStatsPage() {
+  const { t } = useTranslation()
   const [stats, setStats] = useState<StatsOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -117,7 +116,7 @@ export default function AdminStatsPage() {
       .catch((err) => {
         if (err?.code === 'ERR_CANCELED') return
         const status = err?.response?.status
-        setError(status === 401 ? 'Not authorized' : status === 403 ? 'Forbidden' : 'Failed to load stats')
+        setError(status === 401 ? t('admin_stats.err_unauthorized') : status === 403 ? t('admin_stats.err_forbidden') : t('admin_stats.err_load'))
       })
       .finally(() => { setLoading(false) })
 
@@ -138,7 +137,7 @@ export default function AdminStatsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Download Stats</h1>
+        <h1 className="text-2xl font-bold">{t('admin_stats.title')}</h1>
         <PeriodToggle value={period} onChange={setPeriod} />
       </div>
 
@@ -153,15 +152,15 @@ export default function AdminStatsPage() {
           Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
         ) : stats ? (
           <>
-            <StatCard label="Total downloads" value={stats.total_downloads} />
-            <StatCard label="Today" value={stats.downloads_today} variant="success" />
+            <StatCard label={t('admin_stats.total')} value={stats.total_downloads} />
+            <StatCard label={t('admin_stats.today')} value={stats.downloads_today} variant="success" />
             <StatCard
-              label="Cache hits today"
+              label={t('admin_stats.cache_hits')}
               value={stats.cache_hits_today}
-              sub={`${cacheRate}% of today`}
+              sub={t('admin_stats.cache_rate', { rate: cacheRate })}
             />
             <StatCard
-              label="Errors today"
+              label={t('admin_stats.errors')}
               value={stats.errors_today}
               variant={stats.errors_today > 0 ? 'danger' : 'default'}
             />
@@ -173,13 +172,13 @@ export default function AdminStatsPage() {
         <>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Downloads — last {period} days</CardTitle>
+              <CardTitle className="text-base">{t('admin_stats.chart_title', { days: period })}</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <Skeleton className="h-48 w-full" />
               ) : !stats || stats.downloads_by_day.length === 0 ? (
-                <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">No data</div>
+                <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">{ t('admin_stats.no_data') }</div>
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={stats.downloads_by_day} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -202,13 +201,13 @@ export default function AdminStatsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Top domains</CardTitle>
+                <CardTitle className="text-base">{t('admin_stats.top_domains')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {loading ? (
                   <Skeleton className="h-44 w-full" />
                 ) : !stats || stats.top_domains.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No data</div>
+                  <div className="text-sm text-muted-foreground">{ t('admin_stats.no_data') }</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={stats.top_domains.slice(0, 8).length * 26 + 8}>
                     <BarChart
@@ -233,13 +232,13 @@ export default function AdminStatsPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Domain share</CardTitle>
+                <CardTitle className="text-base">{t('admin_stats.domain_share')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {loading ? (
                   <Skeleton className="h-44 w-full" />
                 ) : domainsWithPercent.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No data</div>
+                  <div className="text-sm text-muted-foreground">{ t('admin_stats.no_data') }</div>
                 ) : (
                   <div className="space-y-3">
                     <ResponsiveContainer width="100%" height={160}>

@@ -195,15 +195,15 @@ export default function SettingsPage() {
       <Section title={t('settings.video_quality')}>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
-            <Label>Resolution</Label>
+            <Label>{t('settings.resolution_label')}</Label>
             <ControlledSelect name="quality" options={QUALITY_OPTIONS} control={control} />
           </div>
           <div className="space-y-1.5">
-            <Label>Codec</Label>
+            <Label>{t('settings.codec_label')}</Label>
             <ControlledSelect name="codec" options={CODEC_OPTIONS} control={control} />
           </div>
           <div className="space-y-1.5">
-            <Label>Container</Label>
+            <Label>{t('settings.container_label')}</Label>
             <ControlledSelect name="container" options={CONTAINER_OPTIONS} control={control} />
           </div>
         </div>
@@ -212,11 +212,11 @@ export default function SettingsPage() {
       <Section title={t('settings.delivery')}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Split large files at</Label>
+            <Label>{t('settings.split_label')}</Label>
             <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} />
           </div>
           <div className="space-y-1.5">
-            <Label>Reply keyboard layout</Label>
+            <Label>{t('settings.keyboard_label')}</Label>
             <ControlledSelect name="keyboard" options={KEYBOARD_OPTIONS} control={control} />
           </div>
         </div>
@@ -234,7 +234,7 @@ export default function SettingsPage() {
         {subsEnabled && (
           <div className="space-y-3 border-t pt-3">
             <div className="space-y-1.5">
-              <Label>Preferred language</Label>
+              <Label>{t('settings.subs_lang_label')}</Label>
               <ControlledSelect name="subs_lang" options={SUBS_LANG_OPTIONS.map((c) => ({ value: c, label: c }))} control={control} />
             </div>
             <ControlledSwitch name="subs_auto" label={t('settings.subs_auto')} hint={t('settings.subs_auto_hint')} control={control} />
@@ -276,7 +276,7 @@ export default function SettingsPage() {
       <Section title={t('settings.interface')}>
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label>Theme</Label>
+            <Label>{t('settings.theme_label')}</Label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {THEME_OPTIONS.map((t) => (
                 <Button
@@ -302,7 +302,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-1.5 border-t pt-3">
-            <Label>Bot language</Label>
+            <Label>{t('settings.bot_lang_label')}</Label>
             <ControlledSelect name="language" options={LANG_OPTIONS} control={control} />
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { apiClient } from '@core/lib/api-client'
 import { Button } from '@core/components/ui/button'
@@ -14,14 +15,10 @@ import {
 } from '@core/components/ui/select'
 import { toast } from '@core/components/ui/toast'
 
-const ROLES = [
-  { value: 'owner',      label: 'Owner only' },
-  { value: 'admin',      label: 'Admin and above' },
-  { value: 'moderator',  label: 'Moderator and above' },
-  { value: 'user',       label: 'All users' },
-]
+const ROLES = ['owner', 'admin', 'moderator', 'user'] as const
 
 export default function AdminBotSettingsPage() {
+  const { t } = useTranslation()
   const [settings, setSettings] = useState<Record<string, string | null>>({})
   const [loading, setLoading] = useState(true)
   const [storageChat, setStorageChat] = useState('')
@@ -36,7 +33,7 @@ export default function AdminBotSettingsPage() {
         setStorageChat(r.data['inline_storage_chat_id'] ?? '')
         setStorageThread(r.data['inline_storage_thread_id'] ?? '')
       })
-      .catch(() => toast.error('Failed to load bot settings'))
+      .catch(() => toast.error(t('bot_settings.load_error')))
       .finally(() => setLoading(false))
   }, [])
 
@@ -47,9 +44,9 @@ export default function AdminBotSettingsPage() {
         inline_storage_chat_id: storageChat || null,
         inline_storage_thread_id: storageThread || null,
       })
-      toast.success('Saved')
+      toast.success(t('bot_settings.save_ok'))
     } catch {
-      toast.error('Failed to save')
+      toast.error(t('bot_settings.save_error'))
     } finally {
       setStorageSaving(false)
     }
@@ -59,28 +56,26 @@ export default function AdminBotSettingsPage() {
     try {
       await apiClient.patch('/bot-settings', { [key]: value })
       setSettings((prev) => ({ ...prev, [key]: value }))
-      toast.success('Saved')
+      toast.success(t('bot_settings.save_ok'))
     } catch {
-      toast.error('Failed to save')
+      toast.error(t('bot_settings.save_error'))
     }
   }
 
-  if (loading) return <div className="flex justify-center py-24 text-muted-foreground">Loading…</div>
+  if (loading) return <div className="flex justify-center py-24 text-muted-foreground">{t('common.loading')}</div>
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Bot Settings</h1>
+      <h1 className="text-2xl font-bold">{t('bot_settings.title')}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Access Mode</CardTitle>
-          <CardDescription>
-            Controls who can use the bot in private chats.
-          </CardDescription>
+          <CardTitle>{t('bot_settings.access_mode')}</CardTitle>
+          <CardDescription>{t('bot_settings.access_mode_desc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label>Private chat access</Label>
+            <Label>{t('bot_settings.access_label')}</Label>
             <Select
               value={settings['bot_access_mode'] ?? 'open'}
               onValueChange={(v) => update('bot_access_mode', v)}
@@ -89,30 +84,23 @@ export default function AdminBotSettingsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="open">Open  - anyone can use the bot</SelectItem>
-                <SelectItem value="approved_only">Approved only  - new users get restricted role</SelectItem>
+                <SelectItem value="open">{t('bot_settings.access_open')}</SelectItem>
+                <SelectItem value="approved_only">{t('bot_settings.access_approved')}</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              In <strong>approved only</strong> mode, new users receive the <code>restricted</code> role
-              (no access) until manually upgraded to <code>user</code> or above.
-              Existing users are not affected.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('bot_settings.access_hint')}</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Browser Cookies</CardTitle>
-          <CardDescription>
-            Who can use the shared browser profile (Chromium) for cookie-authenticated downloads.
-            The owner always has access regardless of this setting.
-          </CardDescription>
+          <CardTitle>{t('bot_settings.browser_cookies')}</CardTitle>
+          <CardDescription>{t('bot_settings.browser_cookies_desc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label>Minimum role required</Label>
+            <Label>{t('bot_settings.browser_cookies_role')}</Label>
             <Select
               value={settings['browser_cookies_min_role'] ?? 'owner'}
               onValueChange={(v) => update('browser_cookies_min_role', v)}
@@ -122,54 +110,47 @@ export default function AdminBotSettingsPage() {
               </SelectTrigger>
               <SelectContent>
                 {ROLES.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
+                  <SelectItem key={r} value={r}>
+                    {t(`bot_settings.role_${r}` as Parameters<typeof t>[0])}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Users with this role or higher will automatically use the shared
-              Chromium profile cookies when no personal cookie is uploaded.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('bot_settings.browser_cookies_hint')}</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Inline Storage</CardTitle>
-          <CardDescription>
-            Global fallback for the inline download pipeline. When a user picks an inline result,
-            the bot stages the file here to get a Telegram file_id, then edits the message in the group.
-            Per-group overrides can be set in Groups settings. If empty, files are staged in the user's DM.
-          </CardDescription>
+          <CardTitle>{t('bot_settings.inline_storage')}</CardTitle>
+          <CardDescription>{t('bot_settings.inline_storage_desc')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="storage-chat">Storage chat ID</Label>
+              <Label htmlFor="storage-chat">{t('bot_settings.storage_chat_id')}</Label>
               <Input
                 id="storage-chat"
-                placeholder="-100123456789 or channel ID"
+                placeholder={t('bot_settings.storage_chat_placeholder')}
                 value={storageChat}
                 onChange={(e) => setStorageChat(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Bot must be a member with send permission.</p>
+              <p className="text-xs text-muted-foreground">{t('bot_settings.storage_chat_hint')}</p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="storage-thread">Thread ID (optional)</Label>
+              <Label htmlFor="storage-thread">{t('bot_settings.storage_thread_id')}</Label>
               <Input
                 id="storage-thread"
-                placeholder="Forum topic ID"
+                placeholder={t('bot_settings.storage_thread_placeholder')}
                 value={storageThread}
                 onChange={(e) => setStorageThread(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Leave empty for the main chat.</p>
+              <p className="text-xs text-muted-foreground">{t('bot_settings.storage_thread_hint')}</p>
             </div>
           </div>
           <Button onClick={saveStorage} disabled={storageSaving} size="sm">
-            {storageSaving ? 'Saving…' : 'Save storage settings'}
+            {storageSaving ? t('bot_settings.saving') : t('bot_settings.save_storage')}
           </Button>
         </CardContent>
       </Card>

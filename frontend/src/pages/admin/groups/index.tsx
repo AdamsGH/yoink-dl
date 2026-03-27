@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
 
 import { apiClient } from '@core/lib/api-client'
@@ -140,6 +141,7 @@ interface AddState {
 const DEFAULT_ADD: AddState = { linkOrId: '', name: '', enabled: true }
 
 function ThreadRows({ groupId }: { groupId: number }) {
+  const { t } = useTranslation()
   const [threads, setThreads] = useState<ThreadPolicy[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -150,7 +152,7 @@ function ThreadRows({ groupId }: { groupId: number }) {
     apiClient
       .get<ThreadPolicy[]>(`/groups/${groupId}/threads`)
       .then((res) => setThreads(res.data))
-      .catch(() => toast.error('Failed to load threads'))
+      .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoading(false))
   }
 
@@ -173,14 +175,14 @@ function ThreadRows({ groupId }: { groupId: number }) {
       toast.success('Thread policy saved')
       closeAdd()
       load()
-    } catch { toast.error('Failed to add thread policy') }
+    } catch { toast.error(t('common.load_error')) }
   }
 
   const toggle = async (t: ThreadPolicy) => {
     try {
       await apiClient.post(`/groups/${groupId}/threads`, { thread_id: t.thread_id, name: t.name, enabled: !t.enabled })
       load()
-    } catch { toast.error('Failed to update') }
+    } catch { toast.error(t('common.load_error')) }
   }
 
   const remove = async (t: ThreadPolicy) => {
@@ -188,7 +190,7 @@ function ThreadRows({ groupId }: { groupId: number }) {
     try {
       await apiClient.delete(`/groups/${groupId}/threads/${t.id}`)
       load()
-    } catch { toast.error('Failed to delete') }
+    } catch { toast.error(t('common.load_error')) }
   }
 
   if (loading) return <div className="px-4 py-2 text-xs text-muted-foreground">Loading threads…</div>
@@ -196,7 +198,7 @@ function ThreadRows({ groupId }: { groupId: number }) {
   return (
     <div className="border-t bg-muted/30 px-4 py-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Threads</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('groups.title').replace('s','s')}</span>
         {!adding && (
           <Button size="sm" variant="ghost" className="h-6 gap-1 text-xs" onClick={openAdd}>
             <Plus className="h-3 w-3" /> Add policy
@@ -206,7 +208,7 @@ function ThreadRows({ groupId }: { groupId: number }) {
 
       {threads.length === 0 && !adding && (
         <p className="text-xs text-muted-foreground">
-          All threads allowed by default. The bot auto-discovers topic names
+          {t('groups.thread_policies')}
           from service messages when topics are created.
         </p>
       )}
@@ -238,7 +240,7 @@ function ThreadRows({ groupId }: { groupId: number }) {
 
           {/* Topic source: select from known or paste link */}
           <div className="space-y-1.5">
-            <p className="text-xs font-medium">Topic</p>
+            <p className="text-xs font-medium">{t("groups.col_group")}</p>
             {namedAll.length > 0 && (
               <Select
                 value={form.linkOrId}
@@ -320,6 +322,7 @@ function ThreadRows({ groupId }: { groupId: number }) {
 }
 
 export default function AdminGroupsPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<Group[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -332,7 +335,7 @@ export default function AdminGroupsPage() {
     apiClient
       .get<Group[]>('/groups')
       .then((res) => { setItems(res.data); setTotal(res.data.length) })
-      .catch(() => toast.error('Failed to load groups'))
+      .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoading(false))
   }
 
@@ -352,7 +355,7 @@ export default function AdminGroupsPage() {
           nsfw_allowed: edit.nsfw_allowed,
         }
         await apiClient.post('/groups', body)
-        toast.success('Group added')
+        toast.success(t('common.save'))
       } else if (edit.group) {
         const body: GroupUpdateRequest = {
           title: edit.title || null,
@@ -364,12 +367,12 @@ export default function AdminGroupsPage() {
           storage_thread_id: edit.storage_thread_id ? parseInt(edit.storage_thread_id, 10) : null,
         }
         await apiClient.patch(`/groups/${edit.group.id}`, body)
-        toast.success('Group updated')
+        toast.success(t('common.save'))
       }
       setEdit(null)
       load()
     } catch {
-      toast.error('Failed to save group')
+      toast.error(t('common.load_error'))
     } finally {
       setSaving(false)
     }
@@ -378,8 +381,8 @@ export default function AdminGroupsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Groups</h1>
-        <Button size="sm" onClick={() => setEdit(defaultEdit())}>Add group</Button>
+        <h1 className="text-2xl font-bold">{t("groups.title")}</h1>
+        <Button size="sm" onClick={() => setEdit(defaultEdit())}>{t('groups.add_group')}</Button>
       </div>
 
       <Card>
@@ -388,9 +391,9 @@ export default function AdminGroupsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center py-12 text-muted-foreground">Loading…</div>
+            <div className="flex justify-center py-12 text-muted-foreground">{t('common.loading')}</div>
           ) : items.length === 0 ? (
-            <div className="flex justify-center py-12 text-muted-foreground">No groups configured</div>
+            <div className="flex justify-center py-12 text-muted-foreground">{t('groups.no_groups')} configured</div>
           ) : (
             <>
               {/* Desktop table */}
@@ -399,12 +402,12 @@ export default function AdminGroupsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-8" />
-                      <TableHead>Group</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Auto-grant role</TableHead>
-                      <TableHead>Allow PM</TableHead>
+                      <TableHead>{t('groups.col_group')}</TableHead>
+                      <TableHead>{t('groups.col_status')}</TableHead>
+                      <TableHead>{t('groups.col_role')}</TableHead>
+                      <TableHead>{t('groups.col_pm')}</TableHead>
                       <TableHead>NSFW</TableHead>
-                      <TableHead>Added</TableHead>
+                      <TableHead>{t('groups.col_added')}</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -416,12 +419,12 @@ export default function AdminGroupsPage() {
                             {expanded === group.id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </TableCell>
                           <TableCell>
-                            <p className="text-sm font-medium">{group.title ?? <span className="text-muted-foreground italic">untitled</span>}</p>
+                            <p className="text-sm font-medium">{group.title ?? <span className="text-muted-foreground italic">{t('groups.untitled')}</span>}</p>
                             <p className="font-mono text-xs text-muted-foreground">{group.id}</p>
                           </TableCell>
                           <TableCell>
                             <Badge variant={group.enabled ? 'success' : 'outline'}>
-                              {group.enabled ? 'active' : 'disabled'}
+                              {group.enabled ? t('groups.active') : t('groups.disabled')}
                             </Badge>
                           </TableCell>
                           <TableCell><Badge variant="secondary">{group.auto_grant_role}</Badge></TableCell>
@@ -432,12 +435,12 @@ export default function AdminGroupsPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant={group.nsfw_allowed ? 'warning' : 'outline'}>
-                              {group.nsfw_allowed ? 'allowed' : 'blocked'}
+                              {group.nsfw_allowed ? t('groups.allowed') : t('groups.blocked')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{formatDate(group.created_at)}</TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => setEdit(defaultEdit(group))}>Edit</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setEdit(defaultEdit(group))}>{t('common.edit')}</Button>
                           </TableCell>
                         </TableRow>
                         {expanded === group.id && (
@@ -459,16 +462,16 @@ export default function AdminGroupsPage() {
                   <div key={group.id} className="px-4 py-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium">{group.title ?? <span className="text-muted-foreground">untitled</span>}</p>
+                        <p className="text-sm font-medium">{group.title ?? <span className="text-muted-foreground">{t('groups.untitled')}</span>}</p>
                         <p className="font-mono text-xs text-muted-foreground">{group.id}</p>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" onClick={() => setEdit(defaultEdit(group))}>Edit</Button>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" onClick={() => setEdit(defaultEdit(group))}>{t('common.edit')}</Button>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      <Badge variant={group.enabled ? 'success' : 'outline'}>{group.enabled ? 'active' : 'disabled'}</Badge>
+                      <Badge variant={group.enabled ? 'success' : 'outline'}>{group.enabled ? t('groups.active') : t('groups.disabled')}</Badge>
                       <Badge variant="secondary">{group.auto_grant_role}</Badge>
-                      <Badge variant={group.allow_pm ? 'success' : 'outline'}>PM: {group.allow_pm ? 'on' : 'off'}</Badge>
-                      <Badge variant={group.nsfw_allowed ? 'warning' : 'outline'}>NSFW: {group.nsfw_allowed ? 'on' : 'off'}</Badge>
+                      <Badge variant={group.allow_pm ? 'success' : 'outline'}>{`PM: ${group.allow_pm ? t('common.yes') : t('common.no')}`}</Badge>
+                      <Badge variant={group.nsfw_allowed ? 'warning' : 'outline'}>{`NSFW: ${group.nsfw_allowed ? t('common.yes') : t('common.no')}`}</Badge>
                     </div>
                     <Button
                       variant="ghost"
@@ -477,7 +480,7 @@ export default function AdminGroupsPage() {
                       onClick={() => setExpanded((p) => p === group.id ? null : group.id)}
                     >
                       {expanded === group.id ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                      Thread policies
+                      {t('groups.thread_policies')}
                     </Button>
                     {expanded === group.id && <ThreadRows groupId={group.id} />}
                   </div>
@@ -491,14 +494,14 @@ export default function AdminGroupsPage() {
       <Dialog open={!!edit} onOpenChange={(open: boolean) => !open && setEdit(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{edit?.isNew ? 'Add group' : 'Edit group'}</DialogTitle>
+            <DialogTitle>{edit?.isNew ? t('groups.edit_title_new') : t('groups.edit_title_edit')}</DialogTitle>
           </DialogHeader>
 
           {edit && (
             <div className="space-y-4">
               {edit.isNew && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="group-id">Telegram chat ID</Label>
+                  <Label htmlFor="group-id">{t('groups.field_chat_id')}</Label>
                   <Input id="group-id" type="number" placeholder="-100123456789"
                     value={edit.newId} onChange={(e) => setEdit({ ...edit, newId: e.target.value })} />
                 </div>
@@ -511,18 +514,18 @@ export default function AdminGroupsPage() {
                   onCheckedChange={(checked: boolean) => setEdit({ ...edit, enabled: checked })}
                 />
                 <div>
-                  <Label htmlFor="group-enabled">Active</Label>
-                  <p className="text-xs text-muted-foreground">Bot responds in this group only when active</p>
+                  <Label htmlFor="group-enabled">{t('groups.field_active')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('groups.field_active_hint')}</p>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="group-title">Title (optional)</Label>
+                <Label htmlFor="group-title">{t('groups.field_title')}</Label>
                 <Input id="group-title" value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
               </div>
 
               <div className="space-y-1.5">
-                <Label>Auto-grant role when user joins</Label>
+                <Label>{t('groups.field_auto_role')}</Label>
                 <Select value={edit.auto_grant_role} onValueChange={(v: string) => setEdit({ ...edit, auto_grant_role: v as UserRole })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -537,7 +540,7 @@ export default function AdminGroupsPage() {
                   checked={edit.allow_pm}
                   onCheckedChange={(checked: boolean) => setEdit({ ...edit, allow_pm: checked })}
                 />
-                <Label htmlFor="group-allow-pm">Allow PM from group members</Label>
+                <Label htmlFor="group-allow-pm">{t('groups.field_allow_pm')}</Label>
               </div>
 
               <div className="flex items-center gap-3">
@@ -547,22 +550,21 @@ export default function AdminGroupsPage() {
                   onCheckedChange={(checked: boolean) => setEdit({ ...edit, nsfw_allowed: checked })}
                 />
                 <div>
-                  <Label htmlFor="group-nsfw">Allow NSFW content</Label>
-                  <p className="text-xs text-muted-foreground">NSFW URLs will be blocked in this group unless enabled</p>
+                  <Label htmlFor="group-nsfw">{t('groups.field_nsfw')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('groups.field_nsfw_hint')}</p>
                 </div>
               </div>
 
               {!edit.isNew && (
                 <div className="space-y-3 border-t pt-3">
                   <div>
-                    <p className="text-sm font-medium">Inline storage</p>
+                    <p className="text-sm font-medium">{t('groups.inline_storage')}</p>
                     <p className="text-xs text-muted-foreground">
-                      Where the bot stages files when downloading via inline mode.
-                      Leave empty to use the global config fallback.
+                      {t('groups.inline_storage_hint')}
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="storage-chat">Storage chat ID</Label>
+                    <Label htmlFor="storage-chat">{t('groups.storage_chat_id')}</Label>
                     <Input
                       id="storage-chat"
                       type="number"
@@ -572,7 +574,7 @@ export default function AdminGroupsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="storage-thread">Storage thread ID (optional)</Label>
+                    <Label htmlFor="storage-thread">{t('groups.storage_thread_id')}</Label>
                     <Input
                       id="storage-thread"
                       type="number"
@@ -587,8 +589,8 @@ export default function AdminGroupsPage() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEdit(null)}>Cancel</Button>
-            <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            <Button variant="outline" onClick={() => setEdit(null)}>{t('common.cancel')}</Button>
+            <Button onClick={save} disabled={saving}>{saving ? t('common.loading') : t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

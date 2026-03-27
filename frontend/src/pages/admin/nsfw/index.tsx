@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download, Pencil, Plus, ShieldAlert, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
 
@@ -24,6 +25,7 @@ interface AddDialogProps {
 }
 
 function AddDialog({ open, title, fieldLabel, fieldPlaceholder, onClose, onAdd }: AddDialogProps) {
+  const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
@@ -59,18 +61,18 @@ function AddDialog({ open, title, fieldLabel, fieldPlaceholder, onClose, onAdd }
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Note (optional)</Label>
+            <Label>{t('nsfw.note_optional')}</Label>
             <Input
-              placeholder="e.g. added manually"
+              {...{placeholder: t('nsfw.note_placeholder')}}
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleAdd} disabled={saving || !value.trim()}>
-            {saving ? 'Adding...' : 'Add'}
+            {saving ? t('nsfw.adding') : t('nsfw.add_btn')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -88,6 +90,7 @@ interface EditDialogProps {
 }
 
 function EditDialog({ open, title, fieldLabel, initial, onClose, onSave }: EditDialogProps) {
+  const { t } = useTranslation()
   const [value, setValue] = useState(initial.value)
   const [note, setNote] = useState(initial.note)
   const [saving, setSaving] = useState(false)
@@ -120,14 +123,14 @@ function EditDialog({ open, title, fieldLabel, initial, onClose, onSave }: EditD
             <Input value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
           </div>
           <div className="space-y-1.5">
-            <Label>Note</Label>
+            <Label>{t('nsfw.note_optional')}</Label>
             <Input value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleSave} disabled={saving || !value.trim()}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('common.loading') : t('common.save')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -136,6 +139,7 @@ function EditDialog({ open, title, fieldLabel, initial, onClose, onSave }: EditD
 }
 
 function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation()
   const [json, setJson] = useState('')
   const [importing, setImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -152,7 +156,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
     try {
       parsed = JSON.parse(json)
     } catch {
-      toast.error('Invalid JSON')
+      toast.error(t('common.error'))
       return
     }
 
@@ -162,13 +166,13 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
         domains: parsed.domains ?? [],
         keywords: parsed.keywords ?? [],
       })
-      toast.success(`Imported: ${res.data.domains_added} domains, ${res.data.keywords_added} keywords`)
+      toast.success(t('nsfw.added_ok'))
       setJson('')
       onClose()
       onDone()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(detail ?? 'Import failed')
+      toast.error(t('nsfw.add_error'))
     } finally {
       setImporting(false)
     }
@@ -178,7 +182,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
     <Dialog open={open} onOpenChange={(o: boolean) => { if (!o) { setJson(''); onClose() } }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Import NSFW data</DialogTitle>
+          <DialogTitle>{t('nsfw.import')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
@@ -205,9 +209,9 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleImport} disabled={importing || !json.trim()}>
-            {importing ? 'Importing...' : 'Import'}
+            {importing ? t('common.loading') : t('nsfw.import')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -216,6 +220,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
 }
 
 function CheckPanel() {
+  const { t } = useTranslation()
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -234,7 +239,7 @@ function CheckPanel() {
       })
       setResult(res.data)
     } catch {
-      toast.error('Check failed')
+      toast.error(t('common.load_error'))
     } finally {
       setChecking(false)
     }
@@ -245,12 +250,12 @@ function CheckPanel() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShieldAlert className="h-4 w-4" />
-          Detection check
+          {t('nsfw.check_title')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="check-url">URL</Label>
+          <Label htmlFor="check-url">{t('nsfw.check_title')}</Label>
           <Input
             id="check-url"
             placeholder="https://example.com/video/..."
@@ -265,13 +270,13 @@ function CheckPanel() {
             <Input id="check-title" placeholder="Video title" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="check-desc">Description snippet</Label>
+            <Label htmlFor="check-desc">{t('nsfw.check_desc_label')}</Label>
             <Input id="check-desc" placeholder="..." value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={check} disabled={checking || !url.trim()}>
-            {checking ? 'Checking...' : 'Check'}
+            {checking ? t('nsfw.checking') : t('nsfw.check_btn')}
           </Button>
           {result && (
             <div className="flex items-center gap-2 text-sm">
@@ -293,6 +298,7 @@ function CheckPanel() {
 }
 
 export default function AdminNsfwPage() {
+  const { t } = useTranslation()
   const [domains, setDomains] = useState<NsfwDomain[]>([])
   const [keywords, setKeywords] = useState<NsfwKeyword[]>([])
   const [loadingD, setLoadingD] = useState(true)
@@ -309,7 +315,7 @@ export default function AdminNsfwPage() {
     setLoadingD(true)
     apiClient.get<NsfwDomain[]>('/dl/nsfw/domains')
       .then((r) => setDomains(r.data))
-      .catch(() => toast.error('Failed to load domains'))
+      .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoadingD(false))
   }
 
@@ -317,7 +323,7 @@ export default function AdminNsfwPage() {
     setLoadingK(true)
     apiClient.get<NsfwKeyword[]>('/dl/nsfw/keywords')
       .then((r) => setKeywords(r.data))
-      .catch(() => toast.error('Failed to load keywords'))
+      .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoadingK(false))
   }
 
@@ -329,10 +335,10 @@ export default function AdminNsfwPage() {
     setDeletingD(id)
     try {
       await apiClient.delete(`/dl/nsfw/domains/${id}`)
-      toast.success('Domain removed')
+      toast.success(t('nsfw.removed'))
       loadDomains()
     } catch {
-      toast.error('Failed to remove domain')
+      toast.error(t('nsfw.remove_error'))
     } finally {
       setDeletingD(null)
     }
@@ -343,10 +349,10 @@ export default function AdminNsfwPage() {
     setDeletingK(id)
     try {
       await apiClient.delete(`/dl/nsfw/keywords/${id}`)
-      toast.success('Keyword removed')
+      toast.success(t('nsfw.removed'))
       loadKeywords()
     } catch {
-      toast.error('Failed to remove keyword')
+      toast.error(t('nsfw.remove_error'))
     } finally {
       setDeletingK(null)
     }
@@ -355,11 +361,11 @@ export default function AdminNsfwPage() {
   const addDomain = async (domain: string, note: string) => {
     try {
       await apiClient.post('/dl/nsfw/domains', { domain, note: note || null })
-      toast.success(`Domain ${domain} added`)
+      toast.success(t('nsfw.added_ok'))
       loadDomains()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(detail ?? 'Failed to add domain')
+      toast.error(t('nsfw.add_error'))
       throw err
     }
   }
@@ -367,11 +373,11 @@ export default function AdminNsfwPage() {
   const addKeyword = async (keyword: string, note: string) => {
     try {
       await apiClient.post('/dl/nsfw/keywords', { keyword, note: note || null })
-      toast.success(`Keyword "${keyword}" added`)
+      toast.success(t('nsfw.added_ok'))
       loadKeywords()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(detail ?? 'Failed to add keyword')
+      toast.error(t('nsfw.add_error'))
       throw err
     }
   }
@@ -380,11 +386,11 @@ export default function AdminNsfwPage() {
     if (!editDomain) return
     try {
       await apiClient.patch(`/dl/nsfw/domains/${editDomain.id}`, { domain: value, note: note || null })
-      toast.success('Domain updated')
+      toast.success(t('nsfw.saved'))
       loadDomains()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(detail ?? 'Failed to update domain')
+      toast.error(t('nsfw.save_error'))
       throw err
     }
   }
@@ -393,11 +399,11 @@ export default function AdminNsfwPage() {
     if (!editKeyword) return
     try {
       await apiClient.patch(`/dl/nsfw/keywords/${editKeyword.id}`, { keyword: value, note: note || null })
-      toast.success('Keyword updated')
+      toast.success(t('nsfw.saved'))
       loadKeywords()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(detail ?? 'Failed to update keyword')
+      toast.error(t('nsfw.save_error'))
       throw err
     }
   }
@@ -413,17 +419,17 @@ export default function AdminNsfwPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      toast.error('Export failed')
+      toast.error(t('common.load_error'))
     }
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">NSFW</h1>
+        <h1 className="text-2xl font-bold">{t('nsfw.title')}</h1>
         <div className="flex gap-1.5">
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-            <Upload className="mr-1.5 h-3.5 w-3.5" /> Import
+            <Upload className="mr-1.5 h-3.5 w-3.5" /> {t('nsfw.import')}
           </Button>
           <Button variant="outline" size="sm" onClick={exportJson}>
             <Download className="mr-1.5 h-3.5 w-3.5" /> Export
@@ -439,23 +445,23 @@ export default function AdminNsfwPage() {
           <CardTitle>{loadingD ? '...' : domains.length} domain{domains.length !== 1 ? 's' : ''}</CardTitle>
           <Button size="sm" onClick={() => setAddDomainOpen(true)}>
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add domain
+            {t('nsfw.add_domain')}
           </Button>
         </CardHeader>
         <CardContent className="p-0">
           {loadingD ? (
-            <div className="flex justify-center py-10 text-muted-foreground">Loading...</div>
+            <div className="flex justify-center py-10 text-muted-foreground">{t('common.loading')}</div>
           ) : domains.length === 0 ? (
-            <div className="flex justify-center py-10 text-muted-foreground">No domains</div>
+            <div className="flex justify-center py-10 text-muted-foreground">{t('nsfw.no_domains')}</div>
           ) : (
             <>
               <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Domain</TableHead>
-                      <TableHead>Note</TableHead>
-                      <TableHead>Added</TableHead>
+                      <TableHead>{t('nsfw.col_domain')}</TableHead>
+                      <TableHead>{t('nsfw.col_note')}</TableHead>
+                      <TableHead>{t('nsfw.col_added')}</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -512,23 +518,23 @@ export default function AdminNsfwPage() {
           <CardTitle>{loadingK ? '...' : keywords.length} keyword{keywords.length !== 1 ? 's' : ''}</CardTitle>
           <Button size="sm" onClick={() => setAddKeywordOpen(true)}>
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add keyword
+            {t('nsfw.add_keyword')}
           </Button>
         </CardHeader>
         <CardContent className="p-0">
           {loadingK ? (
-            <div className="flex justify-center py-10 text-muted-foreground">Loading...</div>
+            <div className="flex justify-center py-10 text-muted-foreground">{t('common.loading')}</div>
           ) : keywords.length === 0 ? (
-            <div className="flex justify-center py-10 text-muted-foreground">No keywords</div>
+            <div className="flex justify-center py-10 text-muted-foreground">{t('nsfw.no_keywords')}</div>
           ) : (
             <>
               <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Keyword</TableHead>
-                      <TableHead>Note</TableHead>
-                      <TableHead>Added</TableHead>
+                      <TableHead>{t('nsfw.col_keyword')}</TableHead>
+                      <TableHead>{t('nsfw.col_note')}</TableHead>
+                      <TableHead>{t('nsfw.col_added')}</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -581,32 +587,32 @@ export default function AdminNsfwPage() {
 
       <AddDialog
         open={addDomainOpen}
-        title="Add NSFW domain"
-        fieldLabel="Domain"
-        fieldPlaceholder="pornhub.com"
+        {...{title: t('nsfw.add_domain_title')}}
+        {...{fieldLabel: t('nsfw.domain_field')}}
+        {...{fieldPlaceholder: t('nsfw.domain_placeholder')}}
         onClose={() => setAddDomainOpen(false)}
         onAdd={addDomain}
       />
       <AddDialog
         open={addKeywordOpen}
-        title="Add NSFW keyword"
-        fieldLabel="Keyword"
-        fieldPlaceholder="e.g. nude"
+        {...{title: t('nsfw.add_keyword_title')}}
+        {...{fieldLabel: t('nsfw.keyword_field')}}
+        {...{fieldPlaceholder: t('nsfw.keyword_placeholder')}}
         onClose={() => setAddKeywordOpen(false)}
         onAdd={addKeyword}
       />
       <EditDialog
         open={!!editDomain}
-        title="Edit domain"
-        fieldLabel="Domain"
+        {...{title: t('nsfw.edit_domain_title')}}
+        {...{fieldLabel: t('nsfw.domain_field')}}
         initial={{ value: editDomain?.domain ?? '', note: editDomain?.note ?? '' }}
         onClose={() => setEditDomain(null)}
         onSave={saveDomain}
       />
       <EditDialog
         open={!!editKeyword}
-        title="Edit keyword"
-        fieldLabel="Keyword"
+        {...{title: t('nsfw.edit_keyword_title')}}
+        {...{fieldLabel: t('nsfw.keyword_field')}}
         initial={{ value: editKeyword?.keyword ?? '', note: editKeyword?.note ?? '' }}
         onClose={() => setEditKeyword(null)}
         onSave={saveKeyword}
