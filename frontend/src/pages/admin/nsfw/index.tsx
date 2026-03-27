@@ -425,28 +425,27 @@ export default function AdminNsfwPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-            <Upload className="mr-1.5 h-3.5 w-3.5" /> {t('nsfw.import')}
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportJson}>
-            <Download className="mr-1.5 h-3.5 w-3.5" /> Export
-          </Button>
-        </div>
-      </div>
-
+    <div className="space-y-4">
       <CheckPanel />
 
       {/* Domains */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>{loadingD ? '...' : domains.length} domain{domains.length !== 1 ? 's' : ''}</CardTitle>
-          <Button size="sm" onClick={() => setAddDomainOpen(true)}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            {t('nsfw.add_domain')}
-          </Button>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 gap-3 flex-wrap">
+          <CardTitle className="text-sm font-medium">
+            {loadingD ? '...' : t('nsfw.domains_count', { count: domains.length, defaultValue: '{{count}} domains' })}
+          </CardTitle>
+          <div className="flex gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="mr-1.5 h-3.5 w-3.5" /> {t('nsfw.import')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportJson}>
+              <Download className="mr-1.5 h-3.5 w-3.5" /> {t('nsfw.export', { defaultValue: 'Export' })}
+            </Button>
+            <Button size="sm" onClick={() => setAddDomainOpen(true)}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              {t('nsfw.add_domain')}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {loadingD ? (
@@ -515,7 +514,9 @@ export default function AdminNsfwPage() {
       {/* Keywords */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>{loadingK ? '...' : keywords.length} keyword{keywords.length !== 1 ? 's' : ''}</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            {loadingK ? '...' : t('nsfw.keywords_count', { count: keywords.length, defaultValue: '{{count}} keywords' })}
+          </CardTitle>
           <Button size="sm" onClick={() => setAddKeywordOpen(true)}>
             <Plus className="mr-1.5 h-3.5 w-3.5" />
             {t('nsfw.add_keyword')}
