@@ -31,7 +31,7 @@ function chartColors(): string[] {
 
 const PERIOD_OPTIONS = [7, 30, 90] as const
 
-type Period = (typeof PERIOD_OPTIONS)[number]['value']
+type Period = (typeof PERIOD_OPTIONS)[number]
 
 function PeriodToggle({ value, onChange }: { value: Period; onChange: (v: Period) => void }) {
   const { t } = useTranslation()

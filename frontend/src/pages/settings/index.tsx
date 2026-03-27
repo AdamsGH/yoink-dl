@@ -167,7 +167,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>('en')
   const [langSaving, setLangSaving] = useState(false)
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { flavor, setFlavor } = useTelegram()
   const { handleSubmit, reset, watch, control, formState: { isSubmitting, isDirty } } =
     useForm<FormValues>()

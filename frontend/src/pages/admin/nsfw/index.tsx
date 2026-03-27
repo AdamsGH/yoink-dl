@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, Pencil, Plus, ShieldAlert, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
+import { Download, Pencil, Plus, ShieldAlert, Trash2, Upload } from 'lucide-react'
+
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
@@ -162,7 +163,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
 
     setImporting(true)
     try {
-      const res = await apiClient.post<{ domains_added: number; keywords_added: number }>('/dl/nsfw/import', {
+      await apiClient.post<{ domains_added: number; keywords_added: number }>('/dl/nsfw/import', {
         domains: parsed.domains ?? [],
         keywords: parsed.keywords ?? [],
       })
@@ -172,7 +173,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
       onDone()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(t('nsfw.add_error'))
+      toast.error(detail ?? t('nsfw.add_error'))
     } finally {
       setImporting(false)
     }
@@ -365,7 +366,7 @@ export default function AdminNsfwPage() {
       loadDomains()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(t('nsfw.add_error'))
+      toast.error(detail ?? t('nsfw.add_error'))
       throw err
     }
   }
@@ -377,7 +378,7 @@ export default function AdminNsfwPage() {
       loadKeywords()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(t('nsfw.add_error'))
+      toast.error(detail ?? t('nsfw.add_error'))
       throw err
     }
   }
@@ -390,7 +391,7 @@ export default function AdminNsfwPage() {
       loadDomains()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(t('nsfw.save_error'))
+      toast.error(detail ?? t('nsfw.save_error'))
       throw err
     }
   }
@@ -403,7 +404,7 @@ export default function AdminNsfwPage() {
       loadKeywords()
     } catch (err) {
       const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(t('nsfw.save_error'))
+      toast.error(detail ?? t('nsfw.save_error'))
       throw err
     }
   }
