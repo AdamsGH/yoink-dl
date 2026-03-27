@@ -153,7 +153,7 @@ interface SectionProps {
 function Section({ title, children }: SectionProps) {
   return (
     <Card>
-      <CardHeader className="pb-3 pt-4">
+      <CardHeader className="px-4 py-3">
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pb-4">

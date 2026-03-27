@@ -142,7 +142,7 @@ export default function AdminCookiesPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between px-4 py-3 border-b space-y-0">
+        <CardHeader className="flex flex-row items-center justify-between px-4 py-3 space-y-0">
           <CardTitle className="text-sm font-medium">
             {t('cookies.count_other', { count: items.length })}
           </CardTitle>

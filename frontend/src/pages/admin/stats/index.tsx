@@ -11,6 +11,8 @@ import type { StatsOverview } from '@dl/types'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Skeleton } from '@core/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@core/components/ui/tabs'
+import ImportPage from '@stats/pages/import/index'
 
 const CTP_FALLBACKS = [
   '#8aadf4', '#c6a0f6', '#ed8796', '#a6da95', '#f5a97f',
@@ -65,7 +67,7 @@ function StatCard({ label, value, sub, variant = 'default' }: {
 }) {
   return (
     <Card className="select-none">
-      <CardContent className="pt-5">
+      <CardContent className="px-4 py-3">
         <div className={cn(
           'text-3xl font-bold tabular-nums',
           variant === 'danger'  ? 'text-destructive' :
@@ -83,7 +85,7 @@ function StatCard({ label, value, sub, variant = 'default' }: {
 function StatCardSkeleton() {
   return (
     <Card>
-      <CardContent className="pt-5 space-y-2">
+      <CardContent className="px-4 py-3 space-y-2">
         <Skeleton className="h-9 w-20" />
         <Skeleton className="h-4 w-28" />
       </CardContent>
@@ -135,9 +137,19 @@ export default function AdminStatsPage() {
   }))
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <Tabs defaultValue="stats">
+      <TabsList className="mb-4">
+        <TabsTrigger value="stats">{t('admin_stats.tab_stats')}</TabsTrigger>
+        <TabsTrigger value="import">{t('admin_stats.tab_import')}</TabsTrigger>
+      </TabsList>
 
+      <TabsContent value="import">
+        <ImportPage />
+      </TabsContent>
+
+      <TabsContent value="stats">
+      <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
         <PeriodToggle value={period} onChange={setPeriod} />
       </div>
 
@@ -171,7 +183,7 @@ export default function AdminStatsPage() {
       {!error && (
         <>
           <Card>
-            <CardHeader className="px-4 py-3 border-b">
+            <CardHeader className="px-4 py-3">
               <CardTitle className="text-base">{t('admin_stats.chart_title', { days: period })}</CardTitle>
             </CardHeader>
             <CardContent>
@@ -200,7 +212,7 @@ export default function AdminStatsPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
-              <CardHeader className="px-4 py-3 border-b">
+              <CardHeader className="px-4 py-3">
                 <CardTitle className="text-base">{t('admin_stats.top_domains')}</CardTitle>
               </CardHeader>
               <CardContent>
@@ -231,7 +243,7 @@ export default function AdminStatsPage() {
             </Card>
 
             <Card>
-              <CardHeader className="px-4 py-3 border-b">
+              <CardHeader className="px-4 py-3">
                 <CardTitle className="text-base">{t('admin_stats.domain_share')}</CardTitle>
               </CardHeader>
               <CardContent>
@@ -282,5 +294,7 @@ export default function AdminStatsPage() {
         </>
       )}
     </div>
+      </TabsContent>
+    </Tabs>
   )
 }

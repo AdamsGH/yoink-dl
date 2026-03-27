@@ -248,7 +248,7 @@ function CheckPanel() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between px-4 py-3 border-b space-y-0">
+      <CardHeader className="flex flex-row items-center justify-between px-4 py-3 space-y-0">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <ShieldAlert className="h-4 w-4" />
           {t('nsfw.check_title')}
@@ -257,7 +257,7 @@ function CheckPanel() {
           {checking ? t('nsfw.checking') : t('nsfw.check_btn')}
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="px-4 py-3 space-y-3">
         <Input
           id="check-url"
           placeholder={t('nsfw.check_placeholder')}
@@ -419,7 +419,7 @@ export default function AdminNsfwPage() {
 
       {/* Domains */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between px-4 py-3 border-b space-y-0">
+        <CardHeader className="flex flex-row items-center justify-between px-4 py-3 space-y-0">
           <CardTitle className="text-sm font-medium">
             {loadingD ? '...' : t('nsfw.domains_count', { count: domains.length, defaultValue: '{{count}} domains' })}
           </CardTitle>
@@ -502,7 +502,7 @@ export default function AdminNsfwPage() {
 
       {/* Keywords */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between px-4 py-3 border-b space-y-0">
+        <CardHeader className="flex flex-row items-center justify-between px-4 py-3 space-y-0">
           <CardTitle className="text-sm font-medium">
             {loadingK ? '...' : t('nsfw.keywords_count', { count: keywords.length, defaultValue: '{{count}} keywords' })}
           </CardTitle>

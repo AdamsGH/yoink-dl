@@ -280,7 +280,7 @@ export default function HistoryPage() {
 
       {/* Results */}
       <Card>
-        <CardHeader className="px-4 py-3 border-b">
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-sm font-medium">
             {t('history.total_downloads')}: <span className="tabular-nums">{total.toLocaleString()}</span>
             {hasActive && <span className="ml-2 font-normal text-muted-foreground">({t('history.filtered')})</span>}

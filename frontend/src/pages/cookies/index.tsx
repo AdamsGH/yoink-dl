@@ -124,7 +124,7 @@ export default function CookiesPage() {
     <div className="space-y-5">
       {/* Stored list */}
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">{t('cookies.stored', { defaultValue: 'Stored cookies' })}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -183,10 +183,10 @@ export default function CookiesPage() {
 
       {/* Manual file upload */}
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">{t('cookies.upload_title', { defaultValue: 'Upload cookie file' })}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="px-4 py-3 space-y-3">
           <p className="text-sm text-muted-foreground">
             {t('cookies.upload_hint', { defaultValue: 'Upload a Netscape cookies.txt file exported from your browser.' })}
           </p>
@@ -232,7 +232,7 @@ export default function CookiesPage() {
 
       {/* Get cookies.txt extension */}
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">
             {t('cookies.extension_title', { defaultValue: 'Get cookies via browser extension' })}
           </CardTitle>
@@ -293,7 +293,7 @@ export default function CookiesPage() {
 
       {/* Extension (Yoink Cookie Sync) */}
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">
             {t('cookies.sync_title', { defaultValue: 'Auto-sync via Yoink Cookie Sync' })}
           </CardTitle>
