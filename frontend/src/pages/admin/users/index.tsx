@@ -109,9 +109,9 @@ function UserStatsSheet({
                 ) : stats ? (
                   <>
                     <div className="grid grid-cols-3 gap-2">
-                      <StatCell label=t('users.total') value={stats.total.toLocaleString()} />
-                      <StatCell label=t('users.this_week') value={stats.this_week.toLocaleString()} />
-                      <StatCell label=t('users.today') value={stats.today.toLocaleString()} />
+                      <StatCell label={t('users.total')} value={stats.total.toLocaleString()} />
+                      <StatCell label={t('users.this_week')} value={stats.this_week.toLocaleString()} />
+                      <StatCell label={t('users.today')} value={stats.today.toLocaleString()} />
                     </div>
                     {stats.top_domains.length > 0 && (
                       <div className="space-y-1.5 pt-1">
