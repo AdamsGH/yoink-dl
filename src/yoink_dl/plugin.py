@@ -79,7 +79,7 @@ class DownloaderPlugin:
             ),
         ])
 
-    def get_help_section(self, role: str, lang: str) -> str:
+    def get_help_section(self, role: str, lang: str, granted_features: set[str] | None = None) -> str:
         import yaml
         from yoink.core.plugin import CommandSpec
 
