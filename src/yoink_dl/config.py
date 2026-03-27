@@ -36,11 +36,9 @@ class DownloaderConfig(BaseSettings):
     browser_cookie_domains: list[str] = []
 
     # Proxy
-    proxy_1_url: str | None = None
-    proxy_2_url: str | None = None
+    proxy_urls: list[str] = []
     proxy_strategy: str = "round_robin"
     proxy_domains: list[str] = []
-    proxy_2_domains: list[str] = []
 
     # Bot-specific
     log_channel: int | None = None

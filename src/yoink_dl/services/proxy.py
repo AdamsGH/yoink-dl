@@ -41,38 +41,30 @@ class ProxyManager:
 
     @classmethod
     def from_settings(cls, settings: "Settings") -> "ProxyManager":
-        proxies = [p for p in [settings.proxy_1_url, settings.proxy_2_url] if p]
-        return cls(proxies=proxies, strategy=settings.proxy_strategy)
+        return cls(proxies=settings.proxy_urls, strategy=settings.proxy_strategy)
 
     @property
     def available(self) -> bool:
         return len(self._proxies) > 0
 
     def get(self, index: int | None = None) -> ProxyConfig | None:
-        """
-        Return proxy by explicit index (1-based), or by strategy.
-        index=1 -> first proxy, index=2 -> second proxy, None -> strategy-based.
-        """
+        """Return proxy by 1-based index, or pick by strategy when index is None."""
         if not self._proxies:
             return None
         if index is not None:
             if index <= 0:
                 return None
-            idx = (index - 1) % len(self._proxies)
-            return self._proxies[idx]
+            return self._proxies[(index - 1) % len(self._proxies)]
         if self._strategy == "random":
             return random.choice(self._proxies)
-        # round_robin
         with self._lock:
             proxy = self._proxies[self._index % len(self._proxies)]
             self._index += 1
             return proxy
 
-    def get_for_domain(self, domain: str, proxy_domains: list[str], proxy_2_domains: list[str]) -> ProxyConfig | None:
-        """Return the correct proxy for a domain based on domain lists."""
+    def get_for_domain(self, domain: str, proxy_domains: list[str]) -> ProxyConfig | None:
+        """Return a proxy for the domain if it matches proxy_domains, else None."""
         from yoink_dl.url.domains import domain_matches
         if domain_matches(domain, proxy_domains):
-            return self.get(1)
-        if domain_matches(domain, proxy_2_domains):
-            return self.get(2)
+            return self.get()
         return None

@@ -91,12 +91,8 @@ lang:
   set: "✅ Language set to <b>{lang}</b>"
   choose: "🌍 Choose language:"
   buttons:
-    en: "🇺🇸 English"
+    en: "🇬🇧 English"
     ru: "🇷🇺 Русский"
-    ar: "🇸🇦 العربية"
-    hi: "🇮🇳 हिन्दी"
-    zh: "🇨🇳 中文"
-    ja: "🇯🇵 日本語"
 
 split:
   set: "✂️ Split size set to <b>{size}</b> ✅"

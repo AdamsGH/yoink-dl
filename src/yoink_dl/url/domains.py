@@ -28,11 +28,8 @@ class DomainConfig:
     # Domains where match_filter (duration/live check) is skipped
     no_filter: list[str] = field(default_factory=list)
 
-    # Domains always routed through proxy 1
+    # Domains always routed through the proxy pool
     proxy_domains: list[str] = field(default_factory=list)
-
-    # Domains always routed through proxy 2
-    proxy_2_domains: list[str] = field(default_factory=list)
 
     # Domains where query string is always stripped for cache keys
     clean_query: list[str] = field(default_factory=lambda: [
@@ -74,7 +71,6 @@ class DomainConfig:
     def from_config(cls, cfg: "DownloaderConfig") -> "DomainConfig":
         return cls(
             proxy_domains=cfg.proxy_domains,
-            proxy_2_domains=cfg.proxy_2_domains,
         )
 
 

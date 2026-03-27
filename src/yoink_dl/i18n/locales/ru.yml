@@ -214,12 +214,8 @@ lang:
   set: "✅ Язык установлен: <b>{lang}</b>"
   choose: "🌍 Выберите язык:"
   buttons:
-    en: "🇺🇸 English"
+    en: "🇬🇧 English"
     ru: "🇷🇺 Русский"
-    ar: "🇸🇦 العربية"
-    hi: "🇮🇳 हिन्दी"
-    zh: "🇨🇳 中文"
-    ja: "🇯🇵 日本語"
 
 split:
   set: "✂️ Размер сегмента: <b>{size}</b> ✅"
@@ -242,3 +238,26 @@ mediainfo:
 
 tags:
   cleared: "🏷 Теги очищены ✅"
+
+commands:
+  - {command: video,      description: "Скачать видео",                          scope: default}
+  - {command: audio,      description: "Скачать аудио",                          scope: default}
+  - {command: image,      description: "Скачать изображения",                    scope: default}
+  - {command: playlist,   description: "Скачать плейлист",                       scope: default}
+  - {command: search,     description: "Поиск на YouTube",                       scope: default}
+  - {command: cut,        description: "Обрезать видео по времени",              scope: default}
+  - {command: link,       description: "Получить прямую ссылку",                 scope: default}
+  - {command: settings,   description: "Ваши настройки",                         scope: private}
+  - {command: format,     description: "Качество и кодек видео",                 scope: private}
+  - {command: args,       description: "Аргументы yt-dlp",                       scope: private}
+  - {command: subs,       description: "Настройки субтитров",                    scope: private}
+  - {command: split,      description: "Разбить видео на части",                 scope: private}
+  - {command: mediainfo,  description: "Информация о медиафайле",                scope: private}
+  - {command: proxy,      description: "Прокси для загрузок",                    scope: private}
+  - {command: cookie,     description: "Управление cookie",                      scope: private}
+  - {command: tags,       description: "Теги в именах файлов",                   scope: private}
+  - {command: clean,      description: "Очистить сообщения бота",                scope: private}
+  - {command: get_log,    description: "Лог загрузок пользователя",              scope: private, min_role: moderator}
+  - {command: usage,      description: "Статистика использования",               scope: private, min_role: moderator}
+  - {command: uncache,      description: "Удалить URL из кэша файлов",           scope: private, min_role: admin}
+  - {command: reload_cache, description: "Перезагрузить кэш файлов",             scope: private, min_role: admin}

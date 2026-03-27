@@ -199,9 +199,9 @@ class DownloadManager:
         # User's own proxy URL takes priority over system proxy
         if job.resolved.custom_proxy_url:
             return ProxyConfig.from_url(job.resolved.custom_proxy_url)
-        if job.resolved.use_proxy == 0:
+        if not job.resolved.use_proxy:
             return None
-        return self._proxy.get(job.resolved.use_proxy)
+        return self._proxy.get()
 
     def _cleanup(self, job: DownloadJob) -> None:
         try:

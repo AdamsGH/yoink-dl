@@ -72,21 +72,16 @@ class TestResolveEngine:
 class TestResolveProxy:
     def test_no_proxy_by_default(self, domain_cfg):
         r = resolve("https://youtube.com/watch?v=abc", domain_cfg)
-        assert r.use_proxy == 0
+        assert r.use_proxy is False
 
     def test_proxy_domain(self):
         cfg = DomainConfig(proxy_domains=["blocked.site"])
         r = resolve("https://blocked.site/video", cfg)
-        assert r.use_proxy == 1
-
-    def test_proxy_2_domain(self):
-        cfg = DomainConfig(proxy_2_domains=["other.site"])
-        r = resolve("https://other.site/video", cfg)
-        assert r.use_proxy == 2
+        assert r.use_proxy is True
 
     def test_user_proxy(self, domain_cfg):
         r = resolve("https://example.com/vid", domain_cfg, proxy_enabled=True)
-        assert r.use_proxy == 1
+        assert r.use_proxy is True
 
     def test_custom_proxy_url(self, domain_cfg):
         r = resolve(

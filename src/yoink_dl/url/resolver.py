@@ -22,7 +22,7 @@ class ResolvedUrl:
     playlist_start: int | None = None
     playlist_end: int | None = None
     is_playlist: bool = False
-    use_proxy: int = 0               # 0 = none, 1 = proxy1, 2 = proxy2
+    use_proxy: bool = False
     custom_proxy_url: str | None = None  # user-supplied proxy, overrides use_proxy
     use_cookies: bool = True
     apply_match_filter: bool = True
@@ -44,7 +44,6 @@ def resolve(
     domain = extract_domain(clean)
 
     engine = _pick_engine(domain, clean, domain_cfg)
-    use_proxy = _pick_proxy(domain, domain_cfg, proxy_enabled)
     use_cookies = not domain_matches(domain, domain_cfg.no_cookie)
     apply_filter = not domain_matches(domain, domain_cfg.no_filter)
     is_playlist = playlist_start is not None
@@ -56,7 +55,7 @@ def resolve(
         playlist_start=playlist_start,
         playlist_end=playlist_end,
         is_playlist=is_playlist,
-        use_proxy=use_proxy,
+        use_proxy=_pick_proxy(domain, domain_cfg, proxy_enabled),
         custom_proxy_url=custom_proxy_url,
         use_cookies=use_cookies,
         apply_match_filter=apply_filter,
@@ -78,11 +77,5 @@ def _pick_engine(domain: str, url: str, cfg: DomainConfig) -> Engine:
     return Engine.YTDLP
 
 
-def _pick_proxy(domain: str, cfg: DomainConfig, user_proxy: bool) -> int:
-    if domain_matches(domain, cfg.proxy_domains):
-        return 1
-    if domain_matches(domain, cfg.proxy_2_domains):
-        return 2
-    if user_proxy:
-        return 1
-    return 0
+def _pick_proxy(domain: str, cfg: DomainConfig, user_proxy: bool) -> bool:
+    return user_proxy or domain_matches(domain, cfg.proxy_domains)
