@@ -35,11 +35,13 @@ export const dlPlugin: PluginManifest = {
       defaultOpen: true,
       minRole: ['owner', 'admin', 'moderator'],
       items: [
-        { label: 'Cookies', path: '/admin/cookies', icon: <Cookie      className="h-4 w-4" />, minRole: ['owner', 'admin', 'moderator'] },
-        { label: 'NSFW',    path: '/admin/nsfw',    icon: <ShieldAlert className="h-4 w-4" />, minRole: ['owner', 'admin'] },
+        { label: 'Cookies',  path: '/admin/cookies', icon: <Cookie      className="h-4 w-4" />, minRole: ['owner', 'admin', 'moderator'] },
+        { label: 'NSFW',     path: '/admin/nsfw',    icon: <ShieldAlert className="h-4 w-4" />, minRole: ['owner', 'admin'] },
       ],
     },
   ],
+
+  // These items extend the core Admin group declared in corePlugin (same label merges in AppLayout)
 
   resources: [
     { name: 'settings',   list: '/settings' },
