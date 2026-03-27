@@ -1,4 +1,4 @@
-import { BarChart2, Cookie, Download, Settings, ShieldAlert } from 'lucide-react'
+import { Cookie, Download, Settings, ShieldAlert } from 'lucide-react'
 
 import type { PluginManifest } from '@core/types/plugin'
 
@@ -39,7 +39,6 @@ export const dlPlugin: PluginManifest = {
       items: [
         { label: 'Cookies',         i18nKey: 'nav.cookies',     path: '/admin/cookies', icon: <Cookie      className="h-4 w-4" />, minRole: ['owner', 'admin', 'moderator'] },
         { label: 'NSFW',            i18nKey: 'nav.nsfw',        path: '/admin/nsfw',    icon: <ShieldAlert className="h-4 w-4" />, minRole: ['owner', 'admin'] },
-        { label: 'Download Stats',  i18nKey: 'nav.admin_stats', path: '/admin/stats',   icon: <BarChart2   className="h-4 w-4" />, minRole: ['owner', 'admin'] },
       ],
     },
   ],
