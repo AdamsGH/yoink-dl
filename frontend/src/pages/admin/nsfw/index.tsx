@@ -162,46 +162,51 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { setValue(''); setParseError(null); onClose() } }}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2 pr-6">
-            <DialogTitle>{t('nsfw.import')}</DialogTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => fileRef.current?.click()}>
-                  <Upload className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">{t('nsfw.load_file', { defaultValue: 'Load from file' })}</TooltipContent>
-            </Tooltip>
-            <input ref={fileRef} type="file" accept=".json" className="hidden"
-              onChange={(e) => handleFile(e.target.files?.[0])} />
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl p-0 gap-0 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b">
+          <div className="min-w-0">
+            <DialogTitle className="text-base">{t('nsfw.import')}</DialogTitle>
+            <DialogDescription className="text-xs mt-0.5">
+              {t('nsfw.import_hint', { defaultValue: 'Paste JSON with domains and/or keywords arrays.' })}
+            </DialogDescription>
           </div>
-          <DialogDescription className="text-xs">
-            {t('nsfw.import_hint', { defaultValue: 'Paste JSON with domains and/or keywords arrays.' })}
-          </DialogDescription>
-        </DialogHeader>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => fileRef.current?.click()}>
+                <Upload className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{t('nsfw.load_file', { defaultValue: 'Load from file' })}</TooltipContent>
+          </Tooltip>
+          <input ref={fileRef} type="file" accept=".json" className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])} />
+        </div>
 
-        <div className="space-y-2">
-          <JsonEditor
-            value={value || IMPORT_PLACEHOLDER}
-            onChange={handleChange}
-            minHeight="180px"
-            maxHeight="320px"
-          />
+        {/* Editor */}
+        <JsonEditor
+          value={value}
+          onChange={handleChange}
+          placeholder={IMPORT_PLACEHOLDER}
+          minHeight="200px"
+          maxHeight="50vh"
+          className="rounded-none border-0 border-b"
+        />
+
+        {/* Footer */}
+        <div className="px-4 py-3 space-y-2">
           {parseError && (
             <p className="text-xs text-destructive font-mono leading-snug">{parseError}</p>
           )}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={onClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button className="flex-1" onClick={handleImport} disabled={!canImport}>
+              {importing ? t('common.loading') : t('nsfw.import')}
+            </Button>
+          </div>
         </div>
-
-        <DialogFooter className="flex-row gap-2 sm:justify-end">
-          <Button variant="outline" className="flex-1 sm:flex-none" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button className="flex-1 sm:flex-none" onClick={handleImport} disabled={!canImport}>
-            {importing ? t('common.loading') : t('nsfw.import')}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
@@ -568,7 +573,7 @@ export default function AdminNsfwPage() {
           </CardHeader>
 
           {/* Domains section */}
-          <Collapsible defaultOpen>
+          <Collapsible defaultOpen={false}>
             <div className="px-4 py-3 flex items-center justify-between gap-2">
               <CollapsibleTrigger className="flex items-center gap-2 group flex-1 min-w-0">
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
@@ -602,7 +607,7 @@ export default function AdminNsfwPage() {
           <Separator />
 
           {/* Keywords section */}
-          <Collapsible defaultOpen>
+          <Collapsible defaultOpen={false}>
             <div className="px-4 py-3 flex items-center justify-between gap-2">
               <CollapsibleTrigger className="flex items-center gap-2 group flex-1 min-w-0">
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
