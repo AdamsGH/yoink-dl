@@ -248,8 +248,14 @@ help_sections:
       <code>URL 1:30 90</code> — start at 1:30, duration 90 seconds
       Times can be <code>MM:SS</code>, <code>HH:MM:SS</code>, or plain seconds.
 
+      <b>Galleries</b>
+      For image galleries (e.g. e621) the bot sends up to 10 images as an album. When there are more, it sends 9 previews + a ZIP with all files. The ZIP behaviour can be toggled in /settings.
+
       <b>Inline mode</b>
       In any chat: <code>@bot_name URL</code> — the bot fetches the media and lets you send it inline.
+
+      <b>Settings</b>
+      Use /settings to configure quality, codec, subtitles, NSFW blur, mediainfo reports, and more.
   music_guide:
     title: "Music links"
     body: |
