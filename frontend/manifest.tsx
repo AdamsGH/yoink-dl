@@ -24,9 +24,9 @@ export const dlPlugin: PluginManifest = {
   navGroups: [
     {
       items: [
-        { label: 'Settings', path: '/settings', icon: <Settings className="h-4 w-4" /> },
-        { label: 'History',  path: '/history',  icon: <Download className="h-4 w-4" /> },
-        { label: 'Cookies',  path: '/cookies',  icon: <Cookie   className="h-4 w-4" /> },
+        { label: 'Settings', i18nKey: 'nav.settings', path: '/settings', icon: <Settings className="h-4 w-4" /> },
+        { label: 'History',  i18nKey: 'nav.history',  path: '/history',  icon: <Download className="h-4 w-4" /> },
+        { label: 'Cookies',  i18nKey: 'nav.cookies',  path: '/cookies',  icon: <Cookie   className="h-4 w-4" /> },
       ],
     },
     {
@@ -35,8 +35,8 @@ export const dlPlugin: PluginManifest = {
       defaultOpen: true,
       minRole: ['owner', 'admin', 'moderator'],
       items: [
-        { label: 'Cookies',  path: '/admin/cookies', icon: <Cookie      className="h-4 w-4" />, minRole: ['owner', 'admin', 'moderator'] },
-        { label: 'NSFW',     path: '/admin/nsfw',    icon: <ShieldAlert className="h-4 w-4" />, minRole: ['owner', 'admin'] },
+        { label: 'Cookies',  i18nKey: 'nav.cookies', path: '/admin/cookies', icon: <Cookie      className="h-4 w-4" />, minRole: ['owner', 'admin', 'moderator'] },
+        { label: 'NSFW',     i18nKey: 'nav.nsfw',    path: '/admin/nsfw',    icon: <ShieldAlert className="h-4 w-4" />, minRole: ['owner', 'admin'] },
       ],
     },
   ],
