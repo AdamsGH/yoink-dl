@@ -16,6 +16,7 @@ export interface UserSettings {
   nsfw_blur: boolean
   mediainfo: boolean
   send_as_file: boolean
+  gallery_zip: boolean
   theme: string
   keyboard: string
   args_json: Record<string, unknown>

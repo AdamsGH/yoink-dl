@@ -9,6 +9,7 @@ import asyncio
 import logging
 import tempfile
 import time
+import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -21,10 +22,10 @@ from yoink_dl.download.postprocess import postprocess_all
 from yoink_dl.services.cookies import CookieManager
 from yoink_dl.services.nsfw import NsfwChecker
 from yoink_dl.storage.repos import (
-    CachedFile, FileCacheRepo, RateLimitRepo, DownloadLogRepo, make_cache_key,
+    CachedFile, FileCacheRepo, RateLimitRepo, DownloadLogRepo, make_cache_key, make_cache_key_n,
 )
 from yoink_dl.upload.caption import build_caption, build_group_caption
-from yoink_dl.upload.sender import MediaMeta, send_files
+from yoink_dl.upload.sender import MediaMeta, SendResult, classify_files, send_files, send_media_group
 from yoink_dl.utils.formatting import humanbytes
 from yoink_dl.utils.mediainfo import get_report as mediainfo_report
 from yoink_dl.utils.safe_telegram import delete_many
@@ -66,33 +67,60 @@ async def _chat_action_loop(
 async def send_cached(
     bot: Bot,
     chat_id: int,
-    cached: CachedFile,
+    cached: CachedFile | list[CachedFile],
     caption: str,
     reply_to: int | None,
     thread_id: int | None,
     send_as_file: bool,
     has_spoiler: bool = False,
 ) -> Message:
-    from telegram import ReplyParameters
+    from telegram import InputMediaDocument, InputMediaPhoto, InputMediaVideo, ReplyParameters
 
-    common: dict[str, Any] = {
-        "chat_id": chat_id,
-        "caption": caption,
-        "parse_mode": ParseMode.HTML,
-    }
-    if reply_to:
-        common["reply_parameters"] = ReplyParameters(
-            message_id=reply_to, allow_sending_without_reply=True
-        )
+    common: dict[str, Any] = {"chat_id": chat_id, "parse_mode": ParseMode.HTML}
+    rp = ReplyParameters(message_id=reply_to, allow_sending_without_reply=True) if reply_to else None
+    if rp:
+        common["reply_parameters"] = rp
     if thread_id:
         common["message_thread_id"] = thread_id
 
-    file_type = "document" if send_as_file else cached.file_type
+    # Media group path
+    if isinstance(cached, list) and len(cached) > 1:
+        media: list[Any] = []
+        for i, item in enumerate(cached):
+            cap = caption if i == 0 else ""
+            ftype = "document" if send_as_file else item.file_type
+            if ftype == "video":
+                media.append(InputMediaVideo(
+                    media=item.file_id, caption=cap, parse_mode=ParseMode.HTML,
+                    has_spoiler=has_spoiler or None,
+                ))
+            elif ftype == "photo":
+                media.append(InputMediaPhoto(
+                    media=item.file_id, caption=cap, parse_mode=ParseMode.HTML,
+                    has_spoiler=has_spoiler or None,
+                ))
+            else:
+                media.append(InputMediaDocument(
+                    media=item.file_id, caption=cap, parse_mode=ParseMode.HTML,
+                ))
+        sent = await bot.send_media_group(
+            media=media,
+            write_timeout=120, read_timeout=120,
+            **common,
+        )
+        return sent[0]
+
+    # Single file path
+    item = cached[0] if isinstance(cached, list) else cached
+    file_type = "document" if send_as_file else item.file_type
+    kw = {**common, "caption": caption}
     if file_type == "video":
-        return await bot.send_video(video=cached.file_id, has_spoiler=has_spoiler, **common)
+        return await bot.send_video(video=item.file_id, has_spoiler=has_spoiler, **kw)
     if file_type == "audio":
-        return await bot.send_audio(audio=cached.file_id, **common)
-    return await bot.send_document(document=cached.file_id, **common)
+        return await bot.send_audio(audio=item.file_id, **kw)
+    if file_type == "photo":
+        return await bot.send_photo(photo=item.file_id, has_spoiler=has_spoiler, **kw)
+    return await bot.send_document(document=item.file_id, **kw)
 
 
 def _extract_file_id(result) -> tuple[str, str] | None:
@@ -104,7 +132,23 @@ def _extract_file_id(result) -> tuple[str, str] | None:
         return msg.document.file_id, "document"
     if msg.audio:
         return msg.audio.file_id, "audio"
+    if msg.photo:
+        return msg.photo[-1].file_id, "photo"
     return None
+
+
+async def _make_zip(files: list[Path], directory: Path) -> Path:
+    """Pack all files into a zip archive inside directory. Runs in thread pool."""
+    zip_path = directory / "gallery.zip"
+    loop = asyncio.get_running_loop()
+
+    def _build() -> None:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf:
+            for f in files:
+                zf.write(f, arcname=f.name)
+
+    await loop.run_in_executor(None, _build)
+    return zip_path
 
 
 def _fmt_sec(secs: int) -> str:
@@ -212,10 +256,14 @@ async def run_download(
         audio_only=audio_only,
     )
     if cache_key and file_cache:
-        cached = await file_cache.get(cache_key)
-        if cached:
+        cached_group = await file_cache.get_group(cache_key)
+        if cached_group:
+            cached = cached_group[0]
             metrics.inc("cache_hits")
-            logger.info("Cache hit for %s (file_id=%s…)", url, cached.file_id[:12])
+            logger.info(
+                "Cache hit for %s (%d item(s), file_id=%s…)",
+                url, len(cached_group), cached.file_id[:12],
+            )
             nsfw_checker: NsfwChecker | None = context.bot_data.get("nsfw_checker")
             cached_nsfw, _ = nsfw_checker.check(url) if nsfw_checker else (False, "")
             if is_private:
@@ -234,7 +282,7 @@ async def run_download(
                 sent = await send_cached(
                     bot=context.bot,
                     chat_id=chat_id,
-                    cached=cached,
+                    cached=cached_group,
                     caption=cached_caption,
                     reply_to=cached_reply_to,
                     thread_id=thread_id,
@@ -333,14 +381,19 @@ async def run_download(
 
         manager = DownloadManager(settings=settings)
         _action_stop = asyncio.Event()
+        # Predict the media type before download starts so the chat action is meaningful.
+        # Gallery-dl engine → images; audio_only → voice; send_as_file → document; else → video.
+        _effective_engine = engine_override or resolved.engine
         if audio_only:
-            _upload_action = ChatAction.UPLOAD_VOICE
+            _dl_action = ChatAction.UPLOAD_VOICE
         elif user_settings.send_as_file:
-            _upload_action = ChatAction.UPLOAD_DOCUMENT
+            _dl_action = ChatAction.UPLOAD_DOCUMENT
+        elif _effective_engine == Engine.GALLERY_DL:
+            _dl_action = ChatAction.UPLOAD_PHOTO
         else:
-            _upload_action = ChatAction.UPLOAD_VIDEO
+            _dl_action = ChatAction.UPLOAD_VIDEO
         _action_task = asyncio.create_task(
-            _chat_action_loop(context.bot, chat_id, _upload_action, thread_id, _action_stop)
+            _chat_action_loop(context.bot, chat_id, _dl_action, thread_id, _action_stop)
         )
         try:
             job = await manager.run(job, progress_cb=tracker.ytdlp_hook)
@@ -401,18 +454,76 @@ async def run_download(
             caption = build_group_caption(url=resolved.url, requester_name=requester, requester_id=user_id)
             reply_to = None
 
-        results = await send_files(
-            bot=context.bot,
-            chat_id=chat_id,
-            files=files,
-            caption=caption,
-            reply_to=reply_to,
-            thread_id=thread_id,
-            meta=meta,
-            send_as_file=user_settings.send_as_file,
-            has_spoiler=has_spoiler,
-            show_caption_above_media=is_private,
+        # Pick upload chat action based on actual file types
+        file_type = classify_files(files, user_settings.send_as_file)
+        if audio_only:
+            upload_action = ChatAction.UPLOAD_VOICE
+        elif file_type == "image":
+            upload_action = ChatAction.UPLOAD_PHOTO
+        elif file_type == "document":
+            upload_action = ChatAction.UPLOAD_DOCUMENT
+        else:
+            upload_action = ChatAction.UPLOAD_VIDEO
+
+        _upload_stop = asyncio.Event()
+        _upload_task = asyncio.create_task(
+            _chat_action_loop(context.bot, chat_id, upload_action, thread_id, _upload_stop)
         )
+        _zip_path: Path | None = None
+        try:
+            # Use media group for multi-file gallery results (images/videos without per-file meta)
+            use_media_group = len(files) > 1 and file_type in ("image", "video", "document")
+            _GALLERY_ZIP_THRESHOLD = 10
+            use_zip = (
+                use_media_group
+                and user_settings.gallery_zip
+                and len(files) > _GALLERY_ZIP_THRESHOLD
+            )
+            if use_media_group:
+                preview_files = files[:_GALLERY_ZIP_THRESHOLD - 1] if use_zip else files
+                sent_messages = await send_media_group(
+                    bot=context.bot,
+                    chat_id=chat_id,
+                    files=preview_files,
+                    caption=caption,
+                    reply_to=reply_to,
+                    thread_id=thread_id,
+                    has_spoiler=has_spoiler,
+                    send_as_file=user_settings.send_as_file,
+                )
+                results = [SendResult(message=m) for m in sent_messages]
+
+                if use_zip:
+                    _zip_path = await _make_zip(files, download_dir)
+                    zip_kw: dict[str, Any] = {
+                        "chat_id": chat_id,
+                        "document": str(_zip_path),
+                        "filename": _zip_path.name,
+                        "caption": f"📦 All {len(files)} files",
+                        "write_timeout": 300,
+                        "read_timeout": 300,
+                    }
+                    if thread_id:
+                        zip_kw["message_thread_id"] = thread_id
+                    await context.bot.send_document(**zip_kw)
+            else:
+                results = await send_files(
+                    bot=context.bot,
+                    chat_id=chat_id,
+                    files=files,
+                    caption=caption,
+                    reply_to=reply_to,
+                    thread_id=thread_id,
+                    meta=meta,
+                    send_as_file=user_settings.send_as_file,
+                    has_spoiler=has_spoiler,
+                    show_caption_above_media=is_private,
+                )
+        finally:
+            _upload_stop.set()
+            _upload_task.cancel()
+            if _zip_path and _zip_path.exists():
+                _zip_path.unlink(missing_ok=True)
 
         # Delete status + user command. Send results first so reply_parameters
         # never point to a message we are about to delete.
@@ -435,7 +546,17 @@ async def run_download(
                     kw["message_thread_id"] = thread_id
                 await context.bot.send_message(**kw)
 
-        for result in results:
+        if use_media_group and file_cache and cache_key:
+            items = [(fid, ft) for r in results if (ex := _extract_file_id(r)) for fid, ft in [ex]]
+            if items:
+                await file_cache.put_group(
+                    cache_key,
+                    items,
+                    title=job.title,
+                    file_size=file_size,
+                )
+
+        for result in ([] if use_media_group else results):
             fid = _extract_file_id(result)
             if fid and file_cache and cache_key:
                 await file_cache.put(

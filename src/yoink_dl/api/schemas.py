@@ -104,6 +104,7 @@ class DlUserSettingsResponse(BaseModel):
     nsfw_blur: bool
     mediainfo: bool
     send_as_file: bool
+    gallery_zip: bool
     updated_at: datetime
 
 
@@ -154,3 +155,4 @@ class DlUserSettingsUpdate(BaseModel):
     nsfw_blur: bool | None = None
     mediainfo: bool | None = None
     send_as_file: bool | None = None
+    gallery_zip: bool | None = None

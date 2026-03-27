@@ -50,15 +50,28 @@ async def _cmd_uncache(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     from yoink_dl.storage.repos import make_cache_key
     from yoink_dl.url.normalizer import normalize
     from yoink_dl.url.domains import DomainConfig
+    from sqlalchemy import delete as sa_delete
+    from yoink_dl.storage.models import FileCache
 
     settings = get_settings(context)
     domain_cfg = DomainConfig.from_config(settings)
     normalized = normalize(url, domain_cfg)
     key = make_cache_key(normalized)
-    removed = await file_cache.delete(key)
 
-    if removed:
-        await update.message.reply_html(f"✅ Cache cleared for:\n<code>{url}</code>")
+    # Remove single-file entry and all media-group entries ({key}:0, {key}:1, ...)
+    removed_single = await file_cache.delete(key)
+    async with file_cache._sf() as s:
+        result = await s.execute(
+            sa_delete(FileCache).where(FileCache.cache_key.like(f"{key}:%"))
+        )
+        await s.commit()
+        removed_group = result.rowcount
+
+    total = (1 if removed_single else 0) + removed_group
+    if total:
+        await update.message.reply_html(
+            f"✅ Cache cleared for:\n<code>{url}</code>\n({total} entr{'y' if total == 1 else 'ies'} removed)"
+        )
     else:
         await update.message.reply_html(f"⚠️ No cache entry found for:\n<code>{url}</code>")
 

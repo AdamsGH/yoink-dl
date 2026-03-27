@@ -52,7 +52,7 @@ class DomainConfig:
 
     # Image-board / art sites (prefer gallery-dl)
     gallery_only: list[str] = field(default_factory=lambda: [
-        "2ch.su", "4chan.org", "e-hentai.org", "gelbooru.com",
+        "2ch.su", "4chan.org", "e-hentai.org", "e621.net", "gelbooru.com",
         "kemono.cr", "kemono.party", "coomer.party", "nhentai.net",
         "civitai.com", "wallhaven.cc",
     ])

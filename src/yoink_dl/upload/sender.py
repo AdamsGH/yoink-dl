@@ -17,7 +17,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from telegram import Bot, Message, ReplyParameters
+from telegram import (
+    Bot, InputMediaDocument, InputMediaPhoto, InputMediaVideo,
+    Message, ReplyParameters,
+)
 from telegram.error import BadRequest, RetryAfter, TimedOut
 from telegram.constants import ParseMode
 
@@ -227,6 +230,112 @@ def _cleanup_thumb(thumb: Path | None) -> None:
             thumb.unlink()
         except Exception:
             pass
+
+
+_MEDIA_GROUP_MAX = 10  # Telegram limit per media group
+
+
+def classify_files(files: list[Path], send_as_file: bool = False) -> str:
+    """Return dominant media type across a file list: 'image', 'video', 'audio', 'document'."""
+    if send_as_file or not files:
+        return "document"
+    counts: dict[str, int] = {"image": 0, "video": 0, "audio": 0, "document": 0}
+    for f in files:
+        ext = f.suffix.lower()
+        if ext in _IMAGE_EXTS:
+            counts["image"] += 1
+        elif ext in _VIDEO_EXTS:
+            counts["video"] += 1
+        elif ext in _AUDIO_EXTS:
+            counts["audio"] += 1
+        else:
+            counts["document"] += 1
+    return max(counts, key=lambda k: counts[k])
+
+
+async def send_media_group(
+    bot: Bot,
+    chat_id: int,
+    files: list[Path],
+    caption: str = "",
+    reply_to: int | None = None,
+    thread_id: int | None = None,
+    has_spoiler: bool = False,
+    send_as_file: bool = False,
+) -> list[Message]:
+    """Send up to 10 files as a Telegram media group (album).
+
+    Files are chunked into groups of up to _MEDIA_GROUP_MAX. Caption appears
+    only on the first item. Mixed media types fall back to documents.
+    Returns a flat list of sent Message objects.
+    """
+    if not files:
+        return []
+
+    media_type = classify_files(files, send_as_file)
+    all_messages: list[Message] = []
+
+    for chunk_start in range(0, len(files), _MEDIA_GROUP_MAX):
+        chunk = files[chunk_start:chunk_start + _MEDIA_GROUP_MAX]
+        media: list[Any] = []
+
+        for i, f in enumerate(chunk):
+            cap = caption if (chunk_start == 0 and i == 0) else ""
+            ext = f.suffix.lower()
+
+            if send_as_file or media_type == "document":
+                media.append(InputMediaDocument(media=f.open("rb"), caption=cap, parse_mode=ParseMode.HTML))
+            elif media_type == "video" and ext in _VIDEO_EXTS:
+                media.append(InputMediaVideo(
+                    media=f.open("rb"), caption=cap, parse_mode=ParseMode.HTML,
+                    supports_streaming=True, has_spoiler=has_spoiler if has_spoiler else None,
+                ))
+            elif media_type == "image" and ext in _IMAGE_EXTS:
+                media.append(InputMediaPhoto(
+                    media=f.open("rb"), caption=cap, parse_mode=ParseMode.HTML,
+                    has_spoiler=has_spoiler if has_spoiler else None,
+                ))
+            else:
+                # Type mismatch within chunk - send as document
+                media.append(InputMediaDocument(media=f.open("rb"), caption=cap, parse_mode=ParseMode.HTML))
+
+        kw: dict[str, Any] = {
+            "chat_id": chat_id,
+            "media": media,
+            "write_timeout": 300,
+            "read_timeout": 300,
+            "connect_timeout": 30,
+        }
+        if reply_to is not None and chunk_start == 0:
+            kw["reply_parameters"] = _reply_params(reply_to)
+        if thread_id:
+            kw["message_thread_id"] = thread_id
+
+        flood_left = 3
+        while True:
+            try:
+                sent = await bot.send_media_group(**kw)
+                all_messages.extend(sent)
+                break
+            except RetryAfter as e:
+                flood_left -= 1
+                if flood_left <= 0:
+                    logger.error("RetryAfter exhausted sending media group")
+                    break
+                await asyncio.sleep(e.retry_after)
+            except Exception as exc:
+                logger.error("send_media_group failed: %s", exc)
+                break
+
+        # Close any open file handles in media items
+        for item in media:
+            try:
+                if hasattr(item.media, "close"):
+                    item.media.close()
+            except Exception:
+                pass
+
+    return all_messages
 
 
 async def send_files(

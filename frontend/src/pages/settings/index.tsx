@@ -263,6 +263,7 @@ export default function SettingsPage() {
           <ControlledSwitch name="send_as_file" label={t('settings.send_as_file')} hint={t('settings.send_as_file_hint')} control={control} />
           <ControlledSwitch name="nsfw_blur" label={t('settings.nsfw_blur')} hint={t('settings.nsfw_blur_hint')} control={control} />
           <ControlledSwitch name="mediainfo" label={t('settings.mediainfo')} hint={t('settings.mediainfo_hint')} control={control} />
+          <ControlledSwitch name="gallery_zip" label={t('settings.gallery_zip')} hint={t('settings.gallery_zip_hint')} control={control} />
         </div>
       </Section>
 
