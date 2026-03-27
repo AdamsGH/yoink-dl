@@ -45,8 +45,8 @@ router = APIRouter(tags=["downloader"])
 
 @router.get("/downloads", response_model=dict, summary="My download history", description="Paginated list of the current user's download logs.")
 async def list_my_downloads(
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0, description="Pagination offset (number of records to skip)"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of records to return"),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
@@ -67,8 +67,8 @@ async def list_my_downloads(
 
 @router.get("/downloads/all", response_model=dict, summary="All users' download history (admin+)")
 async def list_all_downloads(
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0, description="Pagination offset (number of records to skip)"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of records to return"),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
 ) -> dict:
@@ -119,7 +119,7 @@ async def update_dl_settings(
 
 @router.get("/stats/overview", response_model=StatsOverview, summary="Downloader stats overview (admin+)", description="Total downloads, unique users, top domains, and per-status counts.")
 async def stats_overview(
-    days: int = Query(30, ge=1, le=365),
+    days: int = Query(30, ge=1, le=365, description="Number of days to include in the overview window"),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
 ) -> StatsOverview:
