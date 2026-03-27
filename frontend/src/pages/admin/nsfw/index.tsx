@@ -427,7 +427,6 @@ export default function AdminNsfwPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{t('nsfw.title')}</h1>
         <div className="flex gap-1.5">
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="mr-1.5 h-3.5 w-3.5" /> {t('nsfw.import')}

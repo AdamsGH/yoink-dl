@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
-import { CalendarIcon, ExternalLink, RotateCcw } from 'lucide-react'
+import { CalendarIcon, ExternalLink, RotateCcw, X } from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
+import { useTranslation } from 'react-i18next'
 
 import { apiClient } from '@core/lib/api-client'
 import { cn, formatBytes, formatDate } from '@core/lib/utils'
@@ -12,7 +13,6 @@ import { Button } from '@core/components/ui/button'
 import { Calendar } from '@core/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Input } from '@core/components/ui/input'
-import { Label } from '@core/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@core/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@core/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@core/components/ui/table'
@@ -48,15 +48,13 @@ function fmtSecs(secs: number): string {
 }
 
 function tgMessageUrl(groupId: number, messageId: number, threadId?: number | null): string {
-  // Supergroup IDs are negative with -100 prefix; strip to get channel ID
   const channelId = Math.abs(groupId) - 1_000_000_000_000
-  // Format: t.me/c/{channel}/{thread}/{message} when in a topic,
-  //         t.me/c/{channel}/{message} for main chat
   if (threadId) return `https://t.me/c/${channelId}/${threadId}/${messageId}`
   return `https://t.me/c/${channelId}/${messageId}`
 }
 
 function ExpandedRow({ item }: { item: DownloadLog }) {
+  const { t } = useTranslation()
   const [retrying, setRetrying] = useState(false)
 
   const retry = async (e: React.MouseEvent) => {
@@ -64,7 +62,7 @@ function ExpandedRow({ item }: { item: DownloadLog }) {
     setRetrying(true)
     try {
       await apiClient.post<RetryResponse>(`/dl/downloads/${item.id}/retry`)
-      toast.success('URL sent to bot  - check your Telegram chat')
+      toast.success('URL sent to bot - check your Telegram chat')
     } catch {
       toast.error('Failed to queue retry')
     } finally {
@@ -86,12 +84,12 @@ function ExpandedRow({ item }: { item: DownloadLog }) {
         {item.clip_start != null && item.clip_end != null && (
           <div>
             <span className="text-muted-foreground">Clip</span>
-            <p className="font-mono">{fmtSecs(item.clip_start)} → {fmtSecs(item.clip_end)}</p>
+            <p className="font-mono">{fmtSecs(item.clip_start)} {'->'} {fmtSecs(item.clip_end)}</p>
           </div>
         )}
         {item.duration != null && (
           <div>
-            <span className="text-muted-foreground">Duration</span>
+            <span className="text-muted-foreground">{t('history.duration')}</span>
             <p>{fmtSecs(Math.round(item.duration))}</p>
           </div>
         )}
@@ -122,12 +120,7 @@ function ExpandedRow({ item }: { item: DownloadLog }) {
           {retrying ? 'Queuing…' : 'Re-download'}
         </Button>
         {msgUrl && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs gap-1.5"
-            asChild
-          >
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" asChild>
             <a href={msgUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3.5 w-3.5" />
               Open in Telegram
@@ -140,6 +133,7 @@ function ExpandedRow({ item }: { item: DownloadLog }) {
 }
 
 export default function HistoryPage() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<DownloadLog[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -147,7 +141,16 @@ export default function HistoryPage() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
   const [applied, setApplied] = useState<Filters>(DEFAULT_FILTERS)
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [domains, setDomains] = useState<string[]>([])
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // Load available domains for the dropdown
+  useEffect(() => {
+    apiClient
+      .get<{ domains: string[] }>('/dl/downloads/domains')
+      .then((r) => setDomains(r.data.domains))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -156,7 +159,7 @@ export default function HistoryPage() {
       offset: (page - 1) * PAGE_SIZE,
     }
     if (applied.search) params.search = applied.search
-    if (applied.domain) params.domain = applied.domain
+    if (applied.domain && applied.domain !== '_all') params.domain = applied.domain
     if (applied.status !== 'all') params.status = applied.status
     if (applied.dateRange?.from) params.date_from = format(applied.dateRange.from, 'yyyy-MM-dd')
     if (applied.dateRange?.to) params.date_to = format(applied.dateRange.to, 'yyyy-MM-dd')
@@ -164,9 +167,9 @@ export default function HistoryPage() {
     apiClient
       .get<PaginatedResponse<DownloadLog>>('/dl/downloads', { params })
       .then((res) => { setItems(res.data.items); setTotal(res.data.total) })
-      .catch(() => toast.error('Failed to load history'))
+      .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoading(false))
-  }, [page, applied])
+  }, [page, applied, t])
 
   const apply = () => { setPage(1); setApplied(filters) }
 
@@ -177,91 +180,122 @@ export default function HistoryPage() {
   }
 
   const hasActive =
-    !!applied.search || !!applied.domain ||
+    !!applied.search || (!!applied.domain && applied.domain !== '_all') ||
     applied.status !== 'all' || !!applied.dateRange?.from
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   const dateLabel = filters.dateRange?.from
     ? filters.dateRange.to
-      ? `${format(filters.dateRange.from, 'MMM d')}  - ${format(filters.dateRange.to, 'MMM d, yyyy')}`
+      ? `${format(filters.dateRange.from, 'MMM d')} - ${format(filters.dateRange.to, 'MMM d, yyyy')}`
       : format(filters.dateRange.from, 'MMM d, yyyy')
-    : 'Date range'
+    : t('history.date_range')
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Download History</h1>
+    <div className="space-y-4">
+      {/* Filter bar */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap">
+        {/* Search */}
+        <div className="flex-1 min-w-[160px]">
+          <Input
+            ref={searchRef}
+            placeholder={t('history.search_placeholder')}
+            value={filters.search}
+            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+            onKeyDown={(e) => e.key === 'Enter' && apply()}
+            className="h-9"
+          />
+        </div>
 
+        {/* Domain select */}
+        <div className="w-full sm:w-44">
+          <Select
+            value={filters.domain || '_all'}
+            onValueChange={(v) => setFilters((f) => ({ ...f, domain: v === '_all' ? '' : v }))}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder={t('history.domain_label')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">{t('history.domain_label')}</SelectItem>
+              {domains.map((d) => (
+                <SelectItem key={d} value={d}>{d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Status */}
+        <div className="w-full sm:w-32">
+          <Select
+            value={filters.status}
+            onValueChange={(v) => setFilters((f) => ({ ...f, status: v as StatusFilter }))}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('history.status_all')}</SelectItem>
+              <SelectItem value="ok">{t('history.status_ok')}</SelectItem>
+              <SelectItem value="cached">{t('history.status_cached')}</SelectItem>
+              <SelectItem value="error">{t('history.status_error')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Date range */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn('h-9 justify-start gap-2 font-normal w-full sm:w-auto', !filters.dateRange?.from && 'text-muted-foreground')}
+            >
+              <CalendarIcon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{dateLabel}</span>
+              {filters.dateRange?.from && (
+                <X
+                  className="ml-auto h-3.5 w-3.5 shrink-0 opacity-50 hover:opacity-100"
+                  onClick={(e) => { e.stopPropagation(); setFilters((f) => ({ ...f, dateRange: undefined })) }}
+                />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              selected={filters.dateRange}
+              onSelect={(r: DateRange | undefined) => setFilters((f) => ({ ...f, dateRange: r }))}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Button size="sm" className="h-9" onClick={apply}>{t('history.apply')}</Button>
+          {hasActive && (
+            <Button size="sm" variant="outline" className="h-9 gap-1" onClick={resetFilters}>
+              <X className="h-3.5 w-3.5" />
+              {t('history.clear_all')}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Results */}
       <Card>
-        <CardContent className="pt-4 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Search title / URL</Label>
-              <Input
-                ref={searchRef}
-                placeholder="youtube.com, video title…"
-                value={filters.search}
-                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-                onKeyDown={(e) => e.key === 'Enter' && apply()}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Domain</Label>
-              <Input
-                placeholder="youtube.com"
-                value={filters.domain}
-                onChange={(e) => setFilters((f) => ({ ...f, domain: e.target.value }))}
-                onKeyDown={(e) => e.key === 'Enter' && apply()}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Status</Label>
-              <Select value={filters.status} onValueChange={(v: string) => setFilters((f) => ({ ...f, status: v as StatusFilter }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="ok">OK</SelectItem>
-                  <SelectItem value="cached">Cached</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn('h-9 justify-start gap-2 font-normal', !filters.dateRange?.from && 'text-muted-foreground')}>
-                  <CalendarIcon className="h-4 w-4 opacity-50" />
-                  {dateLabel}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="range" selected={filters.dateRange} onSelect={(r: DateRange | undefined) => setFilters((f) => ({ ...f, dateRange: r }))} initialFocus />
-              </PopoverContent>
-            </Popover>
-            {filters.dateRange?.from && (
-              <Button size="sm" variant="ghost" className="h-9 text-muted-foreground" onClick={() => setFilters((f) => ({ ...f, dateRange: undefined }))}>✕</Button>
-            )}
-            <Button size="sm" className="h-9" onClick={apply}>Apply</Button>
-            {hasActive && <Button size="sm" variant="outline" className="h-9" onClick={resetFilters}>Clear all</Button>}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {total.toLocaleString()} download{total !== 1 ? 's' : ''}
-            {hasActive && <span className="ml-2 text-sm font-normal text-muted-foreground">(filtered)</span>}
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm font-medium">
+            {t('history.total_downloads')}: <span className="tabular-nums">{total.toLocaleString()}</span>
+            {hasActive && <span className="ml-2 font-normal text-muted-foreground">({t('history.filtered')})</span>}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center py-12 text-muted-foreground">Loading…</div>
+            <div className="flex justify-center py-12 text-muted-foreground">{t('common.loading')}</div>
           ) : items.length === 0 ? (
             <div className="flex justify-center py-12 text-muted-foreground">
-              {hasActive ? 'No results match your filters' : 'No downloads yet'}
+              {hasActive ? t('history.no_results') : t('history.empty')}
             </div>
           ) : (
             <>
@@ -270,12 +304,12 @@ export default function HistoryPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="whitespace-nowrap">Date</TableHead>
-                      <TableHead>Domain</TableHead>
-                      <TableHead>Title / URL</TableHead>
-                      <TableHead>Quality</TableHead>
-                      <TableHead>Size</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="whitespace-nowrap">{t('history.date')}</TableHead>
+                      <TableHead>{t('history.domain')}</TableHead>
+                      <TableHead>{t('history.title_url')}</TableHead>
+                      <TableHead>{t('history.quality')}</TableHead>
+                      <TableHead>{t('history.size')}</TableHead>
+                      <TableHead>{t('history.status')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -347,10 +381,16 @@ export default function HistoryPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+          <span className="text-sm text-muted-foreground">
+            {t('history.page_of', { page, total: totalPages })}
+          </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+              {t('history.prev')}
+            </Button>
+            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>
+              {t('history.next')}
+            </Button>
           </div>
         </div>
       )}

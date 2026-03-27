@@ -137,7 +137,7 @@ export default function AdminStatsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">{t('admin_stats.title')}</h1>
+
         <PeriodToggle value={period} onChange={setPeriod} />
       </div>
 

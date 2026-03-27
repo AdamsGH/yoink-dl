@@ -122,8 +122,6 @@ export default function CookiesPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">{t('cookies.title', { defaultValue: 'My Cookies' })}</h1>
-
       {/* Stored list */}
       <Card>
         <CardHeader>

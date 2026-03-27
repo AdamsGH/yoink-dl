@@ -81,7 +81,7 @@ class DownloaderPlugin:
                 path="/admin/nsfw",
                 sidebar=SidebarEntry(
                     label="NSFW", icon="Shield", path="/admin/nsfw",
-                    section="admin", min_role="admin",
+                    section="admin", min_role="moderator",
                 ),
             ),
         ])

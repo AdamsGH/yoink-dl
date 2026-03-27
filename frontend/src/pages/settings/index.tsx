@@ -228,8 +228,6 @@ export default function SettingsPage() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
-
       <Section title={t('settings.video_quality')}>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">

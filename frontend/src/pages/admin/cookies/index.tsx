@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react'
 import { CheckCircle, RefreshCw, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
+import { useTranslation } from 'react-i18next'
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
@@ -30,6 +31,7 @@ function parseDomainFromNetscape(content: string): string | null {
 }
 
 export default function AdminCookiesPage() {
+  const { t } = useTranslation()
   const { data: identity } = useGetIdentity<Identity>()
 
   const [items, setItems] = useState<Cookie[]>([])
@@ -50,7 +52,7 @@ export default function AdminCookiesPage() {
     apiClient
       .get<Cookie[]>('/dl/cookies/all')
       .then((res) => setItems(res.data))
-      .catch(() => toast.error('Failed to load cookies'))
+      .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoading(false))
   }
 
@@ -138,24 +140,22 @@ export default function AdminCookiesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Cookies</h1>
-        <Button onClick={() => setUploadOpen(true)}>
-          <Upload className="mr-2 h-4 w-4" />
-          Upload cookie
-        </Button>
-      </div>
-
+    <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle>{items.length} cookie{items.length !== 1 ? 's' : ''}</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-medium">
+            {t('cookies.count_other', { count: items.length })}
+          </CardTitle>
+          <Button size="sm" onClick={() => setUploadOpen(true)}>
+            <Upload className="mr-1.5 h-3.5 w-3.5" />
+            {t('cookies.upload')}
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center py-12 text-muted-foreground">Loading…</div>
+            <div className="flex justify-center py-12 text-muted-foreground">{t('common.loading')}</div>
           ) : items.length === 0 ? (
-            <div className="flex justify-center py-12 text-muted-foreground">No cookies stored</div>
+            <div className="flex justify-center py-12 text-muted-foreground">{t('cookies.empty')}</div>
           ) : (
             <>
               {/* Desktop table */}
@@ -163,10 +163,10 @@ export default function AdminCookiesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Domain</TableHead>
-                      <TableHead>User ID</TableHead>
-                      <TableHead>Valid</TableHead>
-                      <TableHead>Updated</TableHead>
+                      <TableHead>{t('cookies.domain')}</TableHead>
+                      <TableHead>{t('cookies.user_id_col')}</TableHead>
+                      <TableHead>{t('cookies.valid_col')}</TableHead>
+                      <TableHead>{t('cookies.updated')}</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -177,7 +177,7 @@ export default function AdminCookiesPage() {
                         <TableCell className="font-mono text-xs">{cookie.user_id}</TableCell>
                         <TableCell>
                           <Badge variant={cookie.is_valid ? 'success' : 'destructive'}>
-                            {cookie.is_valid ? 'valid' : 'invalid'}
+                            {cookie.is_valid ? t('cookies.valid') : t('cookies.invalid')}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
@@ -187,7 +187,7 @@ export default function AdminCookiesPage() {
                           <div className="flex gap-1">
                             <Button
                               variant="ghost" size="icon"
-                              title="Re-validate"
+                              title={t('cookies.revalidate')}
                               disabled={validating === cookie.id}
                               onClick={() => validate(cookie.id)}
                             >
@@ -217,10 +217,10 @@ export default function AdminCookiesPage() {
                   <div key={cookie.id} className="flex items-center justify-between px-4 py-3 gap-3">
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-sm font-medium">{cookie.domain}</p>
-                      <p className="font-mono text-xs text-muted-foreground">uid: {cookie.user_id}</p>
+                      <p className="font-mono text-xs text-muted-foreground">{t('cookies.uid', { id: cookie.user_id })}</p>
                       <div className="flex items-center gap-2 pt-0.5">
                         <Badge variant={cookie.is_valid ? 'success' : 'destructive'} className="text-xs">
-                          {cookie.is_valid ? 'valid' : 'invalid'}
+                          {cookie.is_valid ? t('cookies.valid') : t('cookies.invalid')}
                         </Badge>
                         <span className="text-xs text-muted-foreground">{formatDate(cookie.updated_at)}</span>
                       </div>
@@ -228,7 +228,7 @@ export default function AdminCookiesPage() {
                     <div className="flex gap-1 shrink-0">
                       <Button
                         variant="ghost" size="icon"
-                        title="Re-validate"
+                        title={t('cookies.revalidate')}
                         disabled={validating === cookie.id}
                         onClick={() => validate(cookie.id)}
                       >
@@ -256,12 +256,12 @@ export default function AdminCookiesPage() {
       <Dialog open={uploadOpen} onOpenChange={(open: boolean) => { setUploadOpen(open); if (!open) resetUpload() }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Upload Netscape cookie file</DialogTitle>
+            <DialogTitle>{t('cookies.upload_title')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Cookie file (.txt)</Label>
+              <Label>{t('cookies.file_label')}</Label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -274,25 +274,23 @@ export default function AdminCookiesPage() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-4 w-4 shrink-0" />
-                {uploadFile ? uploadFile.name : 'Click to select file…'}
+                {uploadFile ? uploadFile.name : t('cookies.file_select')}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cookie-domain">Domain</Label>
+              <Label htmlFor="cookie-domain">{t('cookies.domain')}</Label>
               <Input
                 id="cookie-domain"
                 placeholder="youtube.com"
                 value={uploadDomain}
                 onChange={(e) => setUploadDomain(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                Auto-detected from the file. Edit if incorrect.
-              </p>
+              <p className="text-xs text-muted-foreground">{t('cookies.domain_hint')}</p>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cookie-uid">User ID</Label>
+              <Label htmlFor="cookie-uid">{t('cookies.user_id_label')}</Label>
               <Input
                 id="cookie-uid"
                 type="number"
@@ -300,18 +298,16 @@ export default function AdminCookiesPage() {
                 value={uploadUserId}
                 onChange={(e) => setUploadUserId(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                Telegram user ID this cookie belongs to.
-              </p>
+              <p className="text-xs text-muted-foreground">{t('cookies.user_id_hint')}</p>
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setUploadOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleUpload} disabled={uploading || !uploadFile}>
-              {uploading ? 'Uploading…' : 'Upload'}
+              {uploading ? t('cookies.uploading') : t('cookies.upload')}
             </Button>
           </DialogFooter>
         </DialogContent>

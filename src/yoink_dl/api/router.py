@@ -43,19 +43,53 @@ router = APIRouter(tags=["downloader"])
 
 # Download history
 
+@router.get("/downloads/domains", response_model=dict, summary="Distinct domains in my download history")
+async def list_my_download_domains(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return distinct non-null domains from the user's download history, sorted alphabetically."""
+    rows = (await session.execute(
+        select(DownloadLog.domain)
+        .where(DownloadLog.user_id == current_user.id, DownloadLog.domain.is_not(None))
+        .distinct()
+        .order_by(DownloadLog.domain)
+    )).scalars().all()
+    return {"domains": list(rows)}
+
+
 @router.get("/downloads", response_model=dict, summary="My download history", description="Paginated list of the current user's download logs.")
 async def list_my_downloads(
     offset: int = Query(0, ge=0, description="Pagination offset (number of records to skip)"),
     limit: int = Query(50, ge=1, le=200, description="Maximum number of records to return"),
+    search: str | None = Query(None, description="Filter by title or URL substring"),
+    domain: str | None = Query(None, description="Filter by exact domain"),
+    status: str | None = Query(None, description="Filter by status: ok, cached, error"),
+    date_from: str | None = Query(None, description="Filter from date (YYYY-MM-DD, inclusive)"),
+    date_to: str | None = Query(None, description="Filter to date (YYYY-MM-DD, inclusive)"),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    from datetime import date as date_type  # noqa: PLC0415
+    conditions = [DownloadLog.user_id == current_user.id]
+    if search:
+        like = f"%{search}%"
+        conditions.append((DownloadLog.title.ilike(like)) | (DownloadLog.url.ilike(like)))
+    if domain:
+        conditions.append(DownloadLog.domain == domain)
+    if status:
+        conditions.append(DownloadLog.status == status)
+    if date_from:
+        conditions.append(DownloadLog.created_at >= date_type.fromisoformat(date_from))
+    if date_to:
+        from datetime import timedelta  # noqa: PLC0415
+        conditions.append(DownloadLog.created_at < date_type.fromisoformat(date_to) + timedelta(days=1))
     total = (await session.execute(
-        select(func.count(DownloadLog.id)).where(DownloadLog.user_id == current_user.id)
+        select(func.count(DownloadLog.id)).where(*conditions)
     )).scalar_one()
     rows = (await session.execute(
         select(DownloadLog)
-        .where(DownloadLog.user_id == current_user.id)
+        .where(*conditions)
         .order_by(DownloadLog.created_at.desc())
         .offset(offset).limit(limit)
     )).scalars().all()
@@ -367,11 +401,11 @@ async def submit_cookies(
 
 # NSFW check + lists
 
-@router.post("/nsfw/check", response_model=NsfwCheckResponse, summary="Check if a URL matches NSFW rules (admin+)")
+@router.post("/nsfw/check", response_model=NsfwCheckResponse, summary="Check if a URL matches NSFW rules (moderator+)")
 async def check_nsfw(
     body: NsfwCheckRequest,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> NsfwCheckResponse:
     url: str = body.url
     from urllib.parse import urlparse  # noqa: PLC0415
@@ -392,10 +426,10 @@ async def check_nsfw(
     )
 
 
-@router.get("/nsfw/domains", response_model=list[NsfwDomainResponse], summary="List NSFW domains (admin+)")
+@router.get("/nsfw/domains", response_model=list[NsfwDomainResponse], summary="List NSFW domains (moderator+)")
 async def list_nsfw_domains(
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> list[NsfwDomainResponse]:
     rows = (await session.execute(
         select(NsfwDomain).order_by(NsfwDomain.domain)
@@ -403,11 +437,11 @@ async def list_nsfw_domains(
     return [NsfwDomainResponse.model_validate(r) for r in rows]
 
 
-@router.post("/nsfw/domains", response_model=NsfwDomainResponse, status_code=201, summary="Add NSFW domain (admin+)")
+@router.post("/nsfw/domains", response_model=NsfwDomainResponse, status_code=201, summary="Add NSFW domain (moderator+)")
 async def add_nsfw_domain(
     body: NsfwDomainCreate,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> NsfwDomainResponse:
     row = NsfwDomain(domain=body.domain, note=body.note)
     session.add(row)
@@ -416,12 +450,12 @@ async def add_nsfw_domain(
     return NsfwDomainResponse.model_validate(row)
 
 
-@router.patch("/nsfw/domains/{domain_id}", response_model=NsfwDomainResponse, summary="Update NSFW domain (admin+)")
+@router.patch("/nsfw/domains/{domain_id}", response_model=NsfwDomainResponse, summary="Update NSFW domain (moderator+)")
 async def update_nsfw_domain(
     domain_id: int,
     body: NsfwDomainUpdate,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> NsfwDomainResponse:
     row = await session.get(NsfwDomain, domain_id)
     if row is None:
@@ -435,11 +469,11 @@ async def update_nsfw_domain(
     return NsfwDomainResponse.model_validate(row)
 
 
-@router.delete("/nsfw/domains/{domain_id}", status_code=204, summary="Delete NSFW domain (admin+)")
+@router.delete("/nsfw/domains/{domain_id}", status_code=204, summary="Delete NSFW domain (moderator+)")
 async def delete_nsfw_domain(
     domain_id: int,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> None:
     row = await session.get(NsfwDomain, domain_id)
     if row is None:
@@ -448,10 +482,10 @@ async def delete_nsfw_domain(
     await session.commit()
 
 
-@router.get("/nsfw/keywords", response_model=list[NsfwKeywordResponse], summary="List NSFW keywords (admin+)")
+@router.get("/nsfw/keywords", response_model=list[NsfwKeywordResponse], summary="List NSFW keywords (moderator+)")
 async def list_nsfw_keywords(
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> list[NsfwKeywordResponse]:
     rows = (await session.execute(
         select(NsfwKeyword).order_by(NsfwKeyword.keyword)
@@ -459,11 +493,11 @@ async def list_nsfw_keywords(
     return [NsfwKeywordResponse.model_validate(r) for r in rows]
 
 
-@router.post("/nsfw/keywords", response_model=NsfwKeywordResponse, status_code=201, summary="Add NSFW keyword (admin+)")
+@router.post("/nsfw/keywords", response_model=NsfwKeywordResponse, status_code=201, summary="Add NSFW keyword (moderator+)")
 async def add_nsfw_keyword(
     body: NsfwKeywordCreate,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> NsfwKeywordResponse:
     row = NsfwKeyword(keyword=body.keyword, note=body.note)
     session.add(row)
@@ -472,12 +506,12 @@ async def add_nsfw_keyword(
     return NsfwKeywordResponse.model_validate(row)
 
 
-@router.patch("/nsfw/keywords/{keyword_id}", response_model=NsfwKeywordResponse, summary="Update NSFW keyword (admin+)")
+@router.patch("/nsfw/keywords/{keyword_id}", response_model=NsfwKeywordResponse, summary="Update NSFW keyword (moderator+)")
 async def update_nsfw_keyword(
     keyword_id: int,
     body: NsfwKeywordUpdate,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> NsfwKeywordResponse:
     row = await session.get(NsfwKeyword, keyword_id)
     if row is None:
@@ -491,11 +525,11 @@ async def update_nsfw_keyword(
     return NsfwKeywordResponse.model_validate(row)
 
 
-@router.delete("/nsfw/keywords/{keyword_id}", status_code=204, summary="Delete NSFW keyword (admin+)")
+@router.delete("/nsfw/keywords/{keyword_id}", status_code=204, summary="Delete NSFW keyword (moderator+)")
 async def delete_nsfw_keyword(
     keyword_id: int,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> None:
     row = await session.get(NsfwKeyword, keyword_id)
     if row is None:
@@ -504,11 +538,11 @@ async def delete_nsfw_keyword(
     await session.commit()
 
 
-@router.post("/nsfw/import", summary="Import NSFW rules from JSON (admin+)")
+@router.post("/nsfw/import", summary="Import NSFW rules from JSON (moderator+)")
 async def import_nsfw(
     body: NsfwImport,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> dict:
     """Bulk import domains and keywords from JSON. Skips duplicates."""
     existing_domains = {
@@ -536,10 +570,10 @@ async def import_nsfw(
     return {"domains_added": added_d, "keywords_added": added_k}
 
 
-@router.get("/nsfw/export", summary="Export NSFW rules as JSON (admin+)")
+@router.get("/nsfw/export", summary="Export NSFW rules as JSON (moderator+)")
 async def export_nsfw(
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    _: User = Depends(require_role(UserRole.moderator, UserRole.admin, UserRole.owner)),
 ) -> dict:
     """Export all NSFW domains and keywords as JSON."""
     domains = (await session.execute(
