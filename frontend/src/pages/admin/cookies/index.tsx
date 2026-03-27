@@ -9,7 +9,7 @@ import { apiClient } from '@core/lib/api-client'
 import { formatDate, cn } from '@core/lib/utils'
 import type { Cookie } from '@dl/types'
 import type { User, PaginatedResponse } from '@core/types/api'
-import { Badge } from '@core/components/ui/badge'
+import { CookieStatusBadge, RoleBadge } from '@core/components/app/StatusBadge'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@core/components/ui/command'
@@ -35,7 +35,7 @@ function parseDomainFromNetscape(content: string): string | null {
   return null
 }
 
-// Combobox for user selection
+// Combobox for user selection — Input as trigger, dropdown below
 function UserCombobox({
   value,
   onChange,
@@ -50,9 +50,11 @@ function UserCombobox({
   const [search, setSearch] = useState('')
 
   const selected = users.find((u) => String(u.id) === value)
-  const label = selected
-    ? (selected.first_name ?? selected.username ?? String(selected.id))
-    : value || t('cookies.select_user', { defaultValue: 'Select user…' })
+
+  // When closed, display field shows selected user name; when open, shows search
+  const inputValue = open
+    ? search
+    : (selected ? (selected.first_name ?? selected.username ?? String(selected.id)) : value)
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase()
@@ -64,17 +66,19 @@ function UserCombobox({
   })
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch('') }}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-        >
-          <span className="truncate">{label}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+        <div className="relative">
+          <Input
+            value={inputValue}
+            placeholder={t('cookies.select_user', { defaultValue: 'Select user…' })}
+            readOnly={!open}
+            onChange={(e) => { if (open) setSearch(e.target.value) }}
+            onFocus={() => setOpen(true)}
+            className="pr-8 cursor-pointer"
+          />
+          <ChevronsUpDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
+        </div>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={false}>
@@ -92,12 +96,12 @@ function UserCombobox({
                   value={String(u.id)}
                   onSelect={(v) => { onChange(v); setOpen(false); setSearch('') }}
                 >
-                  <Check className={cn('mr-2 h-4 w-4', value === String(u.id) ? 'opacity-100' : 'opacity-0')} />
+                  <Check className={cn('mr-2 h-4 w-4 shrink-0', value === String(u.id) ? 'opacity-100' : 'opacity-0')} />
                   <span className="flex-1 truncate">
                     {u.first_name ?? u.username ?? String(u.id)}
                   </span>
-                  <span className="ml-2 font-mono text-xs text-muted-foreground">{u.id}</span>
-                  <Badge variant="outline" className="ml-2 text-xs capitalize">{u.role}</Badge>
+                  <span className="mx-2 font-mono text-xs text-muted-foreground">{u.id}</span>
+                  <RoleBadge role={u.role} />
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -345,7 +349,7 @@ export default function AdminCookiesPage() {
                         <TableHead>{t('cookies.domain')}</TableHead>
                         <TableHead>{t('cookies.user_id_col')}</TableHead>
                         <TableHead>{t('cookies.valid_col')}</TableHead>
-                        <TableHead>{t('cookies.updated')}</TableHead>
+                        <TableHead>{t('cookies.validated_col', { defaultValue: 'Validated' })}</TableHead>
                         <TableHead />
                       </TableRow>
                     </TableHeader>
@@ -355,12 +359,12 @@ export default function AdminCookiesPage() {
                           <TableCell className="font-medium">{cookie.domain}</TableCell>
                           <TableCell className="font-mono text-xs">{cookie.user_id}</TableCell>
                           <TableCell>
-                            <Badge variant={cookie.is_valid ? 'success' : 'destructive'}>
-                              {cookie.is_valid ? t('cookies.valid') : t('cookies.invalid')}
-                            </Badge>
+                            <CookieStatusBadge valid={cookie.is_valid} />
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {formatDate(cookie.updated_at)}
+                            {cookie.validated_at
+                              ? formatDate(cookie.validated_at)
+                              : <span className="text-muted-foreground/50">{t('cookies.never', { defaultValue: 'Never' })}</span>}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1 justify-end">
@@ -398,10 +402,12 @@ export default function AdminCookiesPage() {
                         <p className="text-sm font-medium">{cookie.domain}</p>
                         <p className="font-mono text-xs text-muted-foreground">{t('cookies.uid', { id: cookie.user_id })}</p>
                         <div className="flex items-center gap-2 pt-0.5">
-                          <Badge variant={cookie.is_valid ? 'success' : 'destructive'} className="text-xs">
-                            {cookie.is_valid ? t('cookies.valid') : t('cookies.invalid')}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">{formatDate(cookie.updated_at)}</span>
+                          <CookieStatusBadge valid={cookie.is_valid} />
+                          <span className="text-xs text-muted-foreground">
+                            {cookie.validated_at
+                              ? formatDate(cookie.validated_at)
+                              : t('cookies.never', { defaultValue: 'Never' })}
+                          </span>
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">

@@ -4,7 +4,7 @@ import { CheckCircle, ExternalLink, RefreshCw, Trash2, Upload } from 'lucide-rea
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
-import { Badge } from '@core/components/ui/badge'
+import { CookieStatusBadge } from '@core/components/app/StatusBadge'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Input } from '@core/components/ui/input'
@@ -143,11 +143,7 @@ export default function CookiesPage() {
                   <div className="min-w-0 space-y-0.5">
                     <p className="text-sm font-medium">{c.domain}</p>
                     <div className="flex items-center gap-2 pt-0.5">
-                      <Badge variant={c.is_valid ? 'success' : 'destructive'} className="text-xs">
-                        {c.is_valid
-                          ? t('cookies.valid', { defaultValue: 'valid' })
-                          : t('cookies.invalid', { defaultValue: 'invalid' })}
-                      </Badge>
+                      <CookieStatusBadge valid={c.is_valid} className="text-xs" />
                       <span className="text-xs text-muted-foreground">
                         {t('cookies.updated', { defaultValue: 'Updated' })} {formatDate(c.updated_at)}
                       </span>

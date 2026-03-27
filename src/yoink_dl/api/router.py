@@ -346,7 +346,9 @@ async def validate_cookie(
         # Network error — keep structural validity, don't mark invalid
         is_valid = True
 
+    from datetime import datetime, timezone  # noqa: PLC0415
     row.is_valid = is_valid
+    row.validated_at = datetime.now(timezone.utc)
     await session.commit()
     await session.refresh(row)
     return CookieResponse.model_validate(row)

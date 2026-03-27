@@ -9,6 +9,7 @@ import { cn, formatBytes, formatDate } from '@core/lib/utils'
 import type { PaginatedResponse } from '@core/types/api'
 import type { DownloadLog, RetryResponse } from '@dl/types'
 import { Badge } from '@core/components/ui/badge'
+import { SuccessBadge } from '@core/components/app/StatusBadge'
 import { Button } from '@core/components/ui/button'
 import { Calendar } from '@core/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
@@ -31,10 +32,8 @@ const DEFAULT_FILTERS: Filters = { search: '', domain: '', status: 'all' }
 const PAGE_SIZE = 20
 
 function StatusBadge({ status }: { status: string }) {
-  const variant =
-    status === 'ok' ? 'success' :
-    status === 'cached' ? 'secondary' :
-    status === 'error' ? 'destructive' : 'outline'
+  if (status === 'ok') return <SuccessBadge>{status}</SuccessBadge>
+  const variant = status === 'cached' ? 'secondary' : status === 'error' ? 'destructive' : 'outline'
   return <Badge variant={variant}>{status}</Badge>
 }
 

@@ -35,6 +35,7 @@ class CookieResponse(BaseModel):
     user_id: int
     domain: str
     is_valid: bool
+    validated_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
