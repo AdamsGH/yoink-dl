@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
-import { Trash2, Upload } from 'lucide-react'
+import { CheckCircle, RefreshCw, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
 
@@ -35,6 +35,7 @@ export default function AdminCookiesPage() {
   const [items, setItems] = useState<Cookie[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [validating, setValidating] = useState<number | null>(null)
 
   const [uploadOpen, setUploadOpen] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -60,6 +61,19 @@ export default function AdminCookiesPage() {
       setUploadUserId(String(identity.id))
     }
   }, [uploadOpen, identity, uploadUserId])
+
+  const validate = async (id: number) => {
+    setValidating(id)
+    try {
+      const r = await apiClient.post<Cookie>(`/dl/cookies/${id}/validate`, {})
+      setItems((prev: Cookie[]) => prev.map((c: Cookie) => c.id === id ? { ...c, is_valid: r.data.is_valid } : c))
+      toast.success(r.data.is_valid ? 'Cookie is valid' : 'Cookie appears invalid')
+    } catch {
+      toast.error('Validation failed')
+    } finally {
+      setValidating(null)
+    }
+  }
 
   const remove = async (id: number) => {
     if (!confirm('Delete this cookie?')) return
@@ -170,14 +184,26 @@ export default function AdminCookiesPage() {
                           {formatDate(cookie.updated_at)}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost" size="icon"
-                            className="text-destructive hover:text-destructive"
-                            disabled={deleting === cookie.id}
-                            onClick={() => remove(cookie.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost" size="icon"
+                              title="Re-validate"
+                              disabled={validating === cookie.id}
+                              onClick={() => validate(cookie.id)}
+                            >
+                              {validating === cookie.id
+                                ? <RefreshCw className="h-4 w-4 animate-spin" />
+                                : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
+                            </Button>
+                            <Button
+                              variant="ghost" size="icon"
+                              className="text-destructive hover:text-destructive"
+                              disabled={deleting === cookie.id}
+                              onClick={() => remove(cookie.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -199,14 +225,26 @@ export default function AdminCookiesPage() {
                         <span className="text-xs text-muted-foreground">{formatDate(cookie.updated_at)}</span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost" size="icon"
-                      className="text-destructive hover:text-destructive shrink-0"
-                      disabled={deleting === cookie.id}
-                      onClick={() => remove(cookie.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        variant="ghost" size="icon"
+                        title="Re-validate"
+                        disabled={validating === cookie.id}
+                        onClick={() => validate(cookie.id)}
+                      >
+                        {validating === cookie.id
+                          ? <RefreshCw className="h-4 w-4 animate-spin" />
+                          : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon"
+                        className="text-destructive hover:text-destructive"
+                        disabled={deleting === cookie.id}
+                        onClick={() => remove(cookie.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

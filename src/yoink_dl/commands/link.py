@@ -133,10 +133,17 @@ async def _cmd_link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cookie_mgr = context.bot_data.get("cookie_manager")
     cookie_path: str | None = None
     if cookie_mgr:
+        _uid = update.effective_user.id
+        _owner_id = context.bot_data["config"].owner_id
+        _perm_repo = context.bot_data.get("perm_repo")
+        _shared_fallback: int | None = None
+        if _perm_repo is not None and _uid != _owner_id:
+            if await _perm_repo.has(_uid, "dl", "shared_cookies"):
+                _shared_fallback = _owner_id
         p = await cookie_mgr.get_path_for_url(
-            user_id=update.effective_user.id,
+            user_id=_uid,
             url=url,
-            global_user_id=context.bot_data["config"].owner_id,
+            global_user_id=_shared_fallback,
         )
         if p:
             cookie_path = str(p)

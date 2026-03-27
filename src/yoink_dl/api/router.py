@@ -225,6 +225,51 @@ async def list_all_cookies(
     return [CookieResponse.model_validate(r) for r in rows]
 
 
+@router.post("/cookies/upload", response_model=CookieResponse, status_code=201)
+async def upload_cookie_file(
+    body: CookieCreate,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CookieResponse:
+    """Upload a raw Netscape cookie file (.txt) for the current user."""
+    from yoink_dl.services.cookies import validate_netscape  # noqa: PLC0415
+    if not validate_netscape(body.content):
+        raise HTTPException(status_code=422, detail="Invalid Netscape cookie format")
+    row = (await session.execute(
+        select(Cookie).where(Cookie.user_id == current_user.id, Cookie.domain == body.domain)
+    )).scalar_one_or_none()
+    if row is None:
+        row = Cookie(user_id=current_user.id, domain=body.domain, content=body.content, is_valid=True)
+        session.add(row)
+    else:
+        row.content = body.content
+        row.is_valid = True
+    await session.commit()
+    await session.refresh(row)
+    return CookieResponse.model_validate(row)
+
+
+@router.post("/cookies/{cookie_id}/validate", response_model=CookieResponse)
+async def validate_cookie(
+    cookie_id: int,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CookieResponse:
+    """Re-validate a stored cookie by parsing its content. Marks is_valid accordingly."""
+    from yoink_dl.services.cookies import validate_netscape  # noqa: PLC0415
+    row = await session.get(Cookie, cookie_id)
+    if row is None:
+        raise NotFoundError(f"Cookie {cookie_id} not found")
+    # Admin/owner can validate any; user can only validate their own
+    from yoink.core.db.models import UserRole  # noqa: PLC0415
+    if current_user.role not in (UserRole.admin, UserRole.owner) and row.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your cookie")
+    row.is_valid = validate_netscape(row.content or "")
+    await session.commit()
+    await session.refresh(row)
+    return CookieResponse.model_validate(row)
+
+
 @router.delete("/cookies/{domain}", status_code=204)
 async def delete_cookie(
     domain: str,

@@ -331,10 +331,17 @@ async def run_download(
         )
 
         if cookie_mgr:
+            _perm_repo = context.bot_data.get("perm_repo")
+            _owner_id = context.bot_data["config"].owner_id
+            _shared_fallback: int | None = None
+            if _perm_repo is not None and user_id != _owner_id:
+                _has_shared = await _perm_repo.has(user_id, "dl", "shared_cookies")
+                if _has_shared:
+                    _shared_fallback = _owner_id
             cookie_path = await cookie_mgr.get_path_for_url(
                 user_id=user_id,
                 url=url,
-                global_user_id=context.bot_data["config"].owner_id,
+                global_user_id=_shared_fallback,
                 no_cookie_domains=domain_cfg.no_cookie,
             )
 

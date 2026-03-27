@@ -37,6 +37,13 @@ class DownloaderPlugin:
                 description="YouTube search and URL lookup via @bot inline mode",
                 default_min_role="user",
             ),
+            FeatureSpec(
+                plugin="dl",
+                feature="shared_cookies",
+                label="Shared admin cookies",
+                description="Fall back to admin cookies when user has none for a domain",
+                default_min_role="admin",
+            ),
         ]
 
     def get_inline_handlers(self) -> list[InlineHandlerSpec]:
