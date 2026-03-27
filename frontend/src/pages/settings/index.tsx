@@ -5,6 +5,7 @@ import { Coffee, Ghost, Moon, Sun } from 'lucide-react'
 
 import { apiClient } from '@core/lib/api-client'
 import { cn } from '@core/lib/utils'
+import { setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@core/lib/i18n'
 import type { UserSettings } from '@dl/types'
 import { Button } from '@core/components/ui/button'
 import { Input } from '@core/components/ui/input'
@@ -21,7 +22,8 @@ import { Switch } from '@core/components/ui/switch'
 import { toast } from '@core/components/ui/toast'
 import { useTelegram, type CatppuccinFlavor } from '@core/layout/TelegramProvider'
 
-type FormValues = Omit<UserSettings, 'user_id' | 'args_json' | 'theme'>
+// language and theme are managed via core /settings; updated_at is read-only
+type FormValues = Omit<UserSettings, 'user_id' | 'args_json' | 'theme' | 'language' | 'updated_at'>
 
 const THEME_OPTIONS: { value: CatppuccinFlavor; label: string; icon: React.ReactNode; dark: boolean }[] = [
   { value: 'latte',     label: 'Latte',     icon: <Sun className="h-3.5 w-3.5" />,    dark: false },
@@ -69,29 +71,19 @@ const KEYBOARD_OPTIONS = [
   { value: 'FULL', label: 'Full width buttons' },
 ]
 
-const LANG_OPTIONS = [
-  { value: 'en', label: 'English' },
-  { value: 'ru', label: 'Русский' },
-]
-
 const SUBS_LANG_OPTIONS = ['en', 'ru', 'de', 'fr', 'es', 'it', 'pt', 'ja', 'zh', 'ko']
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">{children}</CardContent>
-    </Card>
-  )
+interface FieldRowProps {
+  label: string
+  hint?: string
+  children: React.ReactNode
 }
 
-function FieldRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function FieldRow({ label, hint, children }: FieldRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium leading-none">{label}</p>
+    <div className="flex items-center justify-between gap-4 py-0.5">
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{label}</p>
         {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
       </div>
       <div className="shrink-0">{children}</div>
@@ -153,9 +145,29 @@ function ControlledSwitch({ name, label, hint, control }: ControlledSwitchProps)
   )
 }
 
+interface SectionProps {
+  title: string
+  children: React.ReactNode
+}
+
+function Section({ title, children }: SectionProps) {
+  return (
+    <Card>
+      <CardHeader className="pb-3 pt-4">
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 pb-4">
+        {children}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
-  const { t } = useTranslation()
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>('en')
+  const [langSaving, setLangSaving] = useState(false)
+  const { t, i18n } = useTranslation()
   const { flavor, setFlavor } = useTelegram()
   const { handleSubmit, reset, watch, control, formState: { isSubmitting, isDirty } } =
     useForm<FormValues>()
@@ -164,15 +176,27 @@ export default function SettingsPage() {
   const proxyEnabled = watch('proxy_enabled')
 
   useEffect(() => {
-    apiClient
+    // Load dl-specific settings and core language in parallel
+    const dlPromise = apiClient
       .get<UserSettings>('/dl/settings')
       .then((res) => {
-        const { user_id: _uid, args_json: _args, ...rest } = res.data
+        const { user_id: _uid, args_json: _args, theme: _theme, language: _lang, updated_at: _ua, ...rest } = res.data
         reset(rest)
       })
       .catch(() => toast.error(t('settings.save_error')))
-      .finally(() => setLoading(false))
-  }, [reset])
+
+    const corePromise = apiClient
+      .get<{ language: string }>('/settings')
+      .then((res) => {
+        const lang = res.data.language
+        if (SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage)) {
+          setCurrentLang(lang as SupportedLanguage)
+        }
+      })
+      .catch(() => {/* non-critical */})
+
+    Promise.all([dlPromise, corePromise]).finally(() => setLoading(false))
+  }, [reset, t])
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -181,6 +205,20 @@ export default function SettingsPage() {
       reset(values)
     } catch {
       toast.error(t('settings.save_error'))
+    }
+  }
+
+  const handleLangChange = async (lang: SupportedLanguage) => {
+    if (lang === currentLang) return
+    setLangSaving(true)
+    try {
+      await apiClient.patch('/settings', { language: lang })
+      setCurrentLang(lang)
+      setLanguage(lang)
+    } catch {
+      toast.error(t('settings.save_error'))
+    } finally {
+      setLangSaving(false)
     }
   }
 
@@ -266,8 +304,7 @@ export default function SettingsPage() {
               )}
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank to use the server's default proxy (if configured).
-              Your URL takes priority.
+              {t('settings.proxy_url_hint')}
             </p>
           </div>
         )}
@@ -278,32 +315,50 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <Label>{t('settings.theme_label')}</Label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {THEME_OPTIONS.map((t) => (
+              {THEME_OPTIONS.map((th) => (
                 <Button
-                  key={t.value}
+                  key={th.value}
                   variant="outline"
                   type="button"
-                  onClick={() => setFlavor(t.value)}
+                  onClick={() => setFlavor(th.value)}
                   className={cn(
                     'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all h-auto',
-                    flavor === t.value
+                    flavor === th.value
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/50 hover:text-foreground'
                   )}
                 >
-                  {t.icon}
-                  {t.label}
+                  {th.icon}
+                  {th.label}
                 </Button>
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              Saved automatically. All four variants are Catppuccin.
+              {t('settings.theme_hint')}
             </p>
           </div>
 
           <div className="space-y-1.5 border-t pt-3">
-            <Label>{t('settings.bot_lang_label')}</Label>
-            <ControlledSelect name="language" options={LANG_OPTIONS} control={control} />
+            <Label>{t('settings.language_label')}</Label>
+            <Select
+              value={currentLang}
+              onValueChange={(v) => handleLangChange(v as SupportedLanguage)}
+              disabled={langSaving}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang === 'en' ? 'English' : 'Русский'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {t('settings.language_hint')}
+            </p>
           </div>
         </div>
       </Section>
