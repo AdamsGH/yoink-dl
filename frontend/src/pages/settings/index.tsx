@@ -72,10 +72,6 @@ const KEYBOARD_OPTIONS = [
 const LANG_OPTIONS = [
   { value: 'en', label: 'English' },
   { value: 'ru', label: 'Русский' },
-  { value: 'uk', label: 'Українська' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'fr', label: 'Français' },
-  { value: 'es', label: 'Español' },
 ]
 
 const SUBS_LANG_OPTIONS = ['en', 'ru', 'de', 'fr', 'es', 'it', 'pt', 'ja', 'zh', 'ko']
