@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle, CookieIcon, Globe, RefreshCw, Trash2, Upload, User as UserIcon } from 'lucide-react'
+import { CheckCircle, CookieIcon, Globe, RefreshCw, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +20,28 @@ import { Skeleton } from '@core/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
 import { toast } from '@core/components/ui/toast'
 import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
+
+// favicon cache: domain -> img url (or null = failed)
+const faviconCache = new Map<string, string | null>()
+
+function useFavicon(domain: string): string | null {
+  const [src, setSrc] = useState<string | null>(() => faviconCache.get(domain) ?? null)
+  useEffect(() => {
+    if (faviconCache.has(domain)) { setSrc(faviconCache.get(domain)!); return }
+    const url = `https://www.google.com/s2/favicons?sz=32&domain=${domain}`
+    const img = new Image()
+    img.onload = () => { faviconCache.set(domain, url); setSrc(url) }
+    img.onerror = () => { faviconCache.set(domain, null); setSrc(null) }
+    img.src = url
+  }, [domain])
+  return src
+}
+
+function CookieFavicon({ domain }: { domain: string }) {
+  const src = useFavicon(domain)
+  if (src) return <img src={src} alt="" className="size-4 rounded-sm object-contain" />
+  return <Globe className="size-4" />
+}
 
 type Identity = { id: number; role: string }
 
@@ -224,6 +246,8 @@ export default function AdminCookiesPage() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
 
+  const userMap = new Map(users.map((u) => [u.id, u]))
+
   const load = () => {
     setLoading(true)
     apiClient
@@ -290,7 +314,7 @@ export default function AdminCookiesPage() {
 
           <CardContent className="p-0">
             {loading ? (
-              <div className="space-y-0 divide-y divide-border px-3 py-2">
+              <div className="divide-y divide-border px-3 py-1">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3 py-2.5">
                     <Skeleton className="size-8 rounded-md shrink-0" />
@@ -307,47 +331,57 @@ export default function AdminCookiesPage() {
                 {t('cookies.empty')}
               </div>
             ) : (
-              <div className="px-3 py-2 space-y-0 divide-y divide-border">
-                {items.map((cookie) => (
-                  <Item key={cookie.id} size="sm" className="py-2.5 rounded-none border-0">
-                    <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
-                      <Globe className="size-4" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>{cookie.domain}</ItemTitle>
-                      <ItemDescription>
-                        <span className="inline-flex items-center gap-1">
-                          <UserIcon className="size-3" />
-                          <span className="font-mono">{cookie.user_id}</span>
-                          {cookie.validated_at && (
-                            <span className="text-muted-foreground/60">· {formatDate(cookie.validated_at)}</span>
-                          )}
-                        </span>
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <CookieStatusBadge valid={cookie.is_valid} />
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={validating === cookie.id} onClick={() => validate(cookie.id)}>
-                            {validating === cookie.id
-                              ? <RefreshCw className="h-4 w-4 animate-spin" />
-                              : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('cookies.revalidate')}</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" disabled={deleting === cookie.id} onClick={() => remove(cookie.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('common.delete')}</TooltipContent>
-                      </Tooltip>
-                    </ItemActions>
-                  </Item>
-                ))}
+              <div className="divide-y divide-border px-3 py-1">
+                {items.map((cookie) => {
+                  const owner = userMap.get(cookie.user_id)
+                  const ownerLabel = owner
+                    ? (owner.username ? `@${owner.username}` : (owner.first_name ?? String(cookie.user_id)))
+                    : String(cookie.user_id)
+
+                  return (
+                    <Item key={cookie.id} size="sm" className="py-2.5 rounded-none border-0">
+                      <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
+                        <CookieFavicon domain={cookie.domain} />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle>{cookie.domain}</ItemTitle>
+                        <ItemDescription>{ownerLabel}</ItemDescription>
+                      </ItemContent>
+                      <ItemActions>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <CookieStatusBadge valid={cookie.is_valid} />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {cookie.validated_at
+                              ? `${t('cookies.validated_col', { defaultValue: 'Validated' })}: ${formatDate(cookie.validated_at)}`
+                              : t('cookies.never', { defaultValue: 'Never validated' })}
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" disabled={validating === cookie.id} onClick={() => validate(cookie.id)}>
+                              {validating === cookie.id
+                                ? <RefreshCw className="h-4 w-4 animate-spin" />
+                                : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('cookies.revalidate')}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" disabled={deleting === cookie.id} onClick={() => remove(cookie.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('common.delete')}</TooltipContent>
+                        </Tooltip>
+                      </ItemActions>
+                    </Item>
+                  )
+                })}
               </div>
             )}
           </CardContent>
