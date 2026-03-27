@@ -6,90 +6,11 @@ import {
 } from 'recharts'
 
 import { apiClient } from '@core/lib/api-client'
-import { cn } from '@core/lib/utils'
 import type { StatsOverview } from '@dl/types'
-import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Skeleton } from '@core/components/ui/skeleton'
-
-const CTP_FALLBACKS = [
-  '#8aadf4', '#c6a0f6', '#ed8796', '#a6da95', '#f5a97f',
-  '#91d7e3', '#eed49f', '#f5bde6', '#8bd5ca', '#b7bdf8',
-]
-const CTP_VARS = [
-  '--ctp-blue', '--ctp-mauve', '--ctp-red', '--ctp-green', '--ctp-peach',
-  '--ctp-sky', '--ctp-yellow', '--ctp-pink', '--ctp-teal', '--ctp-lavender',
-]
-
-let _chartColors: string[] | null = null
-function chartColors(): string[] {
-  if (_chartColors) return _chartColors
-  const style = getComputedStyle(document.documentElement)
-  _chartColors = CTP_VARS.map((name, i) => style.getPropertyValue(name).trim() || CTP_FALLBACKS[i])
-  return _chartColors
-}
-
-const PERIOD_OPTIONS = [7, 30, 90] as const
-
-type Period = (typeof PERIOD_OPTIONS)[number]
-
-function PeriodToggle({ value, onChange }: { value: Period; onChange: (v: Period) => void }) {
-  const { t } = useTranslation()
-  return (
-    <div className="flex rounded-md border overflow-hidden">
-      {PERIOD_OPTIONS.map((opt) => (
-        <Button
-          key={opt}
-          variant="ghost"
-          size="sm"
-          onClick={() => onChange(opt)}
-          className={cn(
-            'rounded-none border-0 px-3 h-8 text-xs',
-            value === opt
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
-              : 'text-muted-foreground',
-          )}
-        >
-          {t(`admin_stats.period_${opt}` as Parameters<typeof t>[0])}
-        </Button>
-      ))}
-    </div>
-  )
-}
-
-function StatCard({ label, value, sub, variant = 'default' }: {
-  label: string
-  value: string | number
-  sub?: string
-  variant?: 'default' | 'danger' | 'success'
-}) {
-  return (
-    <Card className="select-none">
-      <CardContent className="px-4 py-3">
-        <div className={cn(
-          'text-3xl font-bold tabular-nums',
-          variant === 'danger'  ? 'text-destructive' :
-          variant === 'success' ? 'text-green-500'   : 'text-primary',
-        )}>
-          {typeof value === 'number' ? value.toLocaleString() : value}
-        </div>
-        <div className="mt-1 text-sm text-muted-foreground">{label}</div>
-        {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
-      </CardContent>
-    </Card>
-  )
-}
-
-function StatCardSkeleton() {
-  return (
-    <Card>
-      <CardContent className="px-4 py-3 space-y-2">
-        <Skeleton className="h-9 w-20" />
-        <Skeleton className="h-4 w-28" />
-      </CardContent>
-    </Card>
-  )
-}
+import { chartColors, PeriodToggle, StatCard, StatCardSkeleton } from '@core/components/charts'
+import type { Period } from '@core/components/charts'
 
 export default function AdminStatsPage() {
   const { t } = useTranslation()
