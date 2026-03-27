@@ -11,8 +11,6 @@ import type { StatsOverview } from '@dl/types'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Skeleton } from '@core/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@core/components/ui/tabs'
-import ImportPage from '@stats/pages/import/index'
 
 const CTP_FALLBACKS = [
   '#8aadf4', '#c6a0f6', '#ed8796', '#a6da95', '#f5a97f',
@@ -137,18 +135,7 @@ export default function AdminStatsPage() {
   }))
 
   return (
-    <Tabs defaultValue="stats">
-      <TabsList className="mb-4">
-        <TabsTrigger value="stats">{t('admin_stats.tab_stats')}</TabsTrigger>
-        <TabsTrigger value="import">{t('admin_stats.tab_import')}</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="import">
-        <ImportPage />
-      </TabsContent>
-
-      <TabsContent value="stats">
-      <div className="space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <PeriodToggle value={period} onChange={setPeriod} />
       </div>
@@ -294,7 +281,5 @@ export default function AdminStatsPage() {
         </>
       )}
     </div>
-      </TabsContent>
-    </Tabs>
   )
 }

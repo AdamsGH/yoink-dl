@@ -1,4 +1,4 @@
-import { Cookie, Download, Settings, ShieldAlert } from 'lucide-react'
+import { BarChart2, Cookie, Download, Settings, ShieldAlert } from 'lucide-react'
 
 import type { PluginManifest } from '@core/types/plugin'
 
@@ -7,6 +7,7 @@ import SettingsPage     from './src/pages/settings'
 import CookiesPage      from './src/pages/cookies'
 import AdminCookiesPage from './src/pages/admin/cookies'
 import AdminNsfwPage    from './src/pages/admin/nsfw'
+import DlStatsPage      from './src/pages/admin/stats/index'
 
 export const dlPlugin: PluginManifest = {
   id: 'dl',
@@ -19,6 +20,7 @@ export const dlPlugin: PluginManifest = {
     { path: '/cookies',       element: <CookiesPage /> },
     { path: '/admin/cookies', element: <AdminCookiesPage />, minRole: 'moderator' },
     { path: '/admin/nsfw',    element: <AdminNsfwPage />,    minRole: 'admin' },
+    { path: '/admin/stats',   element: <DlStatsPage />,      minRole: 'admin' },
   ],
 
   navGroups: [
@@ -35,8 +37,9 @@ export const dlPlugin: PluginManifest = {
       defaultOpen: true,
       minRole: ['owner', 'admin', 'moderator'],
       items: [
-        { label: 'Cookies',  i18nKey: 'nav.cookies', path: '/admin/cookies', icon: <Cookie      className="h-4 w-4" />, minRole: ['owner', 'admin', 'moderator'] },
-        { label: 'NSFW',     i18nKey: 'nav.nsfw',    path: '/admin/nsfw',    icon: <ShieldAlert className="h-4 w-4" />, minRole: ['owner', 'admin'] },
+        { label: 'Cookies',         i18nKey: 'nav.cookies',     path: '/admin/cookies', icon: <Cookie      className="h-4 w-4" />, minRole: ['owner', 'admin', 'moderator'] },
+        { label: 'NSFW',            i18nKey: 'nav.nsfw',        path: '/admin/nsfw',    icon: <ShieldAlert className="h-4 w-4" />, minRole: ['owner', 'admin'] },
+        { label: 'Download Stats',  i18nKey: 'nav.admin_stats', path: '/admin/stats',   icon: <BarChart2   className="h-4 w-4" />, minRole: ['owner', 'admin'] },
       ],
     },
   ],
