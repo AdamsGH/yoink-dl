@@ -171,7 +171,7 @@ export default function AdminStatsPage() {
       {!error && (
         <>
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="px-4 py-3 border-b">
               <CardTitle className="text-base">{t('admin_stats.chart_title', { days: period })}</CardTitle>
             </CardHeader>
             <CardContent>
@@ -200,7 +200,7 @@ export default function AdminStatsPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="px-4 py-3 border-b">
                 <CardTitle className="text-base">{t('admin_stats.top_domains')}</CardTitle>
               </CardHeader>
               <CardContent>
@@ -231,7 +231,7 @@ export default function AdminStatsPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="px-4 py-3 border-b">
                 <CardTitle className="text-base">{t('admin_stats.domain_share')}</CardTitle>
               </CardHeader>
               <CardContent>
