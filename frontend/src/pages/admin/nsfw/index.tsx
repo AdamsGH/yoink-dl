@@ -100,9 +100,9 @@ function EntryDialog({
   )
 }
 
-const IMPORT_PLACEHOLDER = `{
-  "domains":  [{ "domain": "example.com", "note": "optional note" }],
-  "keywords": [{ "keyword": "word",       "note": "optional note" }]
+const IMPORT_EXAMPLE = `{
+  "domains":  [{ "domain": "example.com", "note": "optional" }],
+  "keywords": [{ "keyword": "word",       "note": "optional" }]
 }`
 
 function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
@@ -162,51 +162,61 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { setValue(''); setParseError(null); onClose() } }}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl p-0 gap-0 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b">
-          <div className="min-w-0">
-            <DialogTitle className="text-base">{t('nsfw.import')}</DialogTitle>
-            <DialogDescription className="text-xs mt-0.5">
-              {t('nsfw.import_hint', { defaultValue: 'Paste JSON with domains and/or keywords arrays.' })}
-            </DialogDescription>
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => fileRef.current?.click()}>
-                <Upload className="h-3.5 w-3.5" />
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{t('nsfw.import')}</DialogTitle>
+          <DialogDescription>
+            {t('nsfw.import_hint', { defaultValue: 'Paste JSON with domains and/or keywords arrays.' })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {/* Schema example — read-only highlighted block */}
+          <JsonEditor
+            value={IMPORT_EXAMPLE}
+            readOnly
+            minHeight="auto"
+            maxHeight="120px"
+            className="rounded-md border border-border"
+          />
+
+          {/* Editable area */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground font-medium">
+                {t('nsfw.your_json', { defaultValue: 'Your JSON' })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload className="h-3 w-3" />
+                {t('nsfw.load_file', { defaultValue: 'Load file' })}
               </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">{t('nsfw.load_file', { defaultValue: 'Load from file' })}</TooltipContent>
-          </Tooltip>
-          <input ref={fileRef} type="file" accept=".json" className="hidden"
-            onChange={(e) => handleFile(e.target.files?.[0])} />
-        </div>
-
-        {/* Editor */}
-        <JsonEditor
-          value={value}
-          onChange={handleChange}
-          placeholder={IMPORT_PLACEHOLDER}
-          minHeight="200px"
-          maxHeight="50vh"
-          className="rounded-none border-0 border-b"
-        />
-
-        {/* Footer */}
-        <div className="px-4 py-3 space-y-2">
-          {parseError && (
-            <p className="text-xs text-destructive font-mono leading-snug">{parseError}</p>
-          )}
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
-              {t('common.cancel')}
-            </Button>
-            <Button className="flex-1" onClick={handleImport} disabled={!canImport}>
-              {importing ? t('common.loading') : t('nsfw.import')}
-            </Button>
+              <input ref={fileRef} type="file" accept=".json" className="hidden"
+                onChange={(e) => handleFile(e.target.files?.[0])} />
+            </div>
+            <JsonEditor
+              value={value}
+              onChange={handleChange}
+              minHeight="160px"
+              maxHeight="40vh"
+              className="rounded-md border border-border"
+            />
+            {parseError && (
+              <p className="text-xs text-destructive font-mono">{parseError}</p>
+            )}
           </div>
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button onClick={handleImport} disabled={!canImport}>
+            {importing ? t('common.loading') : t('nsfw.import')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
