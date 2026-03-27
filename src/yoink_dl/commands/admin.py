@@ -29,6 +29,7 @@ from yoink_dl.utils.formatting import format_size
 logger = logging.getLogger(__name__)
 
 _ADMIN_POLICY = AccessPolicy(min_role=UserRole.admin, silent_deny=True)
+_USER_POLICY = AccessPolicy(min_role=UserRole.user, silent_deny=True)
 
 
 @require_access(_ADMIN_POLICY)
@@ -131,15 +132,29 @@ async def _cmd_get_log(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_html(chunk)
 
 
-@require_access(_ADMIN_POLICY)
+@require_access(_USER_POLICY)
 async def _cmd_usage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.effective_user:
         return
     args = context.args or []
+    calling_user_id = update.effective_user.id
+
+    # Looking up another user's stats requires admin role
+    requested_other = args and args[0].isdigit() and int(args[0]) != calling_user_id
+    if requested_other:
+        from yoink.core.bot.access import AccessPolicy
+        from yoink.core.db.models import UserRole
+        admin_check = AccessPolicy(min_role=UserRole.admin, silent_deny=True)
+        user_repo = get_user_repo(context)
+        caller = await user_repo.get_or_create(calling_user_id)
+        from yoink.core.auth.rbac import role_gte
+        if not role_gte(caller.role, UserRole.admin):
+            return
+
     target_id = (
         int(args[0])
         if args and args[0].isdigit()
-        else (update.effective_user.id if update.effective_user else 0)
+        else calling_user_id
     )
 
     session_factory = get_session_factory(context)

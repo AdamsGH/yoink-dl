@@ -293,6 +293,6 @@ commands:
   - {command: tags,       description: "Toggle filename tags",          scope: private}
   - {command: clean,      description: "Clean up bot messages",         scope: private}
   - {command: get_log,    description: "Get user download log",         scope: private, min_role: moderator}
-  - {command: usage,      description: "User usage stats",              scope: private, min_role: moderator}
+  - {command: usage,      description: "My download stats",             scope: private}
   - {command: uncache,      description: "Remove URL from file cache",  scope: private, min_role: admin}
   - {command: reload_cache, description: "Reload file cache",           scope: private, min_role: admin}

@@ -289,6 +289,6 @@ commands:
   - {command: tags,       description: "Теги в именах файлов",                   scope: private}
   - {command: clean,      description: "Очистить сообщения бота",                scope: private}
   - {command: get_log,    description: "Лог загрузок пользователя",              scope: private, min_role: moderator}
-  - {command: usage,      description: "Статистика использования",               scope: private, min_role: moderator}
+  - {command: usage,      description: "Моя статистика загрузок",                scope: private}
   - {command: uncache,      description: "Удалить URL из кэша файлов",           scope: private, min_role: admin}
   - {command: reload_cache, description: "Перезагрузить кэш файлов",             scope: private, min_role: admin}
