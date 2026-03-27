@@ -10,8 +10,9 @@ import { Badge } from '@core/components/ui/badge'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@core/components/ui/collapsible'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@core/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@core/components/ui/dialog'
 import { Input } from '@core/components/ui/input'
+import { JsonEditor } from '@core/components/ui/json-editor'
 import { Label } from '@core/components/ui/label'
 import { Separator } from '@core/components/ui/separator'
 import { Skeleton } from '@core/components/ui/skeleton'
@@ -99,23 +100,43 @@ function EntryDialog({
   )
 }
 
+const IMPORT_PLACEHOLDER = `{
+  "domains":  [{ "domain": "example.com", "note": "optional note" }],
+  "keywords": [{ "keyword": "word",       "note": "optional note" }]
+}`
+
 function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const { t } = useTranslation()
-  const [json, setJson] = useState('')
+  const [value, setValue] = useState('')
+  const [parseError, setParseError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleFile = useCallback((f: File | null | undefined) => {
     if (!f) return
     const reader = new FileReader()
-    reader.onload = (e) => setJson(e.target?.result as string ?? '')
+    reader.onload = (e) => {
+      const text = e.target?.result as string ?? ''
+      setValue(text)
+      try { JSON.parse(text); setParseError(null) } catch (err) {
+        setParseError((err as Error).message)
+      }
+    }
     reader.readAsText(f)
   }, [])
 
+  const handleChange = (v: string) => {
+    setValue(v)
+    if (!v.trim()) { setParseError(null); return }
+    try { JSON.parse(v); setParseError(null) } catch (err) {
+      setParseError((err as Error).message)
+    }
+  }
+
   const handleImport = async () => {
     let parsed: { domains?: { domain: string; note?: string }[]; keywords?: { keyword: string; note?: string }[] }
-    try { parsed = JSON.parse(json) } catch {
-      toast.error(t('common.error'))
+    try { parsed = JSON.parse(value) } catch (err) {
+      setParseError((err as Error).message)
       return
     }
     setImporting(true)
@@ -125,7 +146,8 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
         keywords: parsed.keywords ?? [],
       })
       toast.success(t('nsfw.added_ok'))
-      setJson('')
+      setValue('')
+      setParseError(null)
       onClose()
       onDone()
     } catch (err) {
@@ -136,34 +158,47 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
     }
   }
 
+  const canImport = value.trim().length > 0 && !parseError && !importing
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { setJson(''); onClose() } }}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setValue(''); setParseError(null); onClose() } }}>
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>{t('nsfw.import')}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">{t('nsfw.import_hint', { defaultValue: 'Paste JSON or load a file.' })}</p>
-          <pre className="rounded-md bg-muted p-3 text-xs overflow-x-auto text-muted-foreground">{`{\n  "domains":  [{ "domain": "example.com", "note": "..." }],\n  "keywords": [{ "keyword": "word",        "note": "..." }]\n}`}</pre>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-              <Upload className="mr-1.5 h-3.5 w-3.5" />
-              {t('nsfw.load_file', { defaultValue: 'Load file' })}
-            </Button>
+          <div className="flex items-center justify-between gap-2 pr-6">
+            <DialogTitle>{t('nsfw.import')}</DialogTitle>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => fileRef.current?.click()}>
+                  <Upload className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">{t('nsfw.load_file', { defaultValue: 'Load from file' })}</TooltipContent>
+            </Tooltip>
             <input ref={fileRef} type="file" accept=".json" className="hidden"
               onChange={(e) => handleFile(e.target.files?.[0])} />
           </div>
-          <textarea
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-            rows={6}
-            placeholder='{"domains": [...], "keywords": [...]}'
-            value={json}
-            onChange={(e) => setJson(e.target.value)}
+          <DialogDescription className="text-xs">
+            {t('nsfw.import_hint', { defaultValue: 'Paste JSON with domains and/or keywords arrays.' })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <JsonEditor
+            value={value || IMPORT_PLACEHOLDER}
+            onChange={handleChange}
+            minHeight="180px"
+            maxHeight="320px"
           />
+          {parseError && (
+            <p className="text-xs text-destructive font-mono leading-snug">{parseError}</p>
+          )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button onClick={handleImport} disabled={importing || !json.trim()}>
+
+        <DialogFooter className="flex-row gap-2 sm:justify-end">
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button className="flex-1 sm:flex-none" onClick={handleImport} disabled={!canImport}>
             {importing ? t('common.loading') : t('nsfw.import')}
           </Button>
         </DialogFooter>
@@ -505,46 +540,53 @@ export default function AdminNsfwPage() {
 
         {/* Domains + Keywords in one card */}
         <Card>
+          {/* Card-level header: title + import/export */}
+          <CardHeader className="px-4 py-3 border-b">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">
+                {t('nsfw.rules_title', { defaultValue: 'Rules' })}
+              </CardTitle>
+              <div className="flex gap-1 shrink-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setImportOpen(true)}>
+                      <Upload className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{t('nsfw.import')}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={exportJson}>
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{t('nsfw.export', { defaultValue: 'Export' })}</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          </CardHeader>
+
           {/* Domains section */}
           <Collapsible defaultOpen>
-            <CardHeader className="px-4 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <CollapsibleTrigger className="flex items-center gap-2 group flex-1 min-w-0">
-                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                  <CardTitle className="text-base">
-                    {loadingD
-                      ? t('nsfw.domains', { defaultValue: 'Domains' })
-                      : t('nsfw.domains_count', { count: domains.length, defaultValue: '{{count}} domains' })}
-                  </CardTitle>
-                </CollapsibleTrigger>
-                <div className="flex gap-1 shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setImportOpen(true)}>
-                        <Upload className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">{t('nsfw.import')}</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={exportJson}>
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">{t('nsfw.export', { defaultValue: 'Export' })}</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="icon" className="h-8 w-8" onClick={() => setAddDomainOpen(true)}>
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">{t('nsfw.add_domain')}</TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-            </CardHeader>
+            <div className="px-4 py-3 flex items-center justify-between gap-2">
+              <CollapsibleTrigger className="flex items-center gap-2 group flex-1 min-w-0">
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                <span className="text-sm font-medium">
+                  {loadingD
+                    ? t('nsfw.domains', { defaultValue: 'Domains' })
+                    : t('nsfw.domains_count', { count: domains.length, defaultValue: '{{count}} domains' })}
+                </span>
+              </CollapsibleTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="icon" className="h-7 w-7 shrink-0" onClick={() => setAddDomainOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{t('nsfw.add_domain')}</TooltipContent>
+              </Tooltip>
+            </div>
             <CollapsibleContent>
               <ItemList
                 items={domainItems}
@@ -561,26 +603,24 @@ export default function AdminNsfwPage() {
 
           {/* Keywords section */}
           <Collapsible defaultOpen>
-            <CardHeader className="px-4 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <CollapsibleTrigger className="flex items-center gap-2 group flex-1 min-w-0">
-                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                  <CardTitle className="text-base">
-                    {loadingK
-                      ? t('nsfw.keywords', { defaultValue: 'Keywords' })
-                      : t('nsfw.keywords_count', { count: keywords.length, defaultValue: '{{count}} keywords' })}
-                  </CardTitle>
-                </CollapsibleTrigger>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => setAddKeywordOpen(true)}>
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{t('nsfw.add_keyword')}</TooltipContent>
-                </Tooltip>
-              </div>
-            </CardHeader>
+            <div className="px-4 py-3 flex items-center justify-between gap-2">
+              <CollapsibleTrigger className="flex items-center gap-2 group flex-1 min-w-0">
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                <span className="text-sm font-medium">
+                  {loadingK
+                    ? t('nsfw.keywords', { defaultValue: 'Keywords' })
+                    : t('nsfw.keywords_count', { count: keywords.length, defaultValue: '{{count}} keywords' })}
+                </span>
+              </CollapsibleTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="icon" className="h-7 w-7 shrink-0" onClick={() => setAddKeywordOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{t('nsfw.add_keyword')}</TooltipContent>
+              </Tooltip>
+            </div>
             <CollapsibleContent>
               <ItemList
                 items={keywordItems}
