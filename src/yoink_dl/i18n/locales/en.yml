@@ -232,38 +232,30 @@ errors:
 
 help_sections:
   guide:
-    title: "How to use"
+    title: "Private chat"
     body: |
-      <b>Direct download</b>
-      Just send any URL in private chat - the bot downloads it automatically.
+      <b>Any URL → download</b>
+      Just send a link in private chat — the bot downloads it.
 
-      <b>Clips and time ranges</b>
-      Append a time range to any URL to cut the result:
-      <code>https://youtu.be/... 1:30-3:45</code>
-      Or use /cut to set a range interactively.
+      <b>Timecode in URL</b>
+      If the URL contains <code>?t=944</code>, the bot picks it up as the start time automatically.
+      Add an end time or duration after the URL to cut a clip:
+      <code>https://youtu.be/...?t=944 3:20</code> — from timecode to 3:20
+      <code>https://youtu.be/...?t=944 60</code> — 60 seconds from timecode
 
-      <b>Formats</b>
-      Use /format to choose video quality, codec, and container before downloading.
-      Use /audio to extract audio only.
+      <b>Time range without timecode</b>
+      <code>URL 1:30 3:45</code> — cut from 1:30 to 3:45
+      <code>URL 1:30 90</code> — start at 1:30, duration 90 seconds
+      Times can be <code>MM:SS</code>, <code>HH:MM:SS</code>, or plain seconds.
 
-      <b>Playlists</b>
-      /playlist downloads all videos in a playlist as separate files.
-
-      <b>Subtitles</b>
-      /subs to configure subtitle language. When enabled, subtitles are embedded in the video.
-
-      <b>Large files</b>
-      /split sets the max size per part - large files are automatically split and sent as an album.
-
-      <b>Galleries</b>
-      For sites like e621 the bot sends up to 10 images as an album.
-      When there are more, it sends 9 previews + a ZIP with all files (configurable via /settings).
+      <b>Inline mode</b>
+      In any chat: <code>@bot_name URL</code> — the bot fetches the media and lets you send it inline.
   music_guide:
-    title: "Music"
+    title: "Music links"
     body: |
-      Send a music streaming link (Spotify, Apple Music, Deezer, SoundCloud, Tidal, YouTube Music, Bandcamp) to get a YouTube search result or a direct download link.
+      Send a track link from Spotify, Apple Music, Deezer, SoundCloud, YouTube Music, or Yandex Music — the bot finds the track on YouTube and either returns a download or a direct link.
 
-      Inline mode: type <code>@bot_name artist - track</code> in any chat to search and share a music link without leaving the conversation.
+      Inline mode: send <code>@bot_name URL</code> with a music link in any chat to share without leaving the conversation.
   download:
     title: "Download"
   settings:
