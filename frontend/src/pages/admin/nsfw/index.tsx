@@ -89,9 +89,9 @@ function EntryDialog({
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button onClick={handleSubmit} disabled={saving || !value.trim()}>
+        <DialogFooter className="flex-row gap-2 sm:space-x-0">
+          <Button variant="outline" className="flex-1" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button className="flex-1" onClick={handleSubmit} disabled={saving || !value.trim()}>
             {saving ? t('common.loading') : submitLabel}
           </Button>
         </DialogFooter>
