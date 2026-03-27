@@ -66,6 +66,7 @@ class DownloadLog(Base):
     quality: Mapped[str | None] = mapped_column(String(32))
     file_size: Mapped[int | None] = mapped_column(BigInteger)
     duration: Mapped[float | None] = mapped_column(Float)
+    file_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="ok", nullable=False)
     error_msg: Mapped[str | None] = mapped_column(Text)
     group_id: Mapped[int | None] = mapped_column(BigInteger)

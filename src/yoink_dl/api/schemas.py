@@ -17,6 +17,7 @@ class DownloadLogResponse(BaseModel):
     quality: str | None
     file_size: int | None
     duration: float | None
+    file_count: int | None
     status: str
     error_msg: str | None
     group_id: int | None

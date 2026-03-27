@@ -32,6 +32,7 @@ export interface DownloadLog {
   quality: string | null
   file_size: number | null
   duration: number | null
+  file_count: number | null
   status: string
   error_msg: string | null
   group_id: number | null

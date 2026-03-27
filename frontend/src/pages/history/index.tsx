@@ -87,7 +87,13 @@ function ExpandedRow({ item }: { item: DownloadLog }) {
             <p className="font-mono">{fmtSecs(item.clip_start)} {'->'} {fmtSecs(item.clip_end)}</p>
           </div>
         )}
-        {item.duration != null && (
+        {item.file_count != null && (
+          <div>
+            <span className="text-muted-foreground">{t('history.file_count')}</span>
+            <p>{item.file_count} {t('history.files')}</p>
+          </div>
+        )}
+        {item.file_count == null && item.duration != null && (
           <div>
             <span className="text-muted-foreground">{t('history.duration')}</span>
             <p>{fmtSecs(Math.round(item.duration))}</p>
@@ -109,21 +115,23 @@ function ExpandedRow({ item }: { item: DownloadLog }) {
         )}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs gap-1.5"
-          disabled={retrying}
-          onClick={retry}
-        >
-          <RotateCcw className={cn('h-3.5 w-3.5', retrying && 'animate-spin')} />
-          {retrying ? 'Queuing…' : 'Re-download'}
-        </Button>
+        {item.status !== 'error' && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1.5"
+            disabled={retrying}
+            onClick={retry}
+          >
+            <RotateCcw className={cn('h-3.5 w-3.5', retrying && 'animate-spin')} />
+            {retrying ? t('history.queuing') : t('history.redownload')}
+          </Button>
+        )}
         {msgUrl && (
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" asChild>
             <a href={msgUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3.5 w-3.5" />
-              Open in Telegram
+              {t('history.open_telegram')}
             </a>
           </Button>
         )}
@@ -323,7 +331,11 @@ export default function HistoryPage() {
                             {item.title && <p className="truncate text-xs text-muted-foreground">{item.url}</p>}
                           </TableCell>
                           <TableCell className="text-sm">{item.quality ?? '-'}</TableCell>
-                          <TableCell className="text-sm">{formatBytes(item.file_size)}</TableCell>
+                          <TableCell className="text-sm">
+                            {item.file_count != null
+                              ? `${item.file_count} ${t('history.files')}`
+                              : formatBytes(item.file_size)}
+                          </TableCell>
                           <TableCell><StatusBadge status={item.status} /></TableCell>
                         </TableRow>
                         {expanded === item.id && (
@@ -359,7 +371,10 @@ export default function HistoryPage() {
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                       <span>{item.domain ?? '-'}</span>
                       {item.quality && <span>{item.quality}</span>}
-                      {item.file_size != null && <span>{formatBytes(item.file_size)}</span>}
+                      {item.file_count != null
+                        ? <span>{item.file_count} {t('history.files')}</span>
+                        : item.file_size != null && <span>{formatBytes(item.file_size)}</span>
+                      }
                       <span>{formatDate(item.created_at)}</span>
                     </div>
                     {expanded === item.id && (

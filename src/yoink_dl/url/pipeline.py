@@ -584,6 +584,7 @@ async def run_download(
                 quality=user_settings.quality,
                 file_size=file_size,
                 duration=job.duration,
+                file_count=len(job.files) if len(job.files) > 1 else None,
                 status="ok",
                 group_id=group_id,
                 thread_id=thread_id,

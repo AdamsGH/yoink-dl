@@ -426,6 +426,7 @@ class DownloadLogRepo:
         quality: str | None = None,
         file_size: int | None = None,
         duration: float | None = None,
+        file_count: int | None = None,
         status: str = "ok",
         error_msg: str | None = None,
         group_id: int | None = None,
@@ -446,8 +447,8 @@ class DownloadLogRepo:
                 s.add(DownloadLog(
                     user_id=user_id, url=url, domain=domain, title=title,
                     quality=quality, file_size=file_size, duration=duration,
-                    status=status, error_msg=error_msg, group_id=group_id,
-                    thread_id=thread_id, message_id=message_id,
+                    file_count=file_count, status=status, error_msg=error_msg,
+                    group_id=group_id, thread_id=thread_id, message_id=message_id,
                     clip_start=clip_start, clip_end=clip_end,
                 ))
                 await s.commit()
