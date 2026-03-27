@@ -43,7 +43,7 @@ router = APIRouter(tags=["downloader"])
 
 # Download history
 
-@router.get("/downloads", response_model=dict)
+@router.get("/downloads", response_model=dict, summary="My download history", description="Paginated list of the current user's download logs.")
 async def list_my_downloads(
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -65,7 +65,7 @@ async def list_my_downloads(
     )
 
 
-@router.get("/downloads/all", response_model=dict)
+@router.get("/downloads/all", response_model=dict, summary="All users' download history (admin+)")
 async def list_all_downloads(
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -84,7 +84,7 @@ async def list_all_downloads(
 
 # dl-specific user settings
 
-@router.get("/settings", response_model=DlUserSettingsResponse)
+@router.get("/settings", response_model=DlUserSettingsResponse, summary="My downloader settings")
 async def get_dl_settings(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -98,7 +98,7 @@ async def get_dl_settings(
     return DlUserSettingsResponse.model_validate(row)
 
 
-@router.patch("/settings", response_model=DlUserSettingsResponse)
+@router.patch("/settings", response_model=DlUserSettingsResponse, summary="Update my downloader settings", description="Fields: `max_quality` (144-2160), `prefer_format` (`mp4`/`webm`/`best`), `audio_only` (bool).")
 async def update_dl_settings(
     body: DlUserSettingsUpdate,
     session: AsyncSession = Depends(get_db),
@@ -117,7 +117,7 @@ async def update_dl_settings(
 
 # Stats
 
-@router.get("/stats/overview", response_model=StatsOverview)
+@router.get("/stats/overview", response_model=StatsOverview, summary="Downloader stats overview (admin+)", description="Total downloads, unique users, top domains, and per-status counts.")
 async def stats_overview(
     days: int = Query(30, ge=1, le=365),
     session: AsyncSession = Depends(get_db),
@@ -170,7 +170,7 @@ async def stats_overview(
 
 # Download retry
 
-@router.post("/downloads/{log_id}/retry", status_code=202)
+@router.post("/downloads/{log_id}/retry", status_code=202, summary="Retry a failed download (admin+)")
 async def retry_download(
     log_id: int,
     session: AsyncSession = Depends(get_db),
@@ -184,7 +184,7 @@ async def retry_download(
 
 # Cookies
 
-@router.get("/cookies", response_model=list[CookieResponse])
+@router.get("/cookies", response_model=list[CookieResponse], summary="My cookies")
 async def list_my_cookies(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -195,7 +195,7 @@ async def list_my_cookies(
     return [CookieResponse.model_validate(r) for r in rows]
 
 
-@router.post("/cookies", response_model=CookieResponse, status_code=201)
+@router.post("/cookies", response_model=CookieResponse, status_code=201, summary="Add cookie by content (raw, no format validation)")
 async def create_cookie(
     body: CookieCreate,
     session: AsyncSession = Depends(get_db),
@@ -214,7 +214,7 @@ async def create_cookie(
     return CookieResponse.model_validate(row)
 
 
-@router.get("/cookies/all", response_model=list[CookieResponse])
+@router.get("/cookies/all", response_model=list[CookieResponse], summary="All users' cookies (admin+)")
 async def list_all_cookies(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
@@ -225,7 +225,7 @@ async def list_all_cookies(
     return [CookieResponse.model_validate(r) for r in rows]
 
 
-@router.post("/cookies/upload", response_model=CookieResponse, status_code=201)
+@router.post("/cookies/upload", response_model=CookieResponse, status_code=201, summary="Upload cookie file (Netscape format validated)")
 async def upload_cookie_file(
     body: CookieCreate,
     session: AsyncSession = Depends(get_db),
@@ -249,7 +249,7 @@ async def upload_cookie_file(
     return CookieResponse.model_validate(row)
 
 
-@router.post("/cookies/{cookie_id}/validate", response_model=CookieResponse)
+@router.post("/cookies/{cookie_id}/validate", response_model=CookieResponse, summary="Re-validate cookie format, update is_valid flag")
 async def validate_cookie(
     cookie_id: int,
     session: AsyncSession = Depends(get_db),
@@ -270,7 +270,7 @@ async def validate_cookie(
     return CookieResponse.model_validate(row)
 
 
-@router.delete("/cookies/{domain}", status_code=204)
+@router.delete("/cookies/{domain}", status_code=204, summary="Delete cookie by domain")
 async def delete_cookie(
     domain: str,
     session: AsyncSession = Depends(get_db),
@@ -285,7 +285,7 @@ async def delete_cookie(
     await session.commit()
 
 
-@router.delete("/cookies/by-id/{cookie_id}", status_code=204)
+@router.delete("/cookies/by-id/{cookie_id}", status_code=204, summary="Delete cookie by ID")
 async def delete_cookie_by_id(
     cookie_id: int,
     session: AsyncSession = Depends(get_db),
@@ -298,7 +298,7 @@ async def delete_cookie_by_id(
     await session.commit()
 
 
-@router.post("/cookies/token", response_model=CookieTokenResponse)
+@router.post("/cookies/token", response_model=CookieTokenResponse, summary="Generate one-time sync token for Yoink Cookie Sync extension")
 async def generate_cookie_token(
     current_user: User = Depends(get_current_user),
 ) -> CookieTokenResponse:
@@ -311,7 +311,7 @@ async def generate_cookie_token(
     )
 
 
-@router.post("/cookies/submit", status_code=204)
+@router.post("/cookies/submit", status_code=204, summary="Submit cookies via one-time sync token (no auth)", description="Used by the browser extension. Validates the token and upserts the cookie.")
 async def submit_cookies(
     body: CookieSubmitRequest,
     session: AsyncSession = Depends(get_db),
@@ -367,7 +367,7 @@ async def submit_cookies(
 
 # NSFW check + lists
 
-@router.post("/nsfw/check", response_model=NsfwCheckResponse)
+@router.post("/nsfw/check", response_model=NsfwCheckResponse, summary="Check if a URL matches NSFW rules (admin+)")
 async def check_nsfw(
     body: NsfwCheckRequest,
     session: AsyncSession = Depends(get_db),
@@ -392,7 +392,7 @@ async def check_nsfw(
     )
 
 
-@router.get("/nsfw/domains", response_model=list[NsfwDomainResponse])
+@router.get("/nsfw/domains", response_model=list[NsfwDomainResponse], summary="List NSFW domains (admin+)")
 async def list_nsfw_domains(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
@@ -403,7 +403,7 @@ async def list_nsfw_domains(
     return [NsfwDomainResponse.model_validate(r) for r in rows]
 
 
-@router.post("/nsfw/domains", response_model=NsfwDomainResponse, status_code=201)
+@router.post("/nsfw/domains", response_model=NsfwDomainResponse, status_code=201, summary="Add NSFW domain (admin+)")
 async def add_nsfw_domain(
     body: NsfwDomainCreate,
     session: AsyncSession = Depends(get_db),
@@ -416,7 +416,7 @@ async def add_nsfw_domain(
     return NsfwDomainResponse.model_validate(row)
 
 
-@router.patch("/nsfw/domains/{domain_id}", response_model=NsfwDomainResponse)
+@router.patch("/nsfw/domains/{domain_id}", response_model=NsfwDomainResponse, summary="Update NSFW domain (admin+)")
 async def update_nsfw_domain(
     domain_id: int,
     body: NsfwDomainUpdate,
@@ -435,7 +435,7 @@ async def update_nsfw_domain(
     return NsfwDomainResponse.model_validate(row)
 
 
-@router.delete("/nsfw/domains/{domain_id}", status_code=204)
+@router.delete("/nsfw/domains/{domain_id}", status_code=204, summary="Delete NSFW domain (admin+)")
 async def delete_nsfw_domain(
     domain_id: int,
     session: AsyncSession = Depends(get_db),
@@ -448,7 +448,7 @@ async def delete_nsfw_domain(
     await session.commit()
 
 
-@router.get("/nsfw/keywords", response_model=list[NsfwKeywordResponse])
+@router.get("/nsfw/keywords", response_model=list[NsfwKeywordResponse], summary="List NSFW keywords (admin+)")
 async def list_nsfw_keywords(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
@@ -459,7 +459,7 @@ async def list_nsfw_keywords(
     return [NsfwKeywordResponse.model_validate(r) for r in rows]
 
 
-@router.post("/nsfw/keywords", response_model=NsfwKeywordResponse, status_code=201)
+@router.post("/nsfw/keywords", response_model=NsfwKeywordResponse, status_code=201, summary="Add NSFW keyword (admin+)")
 async def add_nsfw_keyword(
     body: NsfwKeywordCreate,
     session: AsyncSession = Depends(get_db),
@@ -472,7 +472,7 @@ async def add_nsfw_keyword(
     return NsfwKeywordResponse.model_validate(row)
 
 
-@router.patch("/nsfw/keywords/{keyword_id}", response_model=NsfwKeywordResponse)
+@router.patch("/nsfw/keywords/{keyword_id}", response_model=NsfwKeywordResponse, summary="Update NSFW keyword (admin+)")
 async def update_nsfw_keyword(
     keyword_id: int,
     body: NsfwKeywordUpdate,
@@ -491,7 +491,7 @@ async def update_nsfw_keyword(
     return NsfwKeywordResponse.model_validate(row)
 
 
-@router.delete("/nsfw/keywords/{keyword_id}", status_code=204)
+@router.delete("/nsfw/keywords/{keyword_id}", status_code=204, summary="Delete NSFW keyword (admin+)")
 async def delete_nsfw_keyword(
     keyword_id: int,
     session: AsyncSession = Depends(get_db),
@@ -504,7 +504,7 @@ async def delete_nsfw_keyword(
     await session.commit()
 
 
-@router.post("/nsfw/import")
+@router.post("/nsfw/import", summary="Import NSFW rules from JSON (admin+)")
 async def import_nsfw(
     body: NsfwImport,
     session: AsyncSession = Depends(get_db),
@@ -536,7 +536,7 @@ async def import_nsfw(
     return {"domains_added": added_d, "keywords_added": added_k}
 
 
-@router.get("/nsfw/export")
+@router.get("/nsfw/export", summary="Export NSFW rules as JSON (admin+)")
 async def export_nsfw(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
