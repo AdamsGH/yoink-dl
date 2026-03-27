@@ -101,13 +101,15 @@ function EntryDialog({
 }
 
 const IMPORT_EXAMPLE = `{
-  "domains":  [{ "domain": "example.com", "note": "optional" }],
-  "keywords": [{ "keyword": "word",       "note": "optional" }]
+  "domains": [{ "domain": "example.com", "note": "optional" }],
+  "keywords": [{ "keyword": "word", "note": "optional" }]
 }`
+
+const IMPORT_DEFAULT = `{\n\n}`
 
 function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const { t } = useTranslation()
-  const [value, setValue] = useState('')
+  const [value, setValue] = useState(IMPORT_DEFAULT)
   const [parseError, setParseError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -146,7 +148,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
         keywords: parsed.keywords ?? [],
       })
       toast.success(t('nsfw.added_ok'))
-      setValue('')
+      setValue(IMPORT_DEFAULT)
       setParseError(null)
       onClose()
       onDone()
@@ -158,10 +160,11 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
     }
   }
 
-  const canImport = value.trim().length > 0 && !parseError && !importing
+  const isEmpty = value.trim() === '' || value.trim() === IMPORT_DEFAULT.trim()
+  const canImport = !isEmpty && !parseError && !importing
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { setValue(''); setParseError(null); onClose() } }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setValue(IMPORT_DEFAULT); setParseError(null); onClose() } }}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{t('nsfw.import')}</DialogTitle>
