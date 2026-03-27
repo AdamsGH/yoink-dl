@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
-import { ChevronDown, Download, Pencil, Plus, ShieldAlert, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, Download, ListFilter, Pencil, Plus, ShieldAlert, Trash2, Upload } from 'lucide-react'
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
@@ -561,7 +561,8 @@ export default function AdminNsfwPage() {
           {/* Card-level header: title + import/export */}
           <CardHeader className="px-4 py-3 border-b">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-base">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ListFilter className="h-4 w-4 text-muted-foreground" />
                 {t('nsfw.rules_title', { defaultValue: 'Rules' })}
               </CardTitle>
               <div className="flex gap-1 shrink-0">
