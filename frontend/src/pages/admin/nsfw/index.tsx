@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
-import { Download, Pencil, Plus, ShieldAlert, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, Download, Pencil, Plus, ShieldAlert, Trash2, Upload } from 'lucide-react'
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
@@ -9,11 +9,14 @@ import type { NsfwDomain, NsfwKeyword, NsfwCheckResponse } from '@dl/types'
 import { Badge } from '@core/components/ui/badge'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@core/components/ui/collapsible'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@core/components/ui/dialog'
 import { Input } from '@core/components/ui/input'
 import { Label } from '@core/components/ui/label'
+import { Separator } from '@core/components/ui/separator'
 import { Skeleton } from '@core/components/ui/skeleton'
 import { toast } from '@core/components/ui/toast'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
 import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
 
 // ── Dialogs ───────────────────────────────────────────────────────────────────
@@ -169,6 +172,39 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
   )
 }
 
+// ── Icon button with tooltip ──────────────────────────────────────────────────
+
+function IconBtn({
+  tooltip,
+  onClick,
+  disabled,
+  destructive,
+  children,
+}: {
+  tooltip: string
+  onClick: () => void
+  disabled?: boolean
+  destructive?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`h-8 w-8 ${destructive ? 'text-muted-foreground hover:text-destructive' : ''}`}
+          disabled={disabled}
+          onClick={onClick}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{tooltip}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 // ── Item list ─────────────────────────────────────────────────────────────────
 
 interface ListItem {
@@ -211,7 +247,7 @@ function ItemList<T extends ListItem>({
 
   if (items.length === 0) {
     return (
-      <div className="flex justify-center py-10 text-sm text-muted-foreground">
+      <div className="flex justify-center py-6 text-sm text-muted-foreground">
         {t(emptyKey as Parameters<typeof t>[0])}
       </div>
     )
@@ -224,23 +260,17 @@ function ItemList<T extends ListItem>({
           <div className="flex-1 min-w-0 space-y-0.5">
             <p className="font-mono text-sm leading-snug break-all">{item.primary}</p>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-              {item.note && (
-                <span className="text-xs text-muted-foreground">{item.note}</span>
-              )}
+              {item.note && <span className="text-xs text-muted-foreground">{item.note}</span>}
               <span className="text-xs text-muted-foreground/60">{formatDate(item.created_at)}</span>
             </div>
           </div>
           <div className="flex gap-1 shrink-0 pt-0.5">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(item)}>
+            <IconBtn tooltip={t('common.edit')} onClick={() => onEdit(item)}>
               <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-              disabled={deletingId === item.id}
-              onClick={() => onDelete(item)}
-            >
+            </IconBtn>
+            <IconBtn tooltip={t('common.delete')} destructive disabled={deletingId === item.id} onClick={() => onDelete(item)}>
               <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            </IconBtn>
           </div>
         </div>
       ))}
@@ -469,113 +499,146 @@ export default function AdminNsfwPage() {
   const keywordItems: ListItem[] = keywords.map((k) => ({ id: k.id, primary: k.keyword, note: k.note, created_at: k.created_at }))
 
   return (
-    <div className="space-y-4">
-      <CheckPanel />
+    <TooltipProvider delayDuration={300}>
+      <div className="space-y-4">
+        <CheckPanel />
 
-      {/* Domains */}
-      <Card>
-        <CardHeader className="px-4 py-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <CardTitle className="text-base">
-              {loadingD ? t('nsfw.domains', { defaultValue: 'Domains' }) : t('nsfw.domains_count', { count: domains.length, defaultValue: '{{count}} domains' })}
-            </CardTitle>
-            <div className="flex gap-1.5 flex-wrap">
-              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                <Upload className="h-3.5 w-3.5 sm:mr-1.5" />
-                <span className="hidden sm:inline">{t('nsfw.import')}</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={exportJson}>
-                <Download className="h-3.5 w-3.5 sm:mr-1.5" />
-                <span className="hidden sm:inline">{t('nsfw.export', { defaultValue: 'Export' })}</span>
-              </Button>
-              <Button size="sm" onClick={() => setAddDomainOpen(true)}>
-                <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
-                <span className="hidden sm:inline">{t('nsfw.add_domain')}</span>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ItemList
-            items={domainItems}
-            loading={loadingD}
-            emptyKey="nsfw.no_domains"
-            deletingId={deletingD}
-            onEdit={(item) => setEditDomain(domains.find((d) => d.id === item.id) ?? null)}
-            onDelete={(item) => removeDomain(domains.find((d) => d.id === item.id)!)}
-          />
-        </CardContent>
-      </Card>
+        {/* Domains + Keywords in one card */}
+        <Card>
+          {/* Domains section */}
+          <Collapsible defaultOpen>
+            <CardHeader className="px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <CollapsibleTrigger className="flex items-center gap-2 group flex-1 min-w-0">
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                  <CardTitle className="text-base">
+                    {loadingD
+                      ? t('nsfw.domains', { defaultValue: 'Domains' })
+                      : t('nsfw.domains_count', { count: domains.length, defaultValue: '{{count}} domains' })}
+                  </CardTitle>
+                </CollapsibleTrigger>
+                <div className="flex gap-1 shrink-0">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setImportOpen(true)}>
+                        <Upload className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t('nsfw.import')}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={exportJson}>
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t('nsfw.export', { defaultValue: 'Export' })}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" className="h-8 w-8" onClick={() => setAddDomainOpen(true)}>
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t('nsfw.add_domain')}</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+            </CardHeader>
+            <CollapsibleContent>
+              <ItemList
+                items={domainItems}
+                loading={loadingD}
+                emptyKey="nsfw.no_domains"
+                deletingId={deletingD}
+                onEdit={(item) => setEditDomain(domains.find((d) => d.id === item.id) ?? null)}
+                onDelete={(item) => removeDomain(domains.find((d) => d.id === item.id)!)}
+              />
+            </CollapsibleContent>
+          </Collapsible>
 
-      {/* Keywords */}
-      <Card>
-        <CardHeader className="px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-base">
-              {loadingK ? t('nsfw.keywords', { defaultValue: 'Keywords' }) : t('nsfw.keywords_count', { count: keywords.length, defaultValue: '{{count}} keywords' })}
-            </CardTitle>
-            <Button size="sm" onClick={() => setAddKeywordOpen(true)}>
-              <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">{t('nsfw.add_keyword')}</span>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ItemList
-            items={keywordItems}
-            loading={loadingK}
-            emptyKey="nsfw.no_keywords"
-            deletingId={deletingK}
-            onEdit={(item) => setEditKeyword(keywords.find((k) => k.id === item.id) ?? null)}
-            onDelete={(item) => removeKeyword(keywords.find((k) => k.id === item.id)!)}
-          />
-        </CardContent>
-      </Card>
+          <Separator />
 
-      {/* Dialogs */}
-      <EntryDialog
-        open={addDomainOpen}
-        title={t('nsfw.add_domain_title')}
-        fieldLabel={t('nsfw.domain_field')}
-        fieldPlaceholder={t('nsfw.domain_placeholder')}
-        submitLabel={t('nsfw.add_btn')}
-        onClose={() => setAddDomainOpen(false)}
-        onSubmit={addDomain}
-      />
-      <EntryDialog
-        open={addKeywordOpen}
-        title={t('nsfw.add_keyword_title')}
-        fieldLabel={t('nsfw.keyword_field')}
-        fieldPlaceholder={t('nsfw.keyword_placeholder')}
-        submitLabel={t('nsfw.add_btn')}
-        onClose={() => setAddKeywordOpen(false)}
-        onSubmit={addKeyword}
-      />
-      <EntryDialog
-        open={!!editDomain}
-        title={t('nsfw.edit_domain_title')}
-        fieldLabel={t('nsfw.domain_field')}
-        initialValue={editDomain?.domain ?? ''}
-        initialNote={editDomain?.note ?? ''}
-        submitLabel={t('common.save')}
-        onClose={() => setEditDomain(null)}
-        onSubmit={saveDomain}
-      />
-      <EntryDialog
-        open={!!editKeyword}
-        title={t('nsfw.edit_keyword_title')}
-        fieldLabel={t('nsfw.keyword_field')}
-        initialValue={editKeyword?.keyword ?? ''}
-        initialNote={editKeyword?.note ?? ''}
-        submitLabel={t('common.save')}
-        onClose={() => setEditKeyword(null)}
-        onSubmit={saveKeyword}
-      />
-      <ImportDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onDone={() => { loadDomains(); loadKeywords() }}
-      />
-    </div>
+          {/* Keywords section */}
+          <Collapsible defaultOpen>
+            <CardHeader className="px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <CollapsibleTrigger className="flex items-center gap-2 group flex-1 min-w-0">
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                  <CardTitle className="text-base">
+                    {loadingK
+                      ? t('nsfw.keywords', { defaultValue: 'Keywords' })
+                      : t('nsfw.keywords_count', { count: keywords.length, defaultValue: '{{count}} keywords' })}
+                  </CardTitle>
+                </CollapsibleTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => setAddKeywordOpen(true)}>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{t('nsfw.add_keyword')}</TooltipContent>
+                </Tooltip>
+              </div>
+            </CardHeader>
+            <CollapsibleContent>
+              <ItemList
+                items={keywordItems}
+                loading={loadingK}
+                emptyKey="nsfw.no_keywords"
+                deletingId={deletingK}
+                onEdit={(item) => setEditKeyword(keywords.find((k) => k.id === item.id) ?? null)}
+                onDelete={(item) => removeKeyword(keywords.find((k) => k.id === item.id)!)}
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+
+        {/* Dialogs */}
+        <EntryDialog
+          open={addDomainOpen}
+          title={t('nsfw.add_domain_title')}
+          fieldLabel={t('nsfw.domain_field')}
+          fieldPlaceholder={t('nsfw.domain_placeholder')}
+          submitLabel={t('nsfw.add_btn')}
+          onClose={() => setAddDomainOpen(false)}
+          onSubmit={addDomain}
+        />
+        <EntryDialog
+          open={addKeywordOpen}
+          title={t('nsfw.add_keyword_title')}
+          fieldLabel={t('nsfw.keyword_field')}
+          fieldPlaceholder={t('nsfw.keyword_placeholder')}
+          submitLabel={t('nsfw.add_btn')}
+          onClose={() => setAddKeywordOpen(false)}
+          onSubmit={addKeyword}
+        />
+        <EntryDialog
+          open={!!editDomain}
+          title={t('nsfw.edit_domain_title')}
+          fieldLabel={t('nsfw.domain_field')}
+          initialValue={editDomain?.domain ?? ''}
+          initialNote={editDomain?.note ?? ''}
+          submitLabel={t('common.save')}
+          onClose={() => setEditDomain(null)}
+          onSubmit={saveDomain}
+        />
+        <EntryDialog
+          open={!!editKeyword}
+          title={t('nsfw.edit_keyword_title')}
+          fieldLabel={t('nsfw.keyword_field')}
+          initialValue={editKeyword?.keyword ?? ''}
+          initialNote={editKeyword?.note ?? ''}
+          submitLabel={t('common.save')}
+          onClose={() => setEditKeyword(null)}
+          onSubmit={saveKeyword}
+        />
+        <ImportDialog
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          onDone={() => { loadDomains(); loadKeywords() }}
+        />
+      </div>
+    </TooltipProvider>
   )
 }
