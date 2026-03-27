@@ -195,7 +195,7 @@ export default function HistoryPage() {
     <div className="space-y-4">
       {/* Filter bar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-wrap">
-        {/* Search */}
+        {/* Search — full width */}
         <div className="flex-1 min-w-[160px]">
           <Input
             ref={searchRef}
@@ -207,13 +207,13 @@ export default function HistoryPage() {
           />
         </div>
 
-        {/* Domain select */}
-        <div className="w-full sm:w-44">
+        {/* Domain + Status — two equal columns on mobile */}
+        <div className="grid grid-cols-2 gap-2 sm:contents">
           <Select
             value={filters.domain || '_all'}
             onValueChange={(v) => setFilters((f) => ({ ...f, domain: v === '_all' ? '' : v }))}
           >
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="h-9 sm:w-44">
               <SelectValue placeholder={t('history.domain_label')} />
             </SelectTrigger>
             <SelectContent>
@@ -223,15 +223,12 @@ export default function HistoryPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
 
-        {/* Status */}
-        <div className="w-full sm:w-32">
           <Select
             value={filters.status}
             onValueChange={(v) => setFilters((f) => ({ ...f, status: v as StatusFilter }))}
           >
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="h-9 sm:w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -243,40 +240,39 @@ export default function HistoryPage() {
           </Select>
         </div>
 
-        {/* Date range */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn('h-9 justify-start gap-2 font-normal w-full sm:w-auto', !filters.dateRange?.from && 'text-muted-foreground')}
-            >
-              <CalendarIcon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{dateLabel}</span>
-              {filters.dateRange?.from && (
-                <X
-                  className="ml-auto h-3.5 w-3.5 shrink-0 opacity-50 hover:opacity-100"
-                  onClick={(e) => { e.stopPropagation(); setFilters((f) => ({ ...f, dateRange: undefined })) }}
-                />
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={filters.dateRange}
-              onSelect={(r: DateRange | undefined) => setFilters((f) => ({ ...f, dateRange: r }))}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+        {/* Date range + Apply — one row on mobile */}
+        <div className="flex gap-2 sm:contents">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn('h-9 flex-1 justify-start gap-2 font-normal sm:flex-none sm:w-auto', !filters.dateRange?.from && 'text-muted-foreground')}
+              >
+                <CalendarIcon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{dateLabel}</span>
+                {filters.dateRange?.from && (
+                  <X
+                    className="ml-auto h-3.5 w-3.5 shrink-0 opacity-50 hover:opacity-100"
+                    onClick={(e) => { e.stopPropagation(); setFilters((f) => ({ ...f, dateRange: undefined })) }}
+                  />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={filters.dateRange}
+                onSelect={(r: DateRange | undefined) => setFilters((f) => ({ ...f, dateRange: r }))}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button size="sm" className="h-9" onClick={apply}>{t('history.apply')}</Button>
+          <Button size="sm" className="h-9 shrink-0" onClick={apply}>{t('history.apply')}</Button>
           {hasActive && (
-            <Button size="sm" variant="outline" className="h-9 gap-1" onClick={resetFilters}>
+            <Button size="sm" variant="outline" className="h-9 shrink-0 gap-1" onClick={resetFilters}>
               <X className="h-3.5 w-3.5" />
-              {t('history.clear_all')}
+              <span className="hidden sm:inline">{t('history.clear_all')}</span>
             </Button>
           )}
         </div>

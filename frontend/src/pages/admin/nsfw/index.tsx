@@ -248,51 +248,40 @@ function CheckPanel() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
           <ShieldAlert className="h-4 w-4" />
           {t('nsfw.check_title')}
         </CardTitle>
+        <Button size="sm" onClick={check} disabled={checking || !url.trim()}>
+          {checking ? t('nsfw.checking') : t('nsfw.check_btn')}
+        </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="check-url">{t('nsfw.check_title')}</Label>
-          <Input
-            id="check-url"
-            placeholder="https://example.com/video/..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && check()}
-          />
+      <CardContent className="space-y-3 pt-0">
+        <Input
+          id="check-url"
+          placeholder={t('nsfw.check_placeholder')}
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && check()}
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <Input placeholder={t('nsfw.check_title_placeholder', { defaultValue: 'Title (optional)' })} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Input placeholder={t('nsfw.check_desc_placeholder', { defaultValue: 'Description (optional)' })} value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="check-title">Title (optional)</Label>
-            <Input id="check-title" placeholder="Video title" value={title} onChange={(e) => setTitle(e.target.value)} />
+        {result && (
+          <div className="flex flex-wrap items-center gap-2 text-sm pt-1">
+            <Badge variant={result.is_nsfw ? 'destructive' : 'success'}>
+              {result.is_nsfw ? 'NSFW' : 'clean'}
+            </Badge>
+            {result.matched_domain && (
+              <span className="font-mono text-xs text-muted-foreground">domain: {result.matched_domain}</span>
+            )}
+            {result.matched_keywords.length > 0 && (
+              <span className="font-mono text-xs text-muted-foreground">keywords: {result.matched_keywords.join(', ')}</span>
+            )}
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="check-desc">{t('nsfw.check_desc_label')}</Label>
-            <Input id="check-desc" placeholder="..." value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={check} disabled={checking || !url.trim()}>
-            {checking ? t('nsfw.checking') : t('nsfw.check_btn')}
-          </Button>
-          {result && (
-            <div className="flex items-center gap-2 text-sm">
-              <Badge variant={result.is_nsfw ? 'destructive' : 'success'}>
-                {result.is_nsfw ? 'NSFW' : 'clean'}
-              </Badge>
-              {result.matched_domain && (
-                <span className="font-mono text-xs text-muted-foreground">domain: {result.matched_domain}</span>
-              )}
-              {result.matched_keywords.length > 0 && (
-                <span className="font-mono text-xs text-muted-foreground">keywords: {result.matched_keywords.join(', ')}</span>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </CardContent>
     </Card>
   )
