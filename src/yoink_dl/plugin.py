@@ -86,9 +86,23 @@ class DownloaderPlugin:
         _ROLE_RANK = {"user": 0, "moderator": 1, "admin": 2, "owner": 3}
         rank = _ROLE_RANK.get(role, 0)
 
-        locale_file = Path(__file__).parent / "i18n" / "locales" / "en.yml"
-        data = yaml.safe_load(locale_file.read_text())
-        sections_cfg = data.get("help_sections", {})
+        locales_dir = Path(__file__).parent / "i18n" / "locales"
+        en_data = yaml.safe_load((locales_dir / "en.yml").read_text())
+        loc_file = locales_dir / f"{lang}.yml"
+        loc_data = yaml.safe_load(loc_file.read_text()) if loc_file.exists() else {}
+
+        def _section(key: str) -> dict:
+            return loc_data.get("help_sections", {}).get(key) \
+                or en_data.get("help_sections", {}).get(key) \
+                or {}
+
+        def _cmd_desc(cmd_name: str, cmd_en_desc: str) -> str:
+            for entry in (loc_data.get("commands") or []):
+                if entry.get("command") == cmd_name:
+                    return entry.get("description") or cmd_en_desc
+            return cmd_en_desc
+
+        sections_cfg = en_data.get("help_sections", {})
 
         cmds: list[CommandSpec] = self.get_commands()
         visible = [c for c in cmds if _ROLE_RANK.get(c.min_role, 0) <= rank]
@@ -101,7 +115,22 @@ class DownloaderPlugin:
             ("owner",     "owner",      ("default", "private")),
         ]
 
+        # Guide block - usage tips, shown first as expandable
+        guide = _section("guide")
+        guide_title = guide.get("title", "")
+        guide_body = guide.get("body", "")
+        music_guide = _section("music_guide")
+        music_guide_title = music_guide.get("title", "")
+        music_guide_body = music_guide.get("body", "")
+
         parts: list[str] = []
+
+        if guide_title and guide_body:
+            parts.append(f"<blockquote expandable><b>{guide_title}</b>\n{guide_body}</blockquote>")
+
+        if music_guide_title and music_guide_body:
+            parts.append(f"<blockquote expandable><b>{music_guide_title}</b>\n{music_guide_body}</blockquote>")
+
         for min_role, section_key, scopes in _SECTION_ORDER:
             if _ROLE_RANK.get(min_role, 0) > rank:
                 continue
@@ -111,9 +140,10 @@ class DownloaderPlugin:
             ]
             if not sec_cmds:
                 continue
-            title = sections_cfg.get(section_key, {}).get("title", section_key.title())
-            footer = sections_cfg.get(section_key, {}).get("footer", "")
-            lines = [f"/{c.command}  - {c.description}" for c in sec_cmds]
+            sec = _section(section_key)
+            title = sec.get("title", section_key.title())
+            footer = sec.get("footer", "")
+            lines = [f"/{c.command}  - {_cmd_desc(c.command, c.description)}" for c in sec_cmds]
             body = "\n".join(lines)
             if footer:
                 body += f"\n\n{footer}"

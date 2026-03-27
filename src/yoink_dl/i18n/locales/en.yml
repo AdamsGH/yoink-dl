@@ -231,11 +231,44 @@ errors:
   unknown: "❌ An unexpected error occurred. Please try again."
 
 help_sections:
+  guide:
+    title: "How to use"
+    body: |
+      <b>Direct download</b>
+      Just send any URL in private chat - the bot downloads it automatically.
+
+      <b>Clips and time ranges</b>
+      Append a time range to any URL to cut the result:
+      <code>https://youtu.be/... 1:30-3:45</code>
+      Or use /cut to set a range interactively.
+
+      <b>Formats</b>
+      Use /format to choose video quality, codec, and container before downloading.
+      Use /audio to extract audio only.
+
+      <b>Playlists</b>
+      /playlist downloads all videos in a playlist as separate files.
+
+      <b>Subtitles</b>
+      /subs to configure subtitle language. When enabled, subtitles are embedded in the video.
+
+      <b>Large files</b>
+      /split sets the max size per part - large files are automatically split and sent as an album.
+
+      <b>Galleries</b>
+      For sites like e621 the bot sends up to 10 images as an album.
+      When there are more, it sends 9 previews + a ZIP with all files (configurable via /settings).
+  music_guide:
+    title: "Music"
+    body: |
+      Send a music streaming link (Spotify, Apple Music, Deezer, SoundCloud, Tidal, YouTube Music, Bandcamp) to get a YouTube search result or a direct download link.
+
+      Inline mode: type <code>@bot_name artist - track</code> in any chat to search and share a music link without leaving the conversation.
   download:
     title: "Download"
   settings:
     title: "Settings"
-    footer: "Send any URL directly in private chat to download."
+    footer: "Send any URL in private chat to download."
   moderator:
     title: "Moderator"
   admin:
