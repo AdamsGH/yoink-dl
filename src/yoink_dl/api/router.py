@@ -283,22 +283,70 @@ async def upload_cookie_file(
     return CookieResponse.model_validate(row)
 
 
-@router.post("/cookies/{cookie_id}/validate", response_model=CookieResponse, summary="Re-validate cookie format, update is_valid flag")
+@router.post("/cookies/{cookie_id}/validate", response_model=CookieResponse, summary="Re-validate cookie by making an HTTP request to the domain")
 async def validate_cookie(
     cookie_id: int,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CookieResponse:
-    """Re-validate a stored cookie by parsing its content. Marks is_valid accordingly."""
+    """
+    Validate a stored cookie by:
+    1. Parsing Netscape format (structural check).
+    2. Making a real GET request to https://{domain} with the cookies and checking
+       that the response does not return 401/403 (access denied).
+    Updates is_valid accordingly.
+    """
+    import httpx  # noqa: PLC0415
+    import tempfile, os  # noqa: PLC0415, E401
     from yoink_dl.services.cookies import validate_netscape  # noqa: PLC0415
+
     row = await session.get(Cookie, cookie_id)
     if row is None:
         raise NotFoundError(f"Cookie {cookie_id} not found")
-    # Admin/owner can validate any; user can only validate their own
+
     from yoink.core.db.models import UserRole  # noqa: PLC0415
     if current_user.role not in (UserRole.admin, UserRole.owner) and row.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your cookie")
-    row.is_valid = validate_netscape(row.content or "")
+
+    content = row.content or ""
+
+    # Step 1: structural check
+    if not validate_netscape(content):
+        row.is_valid = False
+        await session.commit()
+        await session.refresh(row)
+        return CookieResponse.model_validate(row)
+
+    # Step 2: parse cookies into a jar and make a real HTTP request
+    jar = httpx.Cookies()
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) < 7:
+            continue
+        domain, _, path, _, _, name, value = parts[:7]
+        jar.set(name, value, domain=domain.lstrip("."), path=path)
+
+    domain = row.domain or ""
+    url = f"https://{domain}"
+    is_valid = False
+    try:
+        async with httpx.AsyncClient(
+            cookies=jar,
+            follow_redirects=True,
+            timeout=10.0,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; YoinkBot/1.0)"},
+        ) as client:
+            resp = await client.get(url)
+            # 401/403 means cookies are rejected; anything else (including 200, 302, 404, 429) is OK
+            is_valid = resp.status_code not in (401, 403)
+    except Exception:
+        # Network error — keep structural validity, don't mark invalid
+        is_valid = True
+
+    row.is_valid = is_valid
     await session.commit()
     await session.refresh(row)
     return CookieResponse.model_validate(row)
