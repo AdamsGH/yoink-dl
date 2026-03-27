@@ -211,9 +211,9 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button onClick={handleImport} disabled={!canImport}>
+        <DialogFooter className="flex-row gap-2 sm:space-x-0">
+          <Button variant="outline" className="flex-1" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button className="flex-1" onClick={handleImport} disabled={!canImport}>
             {importing ? t('common.loading') : t('nsfw.import')}
           </Button>
         </DialogFooter>
