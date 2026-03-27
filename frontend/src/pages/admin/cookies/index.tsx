@@ -1,22 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { CheckCircle, CookieIcon, RefreshCw, Trash2, Upload } from 'lucide-react'
-import { Check, ChevronsUpDown } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
 import { useTranslation } from 'react-i18next'
 
 import { apiClient } from '@core/lib/api-client'
-import { formatDate, cn } from '@core/lib/utils'
+import { formatDate } from '@core/lib/utils'
 import type { Cookie } from '@dl/types'
 import type { User, PaginatedResponse } from '@core/types/api'
 import { CookieStatusBadge, RoleBadge } from '@core/components/app/StatusBadge'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@core/components/ui/command'
+import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '@core/components/ui/combobox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@core/components/ui/dialog'
 import { Input } from '@core/components/ui/input'
 import { Label } from '@core/components/ui/label'
-import { Popover, PopoverContent, PopoverTrigger } from '@core/components/ui/popover'
 import { Skeleton } from '@core/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@core/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
@@ -35,7 +33,7 @@ function parseDomainFromNetscape(content: string): string | null {
   return null
 }
 
-// Combobox for user selection — Input as trigger, dropdown below
+// Combobox for user selection using @base-ui/react Combobox
 function UserCombobox({
   value,
   onChange,
@@ -46,69 +44,33 @@ function UserCombobox({
   users: User[]
 }) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-
-  const selected = users.find((u) => String(u.id) === value)
-
-  // When closed, display field shows selected user name; when open, shows search
-  const inputValue = open
-    ? search
-    : (selected ? (selected.first_name ?? selected.username ?? String(selected.id)) : value)
-
-  const filtered = users.filter((u) => {
-    const q = search.toLowerCase()
-    return (
-      String(u.id).includes(q) ||
-      (u.username ?? '').toLowerCase().includes(q) ||
-      (u.first_name ?? '').toLowerCase().includes(q)
-    )
-  })
+  const selected = users.find((u) => String(u.id) === value) ?? null
 
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch('') }}>
-      <PopoverTrigger asChild>
-        <div className="relative">
-          <Input
-            value={inputValue}
-            placeholder={t('cookies.select_user', { defaultValue: 'Select user…' })}
-            readOnly={!open}
-            onChange={(e) => { if (open) setSearch(e.target.value) }}
-            onFocus={() => setOpen(true)}
-            className="pr-8 cursor-pointer"
-          />
-          <ChevronsUpDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder={t('cookies.search_user', { defaultValue: 'Search by name or ID…' })}
-            value={search}
-            onValueChange={setSearch}
-          />
-          <CommandList>
-            <CommandEmpty>{t('common.no_results', { defaultValue: 'No users found.' })}</CommandEmpty>
-            <CommandGroup>
-              {filtered.map((u) => (
-                <CommandItem
-                  key={u.id}
-                  value={String(u.id)}
-                  onSelect={(v) => { onChange(v); setOpen(false); setSearch('') }}
-                >
-                  <Check className={cn('mr-2 h-4 w-4 shrink-0', value === String(u.id) ? 'opacity-100' : 'opacity-0')} />
-                  <span className="flex-1 truncate">
-                    {u.first_name ?? u.username ?? String(u.id)}
-                  </span>
-                  <span className="mx-2 font-mono text-xs text-muted-foreground">{u.id}</span>
-                  <RoleBadge role={u.role} />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <Combobox
+      value={selected}
+      onValueChange={(u: User | null) => onChange(u ? String(u.id) : '')}
+      items={users}
+      itemToStringValue={(u: User) => u.first_name ?? u.username ?? String(u.id)}
+    >
+      <ComboboxInput
+        placeholder={t('cookies.select_user', { defaultValue: 'Select user…' })}
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>{t('common.no_results', { defaultValue: 'No users found.' })}</ComboboxEmpty>
+        <ComboboxList>
+          {(u: User) => (
+            <ComboboxItem key={u.id} value={u}>
+              <span className="flex-1 truncate">
+                {u.first_name ?? u.username ?? String(u.id)}
+              </span>
+              <span className="ml-auto font-mono text-xs text-muted-foreground">{u.id}</span>
+              <RoleBadge role={u.role} />
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   )
 }
 
