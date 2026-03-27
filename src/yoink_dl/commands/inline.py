@@ -151,9 +151,17 @@ async def handle_inline(
       - Text queries: searches YouTube via yt-dlp and returns up to 8 results
     """
     user = inline_query.from_user
-    if user and await is_blocked(user.id, context):
-        await inline_query.answer([], cache_time=0)
-        return True
+    if user:
+        perm_repo = context.bot_data.get("perm_repo")
+        user_repo = context.bot_data.get("user_repo")
+        if perm_repo and user_repo:
+            u = await user_repo.get_or_create(user.id, username=user.username, first_name=user.first_name)
+            allowed = await perm_repo.has(user.id, "dl", "inline", user=u)
+        else:
+            allowed = not await is_blocked(user.id, context)
+        if not allowed:
+            await inline_query.answer([], cache_time=0)
+            return True
 
     if len(query_text) < _MIN_QUERY_LEN:
         await inline_query.answer(

@@ -27,6 +27,18 @@ class DownloaderPlugin:
         from yoink_dl.commands import get_handler_specs
         return get_handler_specs()
 
+    def get_features(self):
+        from yoink.core.plugin import FeatureSpec
+        return [
+            FeatureSpec(
+                plugin="dl",
+                feature="inline",
+                label="Inline search",
+                description="YouTube search and URL lookup via @bot inline mode",
+                default_min_role="user",
+            ),
+        ]
+
     def get_inline_handlers(self) -> list[InlineHandlerSpec]:
         from yoink_dl.commands.inline import handle_inline
         return [InlineHandlerSpec(
