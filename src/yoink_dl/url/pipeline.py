@@ -334,6 +334,7 @@ async def run_download(
     reg_tracker(tracker)
     download_dir: Path | None = None
     cookie_path: Path | None = None
+    cookie_id: int | None = None
     resolved: Any = None
 
     try:
@@ -349,17 +350,17 @@ async def run_download(
         if cookie_mgr:
             _perm_repo = context.bot_data.get("perm_repo")
             _owner_id = context.bot_data["config"].owner_id
-            _shared_fallback: int | None = None
+            _use_pool = False
             if _perm_repo is not None and user_id != _owner_id:
-                _has_shared = await _perm_repo.has(user_id, "dl", "shared_cookies")
-                if _has_shared:
-                    _shared_fallback = _owner_id
-            cookie_path = await cookie_mgr.get_path_for_url(
+                _use_pool = await _perm_repo.has(user_id, "dl", "shared_cookies")
+            result = await cookie_mgr.get_path_for_url(
                 user_id=user_id,
                 url=url,
-                global_user_id=_shared_fallback,
+                use_pool=_use_pool,
                 no_cookie_domains=domain_cfg.no_cookie,
             )
+            if result is not None:
+                cookie_path, cookie_id = result
 
         multi_clips: list = context.user_data.pop("_clips", [])
 
@@ -615,6 +616,13 @@ async def run_download(
                 clip_end=clip.end_sec if clip else None,
             )
 
+        # Sync cookie file back to DB — yt-dlp may have refreshed the session
+        if cookie_path is not None and cookie_id is not None and cookie_mgr is not None:
+            try:
+                await cookie_mgr.sync_from_file(cookie_id, cookie_path)
+            except Exception as _se:
+                logger.debug("Cookie sync failed (non-fatal): %s", _se)
+
         metrics.inc("downloads_ok")
         metrics.observe("download_duration_seconds", time.monotonic() - _dl_t0)
         metrics.inc("download_bytes_total", file_size)
@@ -633,8 +641,8 @@ async def run_download(
                 user_id, url=url, status="error", error_msg=str(e)[:200],
                 group_id=group_id, thread_id=thread_id,
             )
-        # Mark cookies invalid if error indicates auth failure
-        if cookie_path is not None and cookie_mgr is not None:
+        # Mark cookie invalid if error indicates auth failure
+        if cookie_id is not None and cookie_mgr is not None:
             err_lower = str(e).lower()
             auth_hints = (
                 "http error 403", "http error 401",
@@ -643,11 +651,15 @@ async def run_download(
                 "cookies", "this video is private",
             )
             if any(h in err_lower for h in auth_hints):
-                from yoink_dl.url.domains import extract_domain
-                domain = extract_domain(resolved.url)
-                if domain:
-                    await cookie_mgr.mark_invalid(user_id, domain)
-                    logger.info("Marked cookie invalid: user=%d domain=%s err=%s", user_id, domain, str(e)[:80])
+                try:
+                    await cookie_mgr.mark_invalid(user_id, resolved.domain if resolved else "")
+                except Exception:
+                    pass
+                try:
+                    await cookie_mgr.mark_pool_invalid(cookie_id)
+                except Exception:
+                    pass
+                logger.info("Marked cookie invalid: id=%d err=%s", cookie_id, str(e)[:80])
     finally:
         unreg_tracker(tracker)
         if download_dir is not None and download_dir.exists():

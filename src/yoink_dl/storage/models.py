@@ -113,6 +113,7 @@ class Cookie(Base):
     domain: Mapped[str] = mapped_column(String(253), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     is_valid: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_pool: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

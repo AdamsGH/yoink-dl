@@ -116,17 +116,16 @@ async def _cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         _uid = update.effective_user.id
         _owner_id = context.bot_data["config"].owner_id
         _perm_repo = context.bot_data.get("perm_repo")
-        _shared_fallback: int | None = None
+        _use_pool = False
         if _perm_repo is not None and _uid != _owner_id:
-            if await _perm_repo.has(_uid, "dl", "shared_cookies"):
-                _shared_fallback = _owner_id
-        p = await cookie_mgr.get_path_for_url(
+            _use_pool = await _perm_repo.has(_uid, "dl", "shared_cookies")
+        _result = await cookie_mgr.get_path_for_url(
             user_id=_uid,
             url=url,
-            global_user_id=_shared_fallback,
+            use_pool=_use_pool,
         )
-        if p:
-            cookie_path = str(p)
+        if _result:
+            cookie_path = str(_result[0])
 
     status = await update.message.reply_html(t("list_formats.fetching", lang))
 

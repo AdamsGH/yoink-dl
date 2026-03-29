@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +36,7 @@ from yoink_dl.api.schemas import (
     StatsOverview,
 )
 from yoink_dl.services import cookie_tokens as ct
+from yoink_dl.services.cookies import CookieManager
 from yoink_dl.storage.models import Cookie, DownloadLog, NsfwDomain, NsfwKeyword, UserSettings
 
 router = APIRouter(tags=["downloader"])
@@ -253,11 +254,13 @@ async def list_my_cookies(
     current_user: User = Depends(get_current_user),
 ) -> list[CookieResponse]:
     own_rows = (await session.execute(
-        select(Cookie).where(Cookie.user_id == current_user.id).order_by(Cookie.domain)
+        select(Cookie)
+        .where(Cookie.user_id == current_user.id, Cookie.is_pool.is_(False))
+        .order_by(Cookie.domain)
     )).scalars().all()
     result = [CookieResponse.model_validate(r) for r in own_rows]
 
-    # Include inherited (owner) cookies if user has shared_cookies permission
+    # Include pool cookies if user has shared_cookies permission
     has_shared = (await session.execute(
         select(UserPermission).where(
             UserPermission.user_id == current_user.id,
@@ -267,20 +270,20 @@ async def list_my_cookies(
     )).scalar_one_or_none()
 
     if has_shared:
-        owner = (await session.execute(
-            select(User).where(User.role == UserRole.owner).limit(1)
-        )).scalar_one_or_none()
-        if owner and owner.id != current_user.id:
-            own_domains = {r.domain for r in own_rows}
-            owner_rows = (await session.execute(
-                select(Cookie).where(Cookie.user_id == owner.id).order_by(Cookie.domain)
-            )).scalars().all()
-            for r in owner_rows:
-                if r.domain not in own_domains:
-                    entry = CookieResponse.model_validate(r)
-                    entry.inherited = True
-                    result.append(entry)
-            result.sort(key=lambda c: c.domain)
+        own_domains = {r.domain for r in own_rows}
+        pool_rows = (await session.execute(
+            select(Cookie)
+            .where(Cookie.is_pool.is_(True), Cookie.is_valid.is_(True))
+            .order_by(Cookie.domain)
+        )).scalars().all()
+        seen_pool_domains: set[str] = set()
+        for r in pool_rows:
+            if r.domain not in own_domains and r.domain not in seen_pool_domains:
+                entry = CookieResponse.model_validate(r)
+                entry.inherited = True
+                result.append(entry)
+                seen_pool_domains.add(r.domain)
+        result.sort(key=lambda c: c.domain)
 
     return result
 
@@ -313,6 +316,46 @@ async def list_all_cookies(
         select(Cookie).order_by(Cookie.domain)
     )).scalars().all()
     return [CookieResponse.model_validate(r) for r in rows]
+
+
+@router.get("/cookies/pool", response_model=list[CookieResponse], summary="List pool cookies (admin+)")
+async def list_pool_cookies(
+    domain: str | None = None,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+) -> list[CookieResponse]:
+    q = select(Cookie).where(Cookie.is_pool.is_(True))
+    if domain:
+        q = q.where(Cookie.domain == domain)
+    q = q.order_by(Cookie.domain, Cookie.id)
+    rows = (await session.execute(q)).scalars().all()
+    return [CookieResponse.model_validate(r) for r in rows]
+
+
+@router.post("/cookies/pool", response_model=CookieResponse, status_code=201, summary="Add pool cookie (admin+)")
+async def add_pool_cookie(
+    body: CookieCreate,
+    request: Request,
+    current_user: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+) -> CookieResponse:
+    from yoink_dl.services.cookies import validate_netscape  # noqa: PLC0415
+    if not validate_netscape(body.content):
+        raise HTTPException(status_code=422, detail="Invalid Netscape cookie format")
+    cookie_mgr: CookieManager = request.app.state.bot_data["cookie_manager"]
+    row = await cookie_mgr.store_pool(current_user.id, body.domain, body.content)
+    return CookieResponse.model_validate(row)
+
+
+@router.delete("/cookies/pool/{cookie_id}", status_code=204, summary="Delete pool cookie (admin+)")
+async def delete_pool_cookie(
+    cookie_id: int,
+    request: Request,
+    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+) -> None:
+    cookie_mgr: CookieManager = request.app.state.bot_data["cookie_manager"]
+    deleted = await cookie_mgr.delete_pool(cookie_id)
+    if not deleted:
+        raise NotFoundError(f"Pool cookie {cookie_id} not found")
 
 
 @router.post("/cookies/upload", response_model=CookieResponse, status_code=201, summary="Upload cookie file (Netscape format validated)")

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle, CookieIcon, Globe, RefreshCw, Trash2, Upload } from 'lucide-react'
+import { CheckCircle, CookieIcon, Database, RefreshCw, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
 import { useTranslation } from 'react-i18next'
@@ -21,7 +21,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/
 import { toast } from '@core/components/ui/toast'
 import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
 
-// favicon cache: domain -> img url (or null = failed)
 const faviconCache = new Map<string, string | null>()
 
 function useFavicon(domain: string): string | null {
@@ -40,7 +39,7 @@ function useFavicon(domain: string): string | null {
 function CookieFavicon({ domain }: { domain: string }) {
   const src = useFavicon(domain)
   if (src) return <img src={src} alt="" className="size-4 rounded-sm object-contain" />
-  return <Globe className="size-4" />
+  return <CookieIcon className="size-4" />
 }
 
 type Identity = { id: number; role: string }
@@ -55,7 +54,6 @@ function parseDomainFromNetscape(content: string): string | null {
   return null
 }
 
-// Combobox for user selection using @base-ui/react Combobox
 function UserCombobox({
   value,
   onChange,
@@ -76,9 +74,7 @@ function UserCombobox({
       itemToStringLabel={(u: User) => u.first_name ?? u.username ?? String(u.id)}
       itemToStringValue={(u: User) => String(u.id)}
     >
-      <ComboboxInput
-        placeholder={t('cookies.select_user', { defaultValue: 'Select user…' })}
-      />
+      <ComboboxInput placeholder={t('cookies.select_user', { defaultValue: 'Select user…' })} />
       <ComboboxContent>
         <ComboboxEmpty>{t('common.no_results', { defaultValue: 'No users found.' })}</ComboboxEmpty>
         <ComboboxList>
@@ -97,7 +93,6 @@ function UserCombobox({
   )
 }
 
-// Upload dialog
 function UploadDialog({
   open,
   onClose,
@@ -181,7 +176,6 @@ function UploadDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* File picker */}
           <div className="space-y-1.5">
             <Label>{t('cookies.file_label')}</Label>
             <input
@@ -200,7 +194,6 @@ function UploadDialog({
             </div>
           </div>
 
-          {/* Domain */}
           <div className="space-y-1.5">
             <Label htmlFor="cookie-domain">{t('cookies.domain')}</Label>
             <Input
@@ -212,7 +205,6 @@ function UploadDialog({
             <p className="text-xs text-muted-foreground">{t('cookies.domain_hint')}</p>
           </div>
 
-          {/* User combobox */}
           <div className="space-y-1.5">
             <Label>{t('cookies.user_id_label')}</Label>
             <UserCombobox value={userId} onChange={setUserId} users={users} />
@@ -233,32 +225,174 @@ function UploadDialog({
   )
 }
 
-// Main page
+function AddPoolDialog({
+  open,
+  onClose,
+  onDone,
+}: {
+  open: boolean
+  onClose: () => void
+  onDone: () => void
+}) {
+  const { t } = useTranslation()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [file, setFile] = useState<File | null>(null)
+  const [content, setContent] = useState('')
+  const [domain, setDomain] = useState('')
+  const [uploading, setUploading] = useState(false)
+
+  const reset = () => {
+    setFile(null)
+    setContent('')
+    setDomain('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleFile = (f: File | undefined) => {
+    if (!f) return
+    setFile(f)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      setContent(text)
+      const d = parseDomainFromNetscape(text)
+      if (d) setDomain(d)
+    }
+    reader.readAsText(f)
+  }
+
+  const handleAdd = async () => {
+    if (!content) { toast.error(t('cookies.err_no_file', { defaultValue: 'Select a file first' })); return }
+    if (!domain)  { toast.error(t('cookies.err_no_domain', { defaultValue: 'Domain is required' })); return }
+
+    setUploading(true)
+    try {
+      await apiClient.post('/dl/cookies/pool', { domain, content })
+      toast.success(t('cookies.uploaded_ok', { domain, defaultValue: `Cookie uploaded for ${domain}` }))
+      onClose()
+      reset()
+      onDone()
+    } catch (err) {
+      const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
+      toast.error(detail ?? t('cookies.err_upload', { defaultValue: 'Upload failed' }))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const canAdd = !!file && !!domain && !uploading
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose() } }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('cookies.pool_add_title', { defaultValue: 'Add Pool Cookie' })}</DialogTitle>
+          <DialogDescription>
+            {t('cookies.upload_hint', { defaultValue: 'Upload a Netscape-format cookie file (.txt).' })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>{t('cookies.file_label')}</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,text/plain"
+              className="hidden"
+              onChange={(e) => handleFile(e.target.files?.[0])}
+            />
+            <div
+              className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-4 w-4 shrink-0" />
+              {file ? file.name : t('cookies.file_select')}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="pool-cookie-domain">{t('cookies.domain')}</Label>
+            <Input
+              id="pool-cookie-domain"
+              placeholder="youtube.com"
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">{t('cookies.domain_hint')}</p>
+          </div>
+        </div>
+
+        <DialogFooter className="flex-row gap-2 sm:space-x-0">
+          <Button variant="outline" className="flex-1" onClick={() => { reset(); onClose() }}>
+            {t('common.cancel')}
+          </Button>
+          <Button className="flex-1" onClick={handleAdd} disabled={!canAdd}>
+            {uploading ? t('cookies.uploading') : t('cookies.upload')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function AdminCookiesPage() {
   const { t } = useTranslation()
   const { data: identity } = useGetIdentity<Identity>()
   const { showConfirm } = useTelegramWebApp()
 
-  const [items, setItems] = useState<Cookie[]>([])
-  const [loading, setLoading] = useState(true)
+  const [poolItems, setPoolItems] = useState<Cookie[]>([])
+  const [poolLoading, setPoolLoading] = useState(true)
+  const [poolFetching, setPoolFetching] = useState(false)
+
+  const [personalItems, setPersonalItems] = useState<Cookie[]>([])
+  const [personalLoading, setPersonalLoading] = useState(true)
+  const [personalFetching, setPersonalFetching] = useState(false)
+
   const [deleting, setDeleting] = useState<number | null>(null)
   const [validating, setValidating] = useState<number | null>(null)
+  const [addPoolOpen, setAddPoolOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
 
   const userMap = new Map(users.map((u) => [u.id, u]))
 
-  const load = () => {
-    setLoading(true)
+  const poolDomainCounts = poolItems.reduce<Map<string, number>>((acc, c) => {
+    acc.set(c.domain, (acc.get(c.domain) ?? 0) + 1)
+    return acc
+  }, new Map())
+
+  const poolDomains = Array.from(
+    poolItems.reduce<Map<string, Cookie>>((acc, c) => {
+      if (!acc.has(c.domain)) acc.set(c.domain, c)
+      return acc
+    }, new Map()).values()
+  )
+
+  const loadPool = (isInitial = false) => {
+    if (isInitial) setPoolLoading(true)
+    else setPoolFetching(true)
+    apiClient
+      .get<Cookie[]>('/dl/cookies/pool')
+      .then((res) => setPoolItems(res.data))
+      .catch(() => toast.error(t('common.load_error')))
+      .finally(() => { setPoolLoading(false); setPoolFetching(false) })
+  }
+
+  const loadPersonal = (isInitial = false) => {
+    if (isInitial) setPersonalLoading(true)
+    else setPersonalFetching(true)
     apiClient
       .get<Cookie[]>('/dl/cookies/all')
-      .then((res) => setItems(res.data))
+      .then((res) => setPersonalItems(res.data.filter((c) => !c.is_pool)))
       .catch(() => toast.error(t('common.load_error')))
-      .finally(() => setLoading(false))
+      .finally(() => { setPersonalLoading(false); setPersonalFetching(false) })
   }
 
   useEffect(() => {
-    load()
+    loadPool(true)
+    loadPersonal(true)
     apiClient
       .get<PaginatedResponse<User>>('/users', { params: { limit: 200 } })
       .then((res) => setUsers(res.data.items))
@@ -269,8 +403,14 @@ export default function AdminCookiesPage() {
     setValidating(id)
     try {
       const r = await apiClient.post<Cookie>(`/dl/cookies/${id}/validate`, {})
-      setItems((prev) => prev.map((c) => c.id === id ? { ...c, is_valid: r.data.is_valid } : c))
-      toast.success(r.data.is_valid ? t('cookies.valid_ok', { defaultValue: 'Cookie is valid' }) : t('cookies.invalid_msg', { defaultValue: 'Cookie appears invalid' }))
+      const updater = (prev: Cookie[]) => prev.map((c) => c.id === id ? { ...c, is_valid: r.data.is_valid } : c)
+      setPoolItems(updater)
+      setPersonalItems(updater)
+      toast.success(
+        r.data.is_valid
+          ? t('cookies.valid_ok', { defaultValue: 'Cookie is valid' })
+          : t('cookies.invalid_msg', { defaultValue: 'Cookie appears invalid' })
+      )
     } catch {
       toast.error(t('cookies.validate_error', { defaultValue: 'Validation failed' }))
     } finally {
@@ -278,20 +418,38 @@ export default function AdminCookiesPage() {
     }
   }
 
-  const remove = async (id: number) => {
+  const removePool = async (id: number) => {
     const ok = await showConfirm(t('cookies.delete_confirm', { defaultValue: 'Delete this cookie?' }))
     if (!ok) return
     setDeleting(id)
     try {
-      await apiClient.delete(`/dl/cookies/by-id/${id}`)
+      await apiClient.delete(`/dl/cookies/pool/${id}`)
       toast.success(t('cookies.deleted', { defaultValue: 'Cookie deleted' }))
-      load()
+      loadPool()
     } catch {
       toast.error(t('cookies.delete_error', { defaultValue: 'Failed to delete' }))
     } finally {
       setDeleting(null)
     }
   }
+
+  const removePersonal = async (id: number) => {
+    const ok = await showConfirm(t('cookies.delete_confirm', { defaultValue: 'Delete this cookie?' }))
+    if (!ok) return
+    setDeleting(id)
+    try {
+      await apiClient.delete(`/dl/cookies/by-id/${id}`)
+      toast.success(t('cookies.deleted', { defaultValue: 'Cookie deleted' }))
+      loadPersonal()
+    } catch {
+      toast.error(t('cookies.delete_error', { defaultValue: 'Failed to delete' }))
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const poolRepresentative = (domain: string): Cookie | undefined =>
+    poolItems.find((c) => c.domain === domain)
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -300,20 +458,20 @@ export default function AdminCookiesPage() {
           <CardHeader className="px-4 py-3">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2 text-base">
-                <CookieIcon className="h-4 w-4 text-muted-foreground" />
-                {loading
-                  ? t('cookies.title', { defaultValue: 'Cookies' })
-                  : t('cookies.count_other', { count: items.length })}
+                <Database className="h-4 w-4 text-muted-foreground" />
+                {poolLoading
+                  ? t('cookies.pool_title', { defaultValue: 'Cookie Pool' })
+                  : t('cookies.pool_count', { count: poolItems.length, defaultValue: `Cookie Pool (${poolItems.length})` })}
               </CardTitle>
-              <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => setUploadOpen(true)}>
+              <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => setAddPoolOpen(true)}>
                 <Upload className="mr-1.5 h-3 w-3" />
-                {t('cookies.upload')}
+                {t('cookies.add', { defaultValue: 'Add' })}
               </Button>
             </div>
           </CardHeader>
 
           <CardContent className="p-0">
-            {loading ? (
+            {poolLoading ? (
               <div className="divide-y divide-border px-3 py-1">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3 py-2.5">
@@ -326,13 +484,127 @@ export default function AdminCookiesPage() {
                   </div>
                 ))}
               </div>
-            ) : items.length === 0 ? (
+            ) : poolDomains.length === 0 ? (
+              <div className="flex justify-center py-12 text-muted-foreground text-sm">
+                {t('cookies.pool_empty', { defaultValue: 'No pool cookies' })}
+              </div>
+            ) : (
+              <div
+                className="divide-y divide-border px-3 py-1 transition-opacity duration-150"
+                style={{ opacity: poolFetching ? 0.5 : 1 }}
+              >
+                {poolDomains.map((cookie) => {
+                  const count = poolDomainCounts.get(cookie.domain) ?? 1
+                  const rep = poolRepresentative(cookie.domain)
+
+                  return (
+                    <Item key={cookie.domain} size="sm" className="py-2.5 rounded-none border-0">
+                      <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
+                        <CookieFavicon domain={cookie.domain} />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle>{cookie.domain}</ItemTitle>
+                        <ItemDescription>
+                          {t('cookies.accounts_count', { count, defaultValue: `${count} accounts` })}
+                        </ItemDescription>
+                      </ItemContent>
+                      <ItemActions>
+                        {rep && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <CookieStatusBadge valid={rep.is_valid} />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {rep.validated_at
+                                ? `${t('cookies.validated_col', { defaultValue: 'Validated' })}: ${formatDate(rep.validated_at)}`
+                                : t('cookies.never', { defaultValue: 'Never validated' })}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {rep && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={validating === rep.id}
+                                onClick={() => validate(rep.id)}
+                              >
+                                {validating === rep.id
+                                  ? <RefreshCw className="h-4 w-4 animate-spin" />
+                                  : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('cookies.revalidate')}</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {rep && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                disabled={deleting === rep.id}
+                                onClick={() => removePool(rep.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('common.delete')}</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </ItemActions>
+                    </Item>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CookieIcon className="h-4 w-4 text-muted-foreground" />
+                {personalLoading
+                  ? t('cookies.title', { defaultValue: 'Cookies' })
+                  : t('cookies.count_other', { count: personalItems.length })}
+              </CardTitle>
+              <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => setUploadOpen(true)}>
+                <Upload className="mr-1.5 h-3 w-3" />
+                {t('cookies.upload')}
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {personalLoading ? (
+              <div className="divide-y divide-border px-3 py-1">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 py-2.5">
+                    <Skeleton className="size-8 rounded-md shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3.5 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                    <Skeleton className="h-5 w-14" />
+                  </div>
+                ))}
+              </div>
+            ) : personalItems.length === 0 ? (
               <div className="flex justify-center py-12 text-muted-foreground text-sm">
                 {t('cookies.empty')}
               </div>
             ) : (
-              <div className="divide-y divide-border px-3 py-1">
-                {items.map((cookie) => {
+              <div
+                className="divide-y divide-border px-3 py-1 transition-opacity duration-150"
+                style={{ opacity: personalFetching ? 0.5 : 1 }}
+              >
+                {personalItems.map((cookie) => {
                   const owner = userMap.get(cookie.user_id)
                   const ownerLabel = owner
                     ? (owner.username ? `@${owner.username}` : (owner.first_name ?? String(cookie.user_id)))
@@ -362,7 +634,12 @@ export default function AdminCookiesPage() {
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" disabled={validating === cookie.id} onClick={() => validate(cookie.id)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={validating === cookie.id}
+                              onClick={() => validate(cookie.id)}
+                            >
                               {validating === cookie.id
                                 ? <RefreshCw className="h-4 w-4 animate-spin" />
                                 : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
@@ -372,7 +649,13 @@ export default function AdminCookiesPage() {
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" disabled={deleting === cookie.id} onClick={() => remove(cookie.id)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              disabled={deleting === cookie.id}
+                              onClick={() => removePersonal(cookie.id)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
@@ -387,10 +670,16 @@ export default function AdminCookiesPage() {
           </CardContent>
         </Card>
 
+        <AddPoolDialog
+          open={addPoolOpen}
+          onClose={() => setAddPoolOpen(false)}
+          onDone={() => loadPool()}
+        />
+
         <UploadDialog
           open={uploadOpen}
           onClose={() => setUploadOpen(false)}
-          onDone={load}
+          onDone={() => loadPersonal()}
           identity={identity}
           users={users}
         />

@@ -50,9 +50,11 @@ export interface Cookie {
   user_id: number
   domain: string
   is_valid: boolean
+  is_pool: boolean
   validated_at: string | null
   created_at: string
   updated_at: string
+  inherited?: boolean
 }
 
 export interface Group {
