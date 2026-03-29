@@ -321,12 +321,12 @@ class CookieManager:
                 .where(Cookie.id == cookie_id, Cookie.is_pool.is_(True))
                 .returning(Cookie.domain)
             )
-            await session.commit()
             row = result.fetchone()
+            await session.commit()
             if row:
                 with self._pool_lock:
                     self._pool_iters.pop(row[0], None)
-            return result.rowcount > 0
+            return row is not None
 
     async def refresh_pool_labels(self) -> int:
         """Fetch real account info for all pool cookies missing a label. Returns count updated."""

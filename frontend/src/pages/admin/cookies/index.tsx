@@ -439,8 +439,8 @@ export default function AdminCookiesPage() {
     }
   }
 
-  const removePool = async (id: number) => {
-    const ok = await showConfirm(t('cookies.delete_confirm', { defaultValue: 'Delete this cookie?' }))
+  const removePool = async (id: number, domain: string) => {
+    const ok = await showConfirm(t('cookies.delete_confirm', { domain, defaultValue: `Delete cookie for ${domain}?` }))
     if (!ok) return
     setDeleting(id)
     try {
@@ -454,8 +454,8 @@ export default function AdminCookiesPage() {
     }
   }
 
-  const removePersonal = async (id: number) => {
-    const ok = await showConfirm(t('cookies.delete_confirm', { defaultValue: 'Delete this cookie?' }))
+  const removePersonal = async (id: number, domain: string) => {
+    const ok = await showConfirm(t('cookies.delete_confirm', { domain, defaultValue: `Delete cookie for ${domain}?` }))
     if (!ok) return
     setDeleting(id)
     try {
@@ -607,7 +607,7 @@ export default function AdminCookiesPage() {
                                       variant="ghost" size="icon"
                                       className="text-destructive hover:text-destructive"
                                       disabled={deleting === c.id}
-                                      onClick={(e) => { e.stopPropagation(); removePool(c.id) }}
+                                      onClick={(e) => { e.stopPropagation(); removePool(c.id, c.domain) }}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -716,7 +716,7 @@ export default function AdminCookiesPage() {
                               size="icon"
                               className="text-destructive hover:text-destructive"
                               disabled={deleting === cookie.id}
-                              onClick={() => removePersonal(cookie.id)}
+                              onClick={() => removePersonal(cookie.id, cookie.domain)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
