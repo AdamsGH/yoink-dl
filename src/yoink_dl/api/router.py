@@ -472,11 +472,16 @@ async def delete_cookie(
 async def delete_cookie_by_id(
     cookie_id: int,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     row = await session.get(Cookie, cookie_id)
     if row is None:
         raise NotFoundError(f"Cookie {cookie_id} not found")
+    is_admin = current_user.role in (UserRole.admin, UserRole.owner)
+    if not is_admin:
+        # Regular users can only delete their own personal cookies
+        if row.user_id != current_user.id or row.is_pool:
+            raise HTTPException(status_code=403, detail="Not your cookie")
     await session.delete(row)
     await session.commit()
 
