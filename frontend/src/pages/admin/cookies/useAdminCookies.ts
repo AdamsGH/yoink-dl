@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { apiClient } from '@core/lib/api-client'
+import { cookiesApi } from '@dl/api/cookies'
 import type { Cookie } from '@dl/types'
-import type { User, PaginatedResponse } from '@core/types/api'
+import type { User } from '@core/types/api'
 import { toast } from '@core/components/ui/toast'
 
 export interface UseAdminCookiesReturn {
@@ -94,8 +94,8 @@ export function useAdminCookies(): UseAdminCookiesReturn {
   const loadPool = (isInitial = false) => {
     if (isInitial) setPoolLoading(true)
     else setPoolFetching(true)
-    apiClient
-      .get<Cookie[]>('/dl/cookies/pool')
+    cookiesApi
+      .listPool()
       .then((res) => setPoolItems(res.data))
       .catch(() => toast.error(t('common.load_error')))
       .finally(() => { setPoolLoading(false); setPoolFetching(false) })
@@ -104,8 +104,8 @@ export function useAdminCookies(): UseAdminCookiesReturn {
   const loadPersonal = (isInitial = false) => {
     if (isInitial) setPersonalLoading(true)
     else setPersonalFetching(true)
-    apiClient
-      .get<Cookie[]>('/dl/cookies/all')
+    cookiesApi
+      .listAll()
       .then((res) => setPersonalItems(res.data.filter((c) => !c.is_pool)))
       .catch(() => toast.error(t('common.load_error')))
       .finally(() => { setPersonalLoading(false); setPersonalFetching(false) })
@@ -114,8 +114,8 @@ export function useAdminCookies(): UseAdminCookiesReturn {
   useEffect(() => {
     loadPool(true)
     loadPersonal(true)
-    apiClient
-      .get<PaginatedResponse<User>>('/users', { params: { limit: 200 } })
+    cookiesApi
+      .listUsers()
       .then((res) => setUsers(res.data.items))
       .catch(() => {})
   }, [])
@@ -123,7 +123,7 @@ export function useAdminCookies(): UseAdminCookiesReturn {
   const validate = async (id: number) => {
     setValidating(id)
     try {
-      const r = await apiClient.post<Cookie>(`/dl/cookies/${id}/validate`, {})
+      const r = await cookiesApi.validate(id)
       const updater = (prev: Cookie[]) => prev.map((c) => c.id === id ? { ...c, is_valid: r.data.is_valid } : c)
       setPoolItems(updater)
       setPersonalItems(updater)
@@ -142,7 +142,7 @@ export function useAdminCookies(): UseAdminCookiesReturn {
   const refreshLabels = async () => {
     setRefreshingLabels(true)
     try {
-      const r = await apiClient.post<{ updated: number }>('/dl/cookies/pool/refresh-labels', {})
+      const r = await cookiesApi.refreshLabels()
       toast.success(t('cookies.labels_refreshed', { count: r.data.updated, defaultValue: `Updated ${r.data.updated} labels` }))
       loadPool()
     } catch {
@@ -157,7 +157,7 @@ export function useAdminCookies(): UseAdminCookiesReturn {
     if (!ok) return
     setDeleting(id)
     try {
-      await apiClient.delete(`/dl/cookies/pool/${id}`)
+      await cookiesApi.deletePoolById(id)
       toast.success(t('cookies.deleted', { defaultValue: 'Cookie deleted' }))
       loadPool()
     } catch {
@@ -172,7 +172,7 @@ export function useAdminCookies(): UseAdminCookiesReturn {
     if (!ok) return
     setDeleting(id)
     try {
-      await apiClient.delete(`/dl/cookies/by-id/${id}`)
+      await cookiesApi.deleteById(id)
       toast.success(t('cookies.deleted', { defaultValue: 'Cookie deleted' }))
       loadPersonal()
     } catch {

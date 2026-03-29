@@ -5,7 +5,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 
-import { apiClient } from '@core/lib/api-client'
+import { dlStatsApi } from '@dl/api/dl-stats'
 import type { StatsOverview } from '@dl/types'
 import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@ui'
 import { chartColors, PeriodToggle, StatCard, StatCardSkeleton } from '@core/components/charts'
@@ -27,11 +27,8 @@ export default function AdminStatsPage() {
     setLoading(true)
     setError(null)
 
-    apiClient
-      .get<StatsOverview>('/dl/stats/overview', {
-        params: { days: period },
-        signal: ctrl.signal,
-      })
+    dlStatsApi
+      .getOverview(period, ctrl.signal)
       .then((res) => { setStats(res.data) })
       .catch((err) => {
         if (err?.code === 'ERR_CANCELED') return

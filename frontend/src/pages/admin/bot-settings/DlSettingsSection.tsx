@@ -1,20 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { apiClient } from '@core/lib/api-client'
+import { dlSettingsApi, type DlAdminSettings } from '@dl/api/settings'
 import { Button, Input, Skeleton, Slider } from '@ui'
 import { toast } from '@core/components/ui/toast'
 import { SettingRow } from '@app'
-
-interface DlAdminSettings {
-  download_retries: number
-  download_timeout: number
-  max_file_size_gb: number
-  rate_limit_per_minute: number
-  rate_limit_per_hour: number
-  rate_limit_per_day: number
-  max_playlist_count: number
-}
 
 
 // Numeric input — no spinners, right-aligned text, free editing
@@ -51,7 +41,7 @@ export function DlSettingsSection() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    apiClient.get<DlAdminSettings>('/dl/admin/settings')
+    dlSettingsApi.getAdmin()
       .then(r => setData(r.data))
       .catch(() => toast.error('Failed to load downloader settings'))
   }, [])
@@ -65,7 +55,7 @@ export function DlSettingsSection() {
   const save = async () => {
     setSaving(true)
     try {
-      const updated = await apiClient.patch<DlAdminSettings>('/dl/admin/settings', dirty)
+      const updated = await dlSettingsApi.patchAdmin(dirty)
       setData(updated.data)
       setDirty({})
       toast.success(t('bot_settings.save_ok', { defaultValue: 'Saved' }))

@@ -13,10 +13,9 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { apiClient } from '@core/lib/api-client'
+import { downloadsApi } from '@dl/api/downloads'
 import { cn, formatBytes, formatDate } from '@core/lib/utils'
-import type { PaginatedResponse } from '@core/types/api'
-import type { DownloadLog, RetryResponse } from '@dl/types'
+import type { DownloadLog } from '@dl/types'
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
 import { SuccessBadge } from '@app'
 import { toast } from '@core/components/ui/toast'
@@ -95,7 +94,7 @@ function ExpandedDetails({ item }: { item: DownloadLog }) {
     e.stopPropagation()
     setRetrying(true)
     try {
-      await apiClient.post<RetryResponse>(`/dl/downloads/${item.id}/retry`)
+      await downloadsApi.retry(item.id)
       toast.success(t('history.retry_ok'))
     } catch {
       toast.error(t('history.retry_error'))
@@ -242,7 +241,7 @@ export default function HistoryPage() {
 
   // Load domains once
   useEffect(() => {
-    apiClient.get<{ domains: string[] }>('/dl/downloads/domains')
+    downloadsApi.getDomains()
       .then(r => setDomains(r.data.domains))
       .catch(() => {})
   }, [])
@@ -263,7 +262,7 @@ export default function HistoryPage() {
       params.date_from = from.toISOString().slice(0, 10)
     }
 
-    apiClient.get<PaginatedResponse<DownloadLog>>('/dl/downloads', { params })
+    downloadsApi.list(params)
       .then(res => { setItems(res.data.items); setTotal(res.data.total) })
       .catch(() => toast.error(t('common.load_error')))
       .finally(() => { setFetching(false); setInitialLoading(false) })

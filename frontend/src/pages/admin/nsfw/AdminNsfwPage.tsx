@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 import type { AxiosError } from 'axios'
 import { ChevronDown, Download, ListFilter, Pencil, Plus, ShieldAlert, Trash2, Upload } from 'lucide-react'
 
-import { apiClient } from '@core/lib/api-client'
+import { nsfwApi, type NsfwDomain, type NsfwKeyword, type NsfwCheckResponse } from '@dl/api/nsfw'
 import { formatDate } from '@core/lib/utils'
-import type { NsfwDomain, NsfwKeyword, NsfwCheckResponse } from '@dl/types'
+
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, JsonEditor, Label, Separator, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
 import { toast } from '@core/components/ui/toast'
 import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
@@ -132,10 +132,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
     }
     setImporting(true)
     try {
-      await apiClient.post('/dl/nsfw/import', {
-        domains: parsed.domains ?? [],
-        keywords: parsed.keywords ?? [],
-      })
+      await nsfwApi.import({ domains: parsed.domains, keywords: parsed.keywords })
       toast.success(t('nsfw.added_ok'))
       setValue(IMPORT_DEFAULT)
       setParseError(null)
@@ -332,11 +329,7 @@ function CheckPanel() {
     setChecking(true)
     setResult(null)
     try {
-      const res = await apiClient.post<NsfwCheckResponse>('/dl/nsfw/check', {
-        url: url.trim(),
-        title: title.trim() || null,
-        description: description.trim() || null,
-      })
+      const res = await nsfwApi.check(url.trim())
       setResult(res.data)
     } catch {
       toast.error(t('common.load_error'))
@@ -388,9 +381,9 @@ function CheckPanel() {
                 {t('nsfw.matched_domain', { defaultValue: 'domain:' })} {result.matched_domain}
               </span>
             )}
-            {result.matched_keywords.length > 0 && (
+            {(result.matched_keywords?.length ?? 0) > 0 && (
               <span className="font-mono text-xs text-muted-foreground">
-                {t('nsfw.matched_keywords', { defaultValue: 'keywords:' })} {result.matched_keywords.join(', ')}
+                {t('nsfw.matched_keywords', { defaultValue: 'keywords:' })} {result.matched_keywords?.join(', ')}
               </span>
             )}
           </div>
@@ -420,7 +413,7 @@ export default function AdminNsfwPage() {
 
   const loadDomains = useCallback(() => {
     setLoadingD(true)
-    apiClient.get<NsfwDomain[]>('/dl/nsfw/domains')
+    nsfwApi.getDomains()
       .then((r) => setDomains(r.data))
       .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoadingD(false))
@@ -428,7 +421,7 @@ export default function AdminNsfwPage() {
 
   const loadKeywords = useCallback(() => {
     setLoadingK(true)
-    apiClient.get<NsfwKeyword[]>('/dl/nsfw/keywords')
+    nsfwApi.getKeywords()
       .then((r) => setKeywords(r.data))
       .catch(() => toast.error(t('common.load_error')))
       .finally(() => setLoadingK(false))
@@ -441,7 +434,7 @@ export default function AdminNsfwPage() {
     if (!confirmed) return
     setDeletingD(d.id)
     try {
-      await apiClient.delete(`/dl/nsfw/domains/${d.id}`)
+      await nsfwApi.deleteDomain(d.id)
       haptic('success')
       toast.success(t('nsfw.removed'))
       loadDomains()
@@ -458,7 +451,7 @@ export default function AdminNsfwPage() {
     if (!confirmed) return
     setDeletingK(k.id)
     try {
-      await apiClient.delete(`/dl/nsfw/keywords/${k.id}`)
+      await nsfwApi.deleteKeyword(k.id)
       haptic('success')
       toast.success(t('nsfw.removed'))
       loadKeywords()
@@ -472,7 +465,7 @@ export default function AdminNsfwPage() {
 
   const addDomain = async (domain: string, note: string) => {
     try {
-      await apiClient.post('/dl/nsfw/domains', { domain, note: note || null })
+      await nsfwApi.addDomain(domain, note)
       toast.success(t('nsfw.added_ok'))
       loadDomains()
     } catch (err) {
@@ -484,7 +477,7 @@ export default function AdminNsfwPage() {
 
   const addKeyword = async (keyword: string, note: string) => {
     try {
-      await apiClient.post('/dl/nsfw/keywords', { keyword, note: note || null })
+      await nsfwApi.addKeyword(keyword, note)
       toast.success(t('nsfw.added_ok'))
       loadKeywords()
     } catch (err) {
@@ -497,7 +490,7 @@ export default function AdminNsfwPage() {
   const saveDomain = async (value: string, note: string) => {
     if (!editDomain) return
     try {
-      await apiClient.patch(`/dl/nsfw/domains/${editDomain.id}`, { domain: value, note: note || null })
+      await nsfwApi.updateDomain(editDomain.id, value, note)
       toast.success(t('nsfw.saved'))
       loadDomains()
     } catch (err) {
@@ -510,7 +503,7 @@ export default function AdminNsfwPage() {
   const saveKeyword = async (value: string, note: string) => {
     if (!editKeyword) return
     try {
-      await apiClient.patch(`/dl/nsfw/keywords/${editKeyword.id}`, { keyword: value, note: note || null })
+      await nsfwApi.updateKeyword(editKeyword.id, value, note)
       toast.success(t('nsfw.saved'))
       loadKeywords()
     } catch (err) {
@@ -522,7 +515,7 @@ export default function AdminNsfwPage() {
 
   const exportJson = async () => {
     try {
-      const res = await apiClient.get('/dl/nsfw/export')
+      const res = await nsfwApi.export()
       const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

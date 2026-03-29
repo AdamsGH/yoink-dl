@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, CookieIcon, ExternalLink, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
 
-import { apiClient } from '@core/lib/api-client'
+import { cookiesApi } from '@dl/api/cookies'
+import { dlSettingsApi } from '@dl/api/settings'
 import { formatDate } from '@core/lib/utils'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
 import { CookieStatusBadge } from '@app'
@@ -39,7 +40,7 @@ export default function CookiesPage() {
 
   const load = () => {
     setLoading(true)
-    apiClient.get<CookieEntry[]>('/dl/cookies')
+    cookiesApi.listMine()
       .then(r => setCookies(r.data))
       .catch(() => toast.error(t('cookies.load_error', { defaultValue: 'Failed to load cookies' })))
       .finally(() => setLoading(false))
@@ -47,7 +48,7 @@ export default function CookiesPage() {
 
   useEffect(() => {
     load()
-    apiClient.get<{ use_pool_cookies: boolean; has_pool_access: boolean }>('/dl/settings')
+    dlSettingsApi.getMine()
       .then(r => {
         setHasPoolAccess(r.data.has_pool_access === true)
         setUsePool(r.data.use_pool_cookies)
@@ -58,7 +59,7 @@ export default function CookiesPage() {
   const togglePool = async (val: boolean) => {
     setPoolSaving(true)
     try {
-      await apiClient.patch('/dl/settings', { use_pool_cookies: val })
+      await dlSettingsApi.patchMine({ use_pool_cookies: val })
       setUsePool(val)
     } catch {
       toast.error(t('common.error', { defaultValue: 'Error' }))
@@ -70,7 +71,7 @@ export default function CookiesPage() {
   const remove = async (id: number, domain: string) => {
     setDeleting(id)
     try {
-      await apiClient.delete(`/dl/cookies/by-id/${id}`)
+      await cookiesApi.deleteById(id)
       toast.success(t('cookies.removed', { defaultValue: 'Removed cookies for {{domain}}', domain }))
       load()
     } catch {
@@ -83,7 +84,7 @@ export default function CookiesPage() {
   const validate = async (id: number) => {
     setValidating(id)
     try {
-      const r = await apiClient.post<CookieEntry>(`/dl/cookies/${id}/validate`, {})
+      const r = await cookiesApi.validate(id)
       setCookies(prev => prev.map(c => c.id === id ? { ...c, is_valid: r.data.is_valid } : c))
       toast.success(r.data.is_valid
         ? t('cookies.valid_ok', { defaultValue: 'Cookie is valid' })
@@ -115,7 +116,7 @@ export default function CookiesPage() {
     if (!uploadDomain) { toast.error(t('cookies.domain_required', { defaultValue: 'Domain is required' })); return }
     setUploading(true)
     try {
-      await apiClient.post('/dl/cookies/upload', { domain: uploadDomain, content: uploadContent })
+      await cookiesApi.uploadPersonal({ domain: uploadDomain, content: uploadContent })
       toast.success(t('cookies.uploaded', { defaultValue: 'Cookie uploaded for {{domain}}', domain: uploadDomain }))
       setUploadFile(null)
       setUploadContent('')

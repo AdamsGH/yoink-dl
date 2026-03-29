@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useGetIdentity } from '@refinedev/core'
 import { Coffee, Ghost, Moon, ShieldCheck, Sun } from 'lucide-react'
 
-import { apiClient } from '@core/lib/api-client'
+import { dlSettingsApi } from '@dl/api/settings'
+import { userSettingsApi } from '@core/lib/api/user-settings'
 import { cn } from '@core/lib/utils'
 import { setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@core/lib/i18n'
 import { SettingRow } from '@app'
@@ -151,8 +152,8 @@ export default function SettingsPage() {
   const [hasPoolAccess, setHasPoolAccess] = useState(false)
 
   useEffect(() => {
-    const dlPromise = apiClient
-      .get<UserSettings>('/dl/settings')
+    const dlPromise = dlSettingsApi
+      .getMine()
       .then((res) => {
         const { user_id: _uid, args_json: _args, theme: _theme, language: _lang, updated_at: _ua, ...rest } = res.data
         reset(rest)
@@ -160,8 +161,8 @@ export default function SettingsPage() {
       })
       .catch(() => toast.error(t('settings.save_error')))
 
-    const corePromise = apiClient
-      .get<{ language: string }>('/settings')
+    const corePromise = userSettingsApi
+      .get()
       .then((res) => {
         const lang = res.data.language
         if (SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage)) {
@@ -175,7 +176,7 @@ export default function SettingsPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await apiClient.patch('/dl/settings', values)
+      await dlSettingsApi.patchMine(values)
       toast.success(t('settings.saved'))
       reset(values)
     } catch {
@@ -187,7 +188,7 @@ export default function SettingsPage() {
     if (lang === currentLang) return
     setLangSaving(true)
     try {
-      await apiClient.patch('/settings', { language: lang })
+      await userSettingsApi.patch({ language: lang })
       setCurrentLang(lang)
       setLanguage(lang)
     } catch {

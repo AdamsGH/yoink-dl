@@ -7,7 +7,7 @@ import { useGetIdentity } from '@refinedev/core'
 import { useTranslation } from 'react-i18next'
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, CardHeader, CardTitle, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
-import { apiClient } from '@core/lib/api-client'
+import { cookiesApi } from '@dl/api/cookies'
 import { formatDate } from '@core/lib/utils'
 import type { User } from '@core/types/api'
 import { CookieStatusBadge, RoleBadge } from '@app'
@@ -114,7 +114,7 @@ function UploadDialog({
 
     setUploading(true)
     try {
-      await apiClient.post('/dl/cookies', { user_id: uid, domain, content })
+      await cookiesApi.upload({ user_id: uid, domain, content })
       toast.success(t('cookies.uploaded_ok', { domain, defaultValue: `Cookie uploaded for ${domain}` }))
       onClose()
       reset()
@@ -232,7 +232,7 @@ function AddPoolDialog({
 
     setUploading(true)
     try {
-      await apiClient.post('/dl/cookies/pool', { domain, content })
+      await cookiesApi.addPool({ domain, content })
       toast.success(t('cookies.uploaded_ok', { domain, defaultValue: `Cookie uploaded for ${domain}` }))
       onClose()
       reset()

@@ -149,21 +149,45 @@ Note: rate limits, timeout, max file size, retries, and playlist count are store
 src/yoink_dl/
   plugin.py            # entry point (DlPlugin)
   config.py            # DlConfig (pydantic-settings)
-  api/router.py        # FastAPI routes
+  activity.py          # ActivityProvider registered with core at startup
+  api/
+    router.py          # thin FastAPI router (mounts sub-routers)
+    routers/
+      downloads.py     # /downloads, /downloads/{id}/retry
+      cookies.py       # /cookies, /cookies/pool, /cookies/{id}/validate
+      nsfw.py          # /nsfw/domains, /nsfw/keywords, /nsfw/check
+    schemas.py         # request/response models
   bot/middleware.py    # PTB middleware setup
   commands/            # bot command handlers (video, audio, cut, inline, ...)
   download/            # yt-dlp / gallery-dl manager, ffmpeg, music download
   upload/              # Telegram upload, caption builder, media group sender
-  url/                 # URL extraction, normalization, resolution, pipeline
-  storage/             # SQLAlchemy models and repos
+  url/
+    pipeline/          # run.py (run_download), helpers.py (utilities)
+    resolver.py        # URL resolution
+    domains.py         # domain lists
+  storage/
+    models.py          # ORM models
+    repos/             # settings.py, download.py, cookie.py, cache.py
   services/
     proxy.py           # round-robin proxy selector
-    cookies.py         # per-user Netscape cookie files + pool management
+    cookies.py         # CookieManager: personal/pool CRUD, round-robin, sync_from_file
     cookie_account.py  # account info fetcher (YouTube/Instagram/Twitter)
     nsfw.py            # NSFW blur rules
     ipv6_pool.py       # IPv6 source address rotation (IPv6Pool)
   i18n/locales/        # translations (en.yml, ru.yml)
 frontend/
   manifest.tsx         # plugin route registration
-  src/pages/           # admin/cookies, admin/nsfw, admin/stats, settings, history, cookies
+  src/
+    api/               # typed API modules: cookies.ts, downloads.ts, nsfw.ts, settings.ts, dl-stats.ts
+    components/        # CookieFavicon.tsx
+    hooks/             # useFavicon.ts
+    lib/               # cookie-utils.ts (parseDomainFromNetscape)
+    pages/
+      history/         # HistoryPage.tsx
+      settings/        # SettingsPage.tsx
+      cookies/         # CookiesPage.tsx
+      admin/cookies/   # AdminCookiesPage.tsx + useAdminCookies.ts
+      admin/nsfw/      # AdminNsfwPage.tsx
+      admin/stats/     # DlStatsPage.tsx
+      admin/bot-settings/ # DlSettingsSection.tsx (injected via botSettingsSections)
 ```
