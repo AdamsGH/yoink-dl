@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { CheckCircle, ChevronDown, ChevronRight, CookieIcon, Database, RefreshCw, ScanSearch, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
@@ -10,6 +10,7 @@ import { formatDate } from '@core/lib/utils'
 import type { Cookie } from '@dl/types'
 import type { User, PaginatedResponse } from '@core/types/api'
 import { CookieStatusBadge, RoleBadge } from '@core/components/app/StatusBadge'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@core/components/ui/alert-dialog'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '@core/components/ui/combobox'
@@ -20,7 +21,6 @@ import { Label } from '@core/components/ui/label'
 import { Skeleton } from '@core/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
 import { toast } from '@core/components/ui/toast'
-import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
 
 const faviconCache = new Map<string, string | null>()
 
@@ -341,7 +341,14 @@ function AddPoolDialog({
 export default function AdminCookiesPage() {
   const { t } = useTranslation()
   const { data: identity } = useGetIdentity<Identity>()
-  const { showConfirm } = useTelegramWebApp()
+  const [confirmMsg, setConfirmMsg] = useState<string | null>(null)
+  const confirmResolveRef = useRef<((val: boolean) => void) | null>(null)
+
+  const askConfirm = useCallback((message: string): Promise<boolean> =>
+    new Promise((resolve) => {
+      confirmResolveRef.current = resolve
+      setConfirmMsg(message)
+    }), [])
 
   const [poolItems, setPoolItems] = useState<Cookie[]>([])
   const [poolLoading, setPoolLoading] = useState(true)
@@ -440,7 +447,7 @@ export default function AdminCookiesPage() {
   }
 
   const removePool = async (id: number, domain: string) => {
-    const ok = await showConfirm(t('cookies.delete_confirm', { domain, defaultValue: `Delete cookie for ${domain}?` }))
+    const ok = await askConfirm(t('cookies.delete_confirm', { domain, defaultValue: `Delete cookie for ${domain}?` }))
     if (!ok) return
     setDeleting(id)
     try {
@@ -455,7 +462,7 @@ export default function AdminCookiesPage() {
   }
 
   const removePersonal = async (id: number, domain: string) => {
-    const ok = await showConfirm(t('cookies.delete_confirm', { domain, defaultValue: `Delete cookie for ${domain}?` }))
+    const ok = await askConfirm(t('cookies.delete_confirm', { domain, defaultValue: `Delete cookie for ${domain}?` }))
     if (!ok) return
     setDeleting(id)
     try {
@@ -745,6 +752,39 @@ export default function AdminCookiesPage() {
           identity={identity}
           users={users}
         />
+
+        <AlertDialog
+          open={!!confirmMsg}
+          onOpenChange={(open) => {
+            if (!open) {
+              confirmResolveRef.current?.(false)
+              confirmResolveRef.current = null
+              setConfirmMsg(null)
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('common.confirm', { defaultValue: 'Confirm' })}</AlertDialogTitle>
+              <AlertDialogDescription>{confirmMsg}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  confirmResolveRef.current?.(true)
+                  confirmResolveRef.current = null
+                  setConfirmMsg(null)
+                }}
+              >
+                {t('common.delete', { defaultValue: 'Delete' })}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   )

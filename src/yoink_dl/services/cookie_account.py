@@ -57,6 +57,23 @@ def _sapisid_hash(sapisid: str, origin: str) -> str:
     return f"SAPISIDHASH {ts}_{digest}"
 
 
+def _find_first(obj: object, key: str) -> object | None:
+    """Recursively find the first value for a given key in a nested dict/list."""
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        for v in obj.values():
+            result = _find_first(v, key)
+            if result is not None:
+                return result
+    elif isinstance(obj, list):
+        for item in obj:
+            result = _find_first(item, key)
+            if result is not None:
+                return result
+    return None
+
+
 async def _fetch_youtube(content: str) -> AccountInfo | None:
     cookies = _netscape_to_dict(content)
     sapisid = cookies.get("SAPISID") or cookies.get("__Secure-3PAPISID")
@@ -95,16 +112,23 @@ async def _fetch_youtube(content: str) -> AccountInfo | None:
             return None
 
         data = resp.json()
-        renderer = (
-            data.get("header", {})
-            .get("activeAccountHeaderRenderer", {})
-        )
-        name = (
-            renderer.get("accountName", {}).get("simpleText")
-            or renderer.get("channelHandle", {}).get("simpleText")
-        )
-        thumbs = renderer.get("accountPhoto", {}).get("thumbnails", [])
-        avatar = thumbs[-1]["url"] if thumbs else None
+
+        # Response structure varies - use recursive search
+        name_obj = _find_first(data, "accountName")
+        handle_obj = _find_first(data, "channelHandle")
+        photo_obj = _find_first(data, "accountPhoto")
+
+        name = None
+        if isinstance(name_obj, dict):
+            name = name_obj.get("simpleText")
+        if not name and isinstance(handle_obj, dict):
+            name = handle_obj.get("simpleText")
+
+        avatar = None
+        if isinstance(photo_obj, dict):
+            thumbs = photo_obj.get("thumbnails", [])
+            if thumbs:
+                avatar = thumbs[-1].get("url")
 
         if not name:
             return None

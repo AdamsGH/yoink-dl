@@ -290,8 +290,11 @@ class CookieManager:
     # ------------------------------------------------------------------ #
 
     async def store_pool(self, owner_id: int, domain: str, content: str) -> Cookie:
-        """Add a new pool cookie for a domain (owner/admin only)."""
+        """Add or update a pool cookie. Deduplicates by content hash (same cookies = update, not insert)."""
         from yoink_dl.services.cookie_account import fetch_account_info  # noqa: PLC0415
+        import hashlib  # noqa: PLC0415
+        content_hash = hashlib.sha256(content.encode()).hexdigest()
+
         info = None
         try:
             info = await fetch_account_info(domain, content)
@@ -300,15 +303,41 @@ class CookieManager:
 
         label = (info.name if info else None) or extract_account_label(domain, content)
         avatar_url = info.avatar_url if info else None
+        now = datetime.now(timezone.utc)
 
         async with self._factory() as session:
             await self._ensure_user(session, owner_id)
+
+            # Check for existing pool cookie with same content hash (same account re-uploaded)
+            existing = (await session.execute(
+                select(Cookie).where(
+                    Cookie.user_id == owner_id,
+                    Cookie.domain == domain,
+                    Cookie.is_pool.is_(True),
+                    Cookie.content_hash == content_hash,
+                )
+            )).scalar_one_or_none()
+
+            if existing is not None:
+                existing.content = content
+                existing.is_valid = True
+                existing.updated_at = now
+                if label:
+                    existing.label = label
+                if avatar_url:
+                    existing.avatar_url = avatar_url
+                await session.commit()
+                await session.refresh(existing)
+                logger.info("Updated pool cookie: owner=%d domain=%s id=%d", owner_id, domain, existing.id)
+                return existing
+
             row = Cookie(user_id=owner_id, domain=domain, content=content,
-                         is_valid=True, is_pool=True, label=label, avatar_url=avatar_url)
+                         content_hash=content_hash, is_valid=True, is_pool=True,
+                         label=label, avatar_url=avatar_url)
             session.add(row)
             await session.commit()
             await session.refresh(row)
-        # Invalidate cached cycle for this domain
+
         with self._pool_lock:
             self._pool_iters.pop(domain, None)
         logger.info("Added pool cookie: owner=%d domain=%s id=%d", owner_id, domain, row.id)
