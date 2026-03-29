@@ -14,9 +14,9 @@ import {
 import { useTranslation } from 'react-i18next'
 
 import { downloadsApi } from '@dl/api/downloads'
-import { cn, formatBytes, formatDate } from '@core/lib/utils'
+import { cn, formatBytes, formatDateCompact } from '@core/lib/utils'
 import type { DownloadLog } from '@dl/types'
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, TooltipProvider } from '@ui'
 import { SuccessBadge } from '@app'
 import { toast } from '@core/components/ui/toast'
 
@@ -49,9 +49,10 @@ function tgMessageUrl(groupId: number, messageId: number, threadId?: number | nu
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'ok') return <SuccessBadge>{status}</SuccessBadge>
+  const cls = 'px-1.5 py-0 text-[10px] font-medium rounded-full h-auto'
+  if (status === 'ok') return <SuccessBadge className={cls}>{status}</SuccessBadge>
   const variant = status === 'cached' ? 'secondary' : status === 'error' ? 'destructive' : 'outline'
-  return <Badge variant={variant}>{status}</Badge>
+  return <Badge variant={variant} className={cls}>{status}</Badge>
 }
 
 function MediaIcon({ item }: { item: DownloadLog }) {
@@ -203,12 +204,10 @@ function HistoryItemSkeleton() {
   )
 }
 
-function buildDescription(item: DownloadLog): string {
-  const parts: string[] = []
-  if (item.domain) parts.push(item.domain)
-  parts.push(formatDate(item.created_at))
-  return parts.join(' · ')
+function stripWww(domain: string): string {
+  return domain.replace(/^www\./, '')
 }
+
 
 export default function HistoryPage() {
   const { t } = useTranslation()
@@ -355,47 +354,29 @@ export default function HistoryPage() {
                 {hasActive ? t('history.no_results') : t('history.empty')}
               </div>
             ) : (
-              <div className="divide-y divide-border px-3 py-1">
+              <div className="divide-y divide-border px-3">
                 {items.map(item => {
                   const isOpen = expanded === item.id
-                  const msgUrl = item.group_id && item.message_id
-                    ? tgMessageUrl(item.group_id, item.message_id, item.thread_id)
-                    : null
 
                   return (
                     <div key={item.id}>
                       <Item
                         size="sm"
-                        className="py-2.5 rounded-none border-0 cursor-pointer"
+                        className="py-2 rounded-none border-0 cursor-pointer"
                         onClick={() => setExpanded(p => p === item.id ? null : item.id)}
                       >
                         <MediaIcon item={item} />
-                        <ItemContent>
+                        <ItemContent className="gap-0.5">
                           <ItemTitle className="line-clamp-1">
                             {item.title ?? item.url}
                           </ItemTitle>
-                          <ItemDescription>{buildDescription(item)}</ItemDescription>
+                          <ItemDescription>
+                            {[item.domain ? stripWww(item.domain) : null, formatDateCompact(item.created_at)].filter(Boolean).join(' · ')}
+                          </ItemDescription>
                         </ItemContent>
                         <ItemActions>
                           <StatusBadge status={item.status} />
-                          {msgUrl && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost" size="icon"
-                                  className="h-7 w-7 shrink-0"
-                                  onClick={e => e.stopPropagation()}
-                                  asChild
-                                >
-                                  <a href={msgUrl} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                  </a>
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{t('history.open_telegram')}</TooltipContent>
-                            </Tooltip>
-                          )}
-                          <button className="text-muted-foreground ml-0.5" onClick={e => { e.stopPropagation(); setExpanded(p => p === item.id ? null : item.id) }}>
+                          <button className="text-muted-foreground" onClick={e => { e.stopPropagation(); setExpanded(p => p === item.id ? null : item.id) }}>
                             {isOpen
                               ? <ChevronUp className="h-3.5 w-3.5" />
                               : <ChevronDown className="h-3.5 w-3.5" />}
