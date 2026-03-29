@@ -113,6 +113,7 @@ class DlUserSettingsResponse(BaseModel):
     mediainfo: bool
     send_as_file: bool
     gallery_zip: bool
+    use_pool_cookies: bool
     updated_at: datetime
 
 
@@ -164,3 +165,4 @@ class DlUserSettingsUpdate(BaseModel):
     mediainfo: bool | None = None
     send_as_file: bool | None = None
     gallery_zip: bool | None = None
+    use_pool_cookies: bool | None = None

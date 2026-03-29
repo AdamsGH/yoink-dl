@@ -17,6 +17,7 @@ export interface UserSettings {
   mediainfo: boolean
   send_as_file: boolean
   gallery_zip: boolean
+  use_pool_cookies: boolean
   theme: string
   keyboard: string
   args_json: Record<string, unknown>

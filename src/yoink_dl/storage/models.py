@@ -42,6 +42,7 @@ class UserSettings(Base):
     mediainfo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     send_as_file: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     gallery_zip: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    use_pool_cookies: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     dm_topic_thread_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     args_json: Mapped[dict] = mapped_column(
         __import__("sqlalchemy").JSON, default=dict, nullable=False

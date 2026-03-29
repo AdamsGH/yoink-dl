@@ -351,10 +351,11 @@ async def run_download(
             _perm_repo = context.bot_data.get("perm_repo")
             _owner_id = context.bot_data["config"].owner_id
             _use_pool = False
-            if user_settings.role in (UserRole.admin, UserRole.owner):
-                _use_pool = True
-            elif _perm_repo is not None:
-                _use_pool = await _perm_repo.has(user_id, "dl", "shared_cookies")
+            _has_pool_access = user_settings.role in (UserRole.admin, UserRole.owner)
+            if not _has_pool_access and _perm_repo is not None:
+                _has_pool_access = await _perm_repo.has(user_id, "dl", "shared_cookies")
+            if _has_pool_access:
+                _use_pool = user_settings.use_pool_cookies
             result = await cookie_mgr.get_path_for_url(
                 user_id=user_id,
                 url=url,
