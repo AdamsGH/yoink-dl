@@ -273,20 +273,19 @@ async def list_my_cookies(
         is_privileged = has_shared is not None
 
     if is_privileged:
-        own_domains = {r.domain for r in own_rows}
         pool_rows = (await session.execute(
             select(Cookie)
             .where(Cookie.is_pool.is_(True), Cookie.is_valid.is_(True))
-            .order_by(Cookie.domain)
+            .order_by(Cookie.domain, Cookie.id)
         )).scalars().all()
         seen_pool_domains: set[str] = set()
         for r in pool_rows:
-            if r.domain not in own_domains and r.domain not in seen_pool_domains:
+            if r.domain not in seen_pool_domains:
                 entry = CookieResponse.model_validate(r)
                 entry.inherited = True
                 result.append(entry)
                 seen_pool_domains.add(r.domain)
-        result.sort(key=lambda c: c.domain)
+        result.sort(key=lambda c: (c.domain, not c.inherited))
 
     return result
 
