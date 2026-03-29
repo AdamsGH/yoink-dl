@@ -559,7 +559,7 @@ class CookieManager:
 
         # 1. Personal cookie
         async with self._factory() as session:
-            row = (await session.execute(
+            personal = (await session.execute(
                 select(Cookie).where(
                     Cookie.user_id == user_id,
                     Cookie.domain == domain,
@@ -568,14 +568,40 @@ class CookieManager:
                 )
             )).scalar_one_or_none()
 
-        if row is None and use_pool:
-            # 2. Pool cookie
-            row = await self.get_pool_cookie(domain)
-            if row:
-                logger.debug("Using pool cookie: id=%d domain=%s user=%d", row.id, domain, user_id)
+        if not use_pool:
+            row = personal
+        else:
+            # With pool access: rotate across personal + pool cookies combined
+            pool_cookie = await self.get_pool_cookie(domain)
+            if personal is None and pool_cookie is None:
+                row = None
+            elif personal is None:
+                row = pool_cookie
+            elif pool_cookie is None:
+                row = personal
+            else:
+                # Both available — rotate: personal first, then pool on next call
+                row = await self._rotate_personal_and_pool(user_id, domain, personal, pool_cookie)
 
         if row is None:
             return None
 
+        if row.is_pool:
+            logger.debug("Using pool cookie: id=%d domain=%s user=%d", row.id, domain, user_id)
         tmp = _write_tmp(row.content)
         return tmp, row.id
+
+    async def _rotate_personal_and_pool(
+        self, user_id: int, domain: str, personal: Cookie, pool_cookie: Cookie
+    ) -> Cookie:
+        """Alternate between personal and pool cookie per user+domain."""
+        key = f"personal:{user_id}:{domain}"
+        with self._pool_lock:
+            cycle = self._pool_iters.get(key)
+            ids = [personal.id, pool_cookie.id]
+            if cycle is None or getattr(cycle, "_ids", None) != ids:
+                cookies = [personal, pool_cookie]
+                cycle = itertools.cycle(cookies)
+                cycle._ids = ids  # type: ignore[attr-defined]
+                self._pool_iters[key] = cycle
+            return next(cycle)

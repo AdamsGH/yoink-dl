@@ -247,12 +247,11 @@ export default function CookiesPage() {
                 {inherited.length > 0 && (
                   <>
                     {own.length > 0 && (
-                      <div className="flex items-center gap-2 py-2 px-1">
+                      <div className="flex items-center gap-1.5 py-2 px-1">
                         <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="text-xs text-muted-foreground">
                           {t('cookies.pool_label', { defaultValue: 'Cookie pool' })}
                         </span>
-                        <div className="flex-1 border-t border-dashed border-border" />
                       </div>
                     )}
                     {inherited.map((c) => (
