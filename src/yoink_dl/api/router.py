@@ -260,16 +260,19 @@ async def list_my_cookies(
     )).scalars().all()
     result = [CookieResponse.model_validate(r) for r in own_rows]
 
-    # Include pool cookies if user has shared_cookies permission
-    has_shared = (await session.execute(
-        select(UserPermission).where(
-            UserPermission.user_id == current_user.id,
-            UserPermission.plugin == "dl",
-            UserPermission.feature == "shared_cookies",
-        )
-    )).scalar_one_or_none()
+    # Include pool cookies for admins/owners or users with shared_cookies permission
+    is_privileged = current_user.role in (UserRole.admin, UserRole.owner)
+    if not is_privileged:
+        has_shared = (await session.execute(
+            select(UserPermission).where(
+                UserPermission.user_id == current_user.id,
+                UserPermission.plugin == "dl",
+                UserPermission.feature == "shared_cookies",
+            )
+        )).scalar_one_or_none()
+        is_privileged = has_shared is not None
 
-    if has_shared:
+    if is_privileged:
         own_domains = {r.domain for r in own_rows}
         pool_rows = (await session.execute(
             select(Cookie)
