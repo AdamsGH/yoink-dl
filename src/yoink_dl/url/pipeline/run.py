@@ -136,7 +136,7 @@ async def run_download(
         audio_only=audio_only,
     )
     if cache_key and file_cache:
-        cached_group = await file_cache.get_group(cache_key)
+        cached_group = await file_cache.get(cache_key)
         if cached_group:
             cached = cached_group[0]
             metrics.inc("cache_hits")
