@@ -117,6 +117,7 @@ class Cookie(Base):
     label: Mapped[str | None] = mapped_column(String(128), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    session_key: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
     validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

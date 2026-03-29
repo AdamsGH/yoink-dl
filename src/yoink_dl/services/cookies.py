@@ -289,11 +289,49 @@ class CookieManager:
     # Pool cookies (is_pool=True, shared across users)
     # ------------------------------------------------------------------ #
 
+    @staticmethod
+    def _extract_session_key(domain: str, content: str) -> str | None:
+        """
+        Extract a stable per-account identity key from cookie content.
+        Used for deduplication - same account = same key regardless of expiry/other cookie changes.
+        """
+        cookies = _parse_netscape_cookies(content)
+        bare = domain.removeprefix("www.")
+
+        # YouTube / Google: SAPISID is stable per Google account
+        if bare in ("youtube.com", "google.com") or bare.endswith((".youtube.com", ".google.com")):
+            return cookies.get("SAPISID") or cookies.get("__Secure-3PAPISID")
+
+        # Instagram: ds_user_id is numeric user id
+        if bare in ("instagram.com",) or bare.endswith(".instagram.com"):
+            return cookies.get("ds_user_id") or cookies.get("sessionid")
+
+        # Twitter/X: twid contains user id
+        if bare in ("twitter.com", "x.com") or bare.endswith((".twitter.com", ".x.com")):
+            return cookies.get("twid") or cookies.get("auth_token")
+
+        # TikTok: uid_tt is stable
+        if bare in ("tiktok.com",) or bare.endswith(".tiktok.com"):
+            return cookies.get("uid_tt") or cookies.get("sid_tt")
+
+        # Facebook: c_user is numeric user id
+        if bare in ("facebook.com",) or bare.endswith(".facebook.com"):
+            return cookies.get("c_user") or cookies.get("xs")
+
+        # Generic: try common session cookie names
+        for name in ("sessionid", "session_id", "auth_token", "access_token", "sid"):
+            if name in cookies:
+                return cookies[name]
+
+        return None
+
     async def store_pool(self, owner_id: int, domain: str, content: str) -> Cookie:
-        """Add or update a pool cookie. Deduplicates by content hash (same cookies = update, not insert)."""
+        """Add or update a pool cookie. Deduplicates by per-account session key (e.g. SAPISID)."""
         from yoink_dl.services.cookie_account import fetch_account_info  # noqa: PLC0415
         import hashlib  # noqa: PLC0415
+
         content_hash = hashlib.sha256(content.encode()).hexdigest()
+        session_key = self._extract_session_key(domain, content)
 
         info = None
         try:
@@ -308,18 +346,34 @@ class CookieManager:
         async with self._factory() as session:
             await self._ensure_user(session, owner_id)
 
-            # Check for existing pool cookie with same content hash (same account re-uploaded)
-            existing = (await session.execute(
-                select(Cookie).where(
-                    Cookie.user_id == owner_id,
-                    Cookie.domain == domain,
-                    Cookie.is_pool.is_(True),
-                    Cookie.content_hash == content_hash,
-                )
-            )).scalar_one_or_none()
+            # Find existing pool cookie for same account:
+            # 1. by session_key (stable across re-exports)
+            # 2. fallback by content_hash (exact same file)
+            existing = None
+            if session_key:
+                existing = (await session.execute(
+                    select(Cookie).where(
+                        Cookie.user_id == owner_id,
+                        Cookie.domain == domain,
+                        Cookie.is_pool.is_(True),
+                        Cookie.session_key == session_key,
+                    )
+                )).scalar_one_or_none()
+
+            if existing is None:
+                existing = (await session.execute(
+                    select(Cookie).where(
+                        Cookie.user_id == owner_id,
+                        Cookie.domain == domain,
+                        Cookie.is_pool.is_(True),
+                        Cookie.content_hash == content_hash,
+                    )
+                )).scalar_one_or_none()
 
             if existing is not None:
                 existing.content = content
+                existing.content_hash = content_hash
+                existing.session_key = session_key
                 existing.is_valid = True
                 existing.updated_at = now
                 if label:
@@ -331,9 +385,11 @@ class CookieManager:
                 logger.info("Updated pool cookie: owner=%d domain=%s id=%d", owner_id, domain, existing.id)
                 return existing
 
-            row = Cookie(user_id=owner_id, domain=domain, content=content,
-                         content_hash=content_hash, is_valid=True, is_pool=True,
-                         label=label, avatar_url=avatar_url)
+            row = Cookie(
+                user_id=owner_id, domain=domain, content=content,
+                content_hash=content_hash, session_key=session_key,
+                is_valid=True, is_pool=True, label=label, avatar_url=avatar_url,
+            )
             session.add(row)
             await session.commit()
             await session.refresh(row)
