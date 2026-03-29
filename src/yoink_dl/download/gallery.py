@@ -28,6 +28,46 @@ class GalleryDlError(Exception):
     pass
 
 
+def _fetch_gallery_title(
+    url: str,
+    cookie_path: Path | None = None,
+    proxy: str | None = None,
+) -> str | None:
+    """
+    Try to extract a human-readable title from gallery-dl metadata.
+    Uses --print to get the first item's metadata fields without downloading.
+    Returns None on any failure - caller falls back to domain name.
+    """
+    # Try pool/album name first, then title, then uploader
+    fmt = "{pool_name!s}|{pool[name]!s}|{title!s}|{uploader!s}"
+    cmd: list[str] = [
+        _BINARY,
+        "--quiet",
+        "--range", "1-1",
+        "--print", fmt,
+    ]
+    if cookie_path and cookie_path.exists():
+        cmd += ["--cookies", str(cookie_path)]
+    if proxy:
+        cmd += ["--proxy", proxy]
+    cmd.append(url)
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        line = result.stdout.strip().split("\n")[0] if result.stdout.strip() else ""
+        if not line:
+            return None
+        # Pick the first non-empty, non-"None" field
+        for part in line.split("|"):
+            part = part.strip()
+            if part and part.lower() not in ("none", "false", "0", ""):
+                # Replace underscores that gallery-dl uses in pool names
+                return part.replace("_", " ")
+    except Exception as exc:
+        logger.debug("gallery-dl title fetch failed for %s: %s", url, exc)
+    return None
+
+
 def _run_gallery_dl(
     url: str,
     download_dir: Path,
@@ -35,6 +75,7 @@ def _run_gallery_dl(
     proxy: str | None = None,
     playlist_start: int | None = None,
     playlist_end: int | None = None,
+    source_address: str | None = None,
 ) -> list[Path]:
     """
     Blocking gallery-dl invocation. Runs in thread pool.
@@ -52,6 +93,9 @@ def _run_gallery_dl(
 
     if proxy:
         cmd += ["--proxy", proxy]
+
+    if source_address:
+        cmd += ["--source-address", source_address]
 
     if playlist_start is not None:
         rng = f"{playlist_start}-{playlist_end}" if playlist_end is not None else f"{playlist_start}-"
@@ -81,6 +125,7 @@ async def download_gallery(
     proxy: str | None = None,
     playlist_start: int | None = None,
     playlist_end: int | None = None,
+    source_address: str | None = None,
 ) -> list[Path]:
     """Async wrapper around gallery-dl. Raises GalleryDlError on failure."""
     loop = asyncio.get_running_loop()
@@ -93,6 +138,23 @@ async def download_gallery(
         proxy,
         playlist_start,
         playlist_end,
+        source_address,
+    )
+
+
+async def fetch_gallery_title(
+    url: str,
+    cookie_path: Path | None = None,
+    proxy: str | None = None,
+) -> str | None:
+    """Async wrapper for title extraction. Returns None on failure."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor,
+        _fetch_gallery_title,
+        url,
+        cookie_path,
+        proxy,
     )
 
 

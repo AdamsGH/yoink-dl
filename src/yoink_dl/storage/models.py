@@ -81,7 +81,7 @@ class FileCache(Base):
     __tablename__ = "file_cache"
     __table_args__ = (Index("idx_file_cache_expires", "expires_at"),)
 
-    cache_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    cache_key: Mapped[str] = mapped_column(String(80), primary_key=True)
     file_id: Mapped[str] = mapped_column(String(256), nullable=False)
     file_type: Mapped[str] = mapped_column(String(16), nullable=False)
     title: Mapped[str | None] = mapped_column(Text)

@@ -21,11 +21,13 @@ class DownloadLogResponse(BaseModel):
     status: str
     error_msg: str | None
     group_id: int | None
+    group_title: str | None = None
     thread_id: int | None
     message_id: int | None
     clip_start: int | None
     clip_end: int | None
     created_at: datetime
+    media_type: str = "video"
 
 
 class CookieResponse(BaseModel):
@@ -38,6 +40,7 @@ class CookieResponse(BaseModel):
     validated_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    inherited: bool = False
 
 
 class NsfwDomainResponse(BaseModel):

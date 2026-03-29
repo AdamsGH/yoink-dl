@@ -15,7 +15,7 @@ from yoink.core.api.deps import get_current_user, get_db
 from yoink.core.api.exceptions import NotFoundError
 from yoink.core.api.responses import paginated_response
 from yoink.core.auth.rbac import require_role
-from yoink.core.db.models import User, UserRole
+from yoink.core.db.models import Group, User, UserPermission, UserRole
 from yoink_dl.api.schemas import (
     CookieCreate,
     CookieResponse,
@@ -39,6 +39,27 @@ from yoink_dl.services import cookie_tokens as ct
 from yoink_dl.storage.models import Cookie, DownloadLog, NsfwDomain, NsfwKeyword, UserSettings
 
 router = APIRouter(tags=["downloader"])
+
+_AUDIO_DOMAINS = frozenset({
+    "soundcloud.com", "bandcamp.com", "music.yandex.ru", "music.yandex.com",
+    "open.spotify.com", "music.apple.com", "deezer.com", "tidal.com",
+    "last.fm", "audiomack.com", "mixcloud.com",
+})
+
+def _media_type(row: DownloadLog) -> str:
+    if row.status == "error":
+        return "error"
+    if row.clip_start is not None and row.clip_end is not None:
+        return "clip"
+    domain = (row.domain or "").lower().removeprefix("www.")
+    if domain in _AUDIO_DOMAINS:
+        return "audio"
+    quality = (row.quality or "").lower()
+    if "audio" in quality or "mp3" in quality or "m4a" in quality or "flac" in quality or "opus" in quality:
+        return "audio"
+    if row.file_count is not None and row.file_count > 1 and not row.duration:
+        return "gallery"
+    return "video"
 
 
 # Download history
@@ -88,13 +109,21 @@ async def list_my_downloads(
         select(func.count(DownloadLog.id)).where(*conditions)
     )).scalar_one()
     rows = (await session.execute(
-        select(DownloadLog)
+        select(DownloadLog, Group.title.label("group_title"))
+        .outerjoin(Group, Group.id == DownloadLog.group_id)
         .where(*conditions)
         .order_by(DownloadLog.created_at.desc())
         .offset(offset).limit(limit)
-    )).scalars().all()
+    )).all()
+
+    def _to_response(row: DownloadLog, group_title: str | None) -> DownloadLogResponse:
+        r = DownloadLogResponse.model_validate(row)
+        r.group_title = group_title
+        r.media_type = _media_type(row)
+        return r
+
     return paginated_response(
-        [DownloadLogResponse.model_validate(r) for r in rows],
+        [_to_response(row, gt) for row, gt in rows],
         total, offset, limit,
     )
 
@@ -223,10 +252,37 @@ async def list_my_cookies(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[CookieResponse]:
-    rows = (await session.execute(
+    own_rows = (await session.execute(
         select(Cookie).where(Cookie.user_id == current_user.id).order_by(Cookie.domain)
     )).scalars().all()
-    return [CookieResponse.model_validate(r) for r in rows]
+    result = [CookieResponse.model_validate(r) for r in own_rows]
+
+    # Include inherited (owner) cookies if user has shared_cookies permission
+    has_shared = (await session.execute(
+        select(UserPermission).where(
+            UserPermission.user_id == current_user.id,
+            UserPermission.plugin == "dl",
+            UserPermission.feature == "shared_cookies",
+        )
+    )).scalar_one_or_none()
+
+    if has_shared:
+        owner = (await session.execute(
+            select(User).where(User.role == UserRole.owner).limit(1)
+        )).scalar_one_or_none()
+        if owner and owner.id != current_user.id:
+            own_domains = {r.domain for r in own_rows}
+            owner_rows = (await session.execute(
+                select(Cookie).where(Cookie.user_id == owner.id).order_by(Cookie.domain)
+            )).scalars().all()
+            for r in owner_rows:
+                if r.domain not in own_domains:
+                    entry = CookieResponse.model_validate(r)
+                    entry.inherited = True
+                    result.append(entry)
+            result.sort(key=lambda c: c.domain)
+
+    return result
 
 
 @router.post("/cookies", response_model=CookieResponse, status_code=201, summary="Add cookie by content (raw, no format validation)")

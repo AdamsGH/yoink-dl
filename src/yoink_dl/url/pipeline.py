@@ -137,9 +137,18 @@ def _extract_file_id(result) -> tuple[str, str] | None:
     return None
 
 
-async def _make_zip(files: list[Path], directory: Path) -> Path:
+def _safe_filename(name: str) -> str:
+    """Strip characters unsafe for filenames, collapse whitespace."""
+    import re
+    name = re.sub(r'[\\/:*?"<>|]', '', name).strip()
+    name = re.sub(r'\s+', ' ', name)
+    return name[:80] or "gallery"
+
+
+async def _make_zip(files: list[Path], directory: Path, title: str = "") -> Path:
     """Pack all files into a zip archive inside directory. Runs in thread pool."""
-    zip_path = directory / "gallery.zip"
+    stem = _safe_filename(title) if title else "gallery"
+    zip_path = directory / f"{stem}.zip"
     loop = asyncio.get_running_loop()
 
     def _build() -> None:
@@ -501,7 +510,7 @@ async def run_download(
                 results = [SendResult(message=m) for m in sent_messages]
 
                 if use_zip:
-                    _zip_path = await _make_zip(files, download_dir)
+                    _zip_path = await _make_zip(files, download_dir, title=job.title)
                     zip_kw: dict[str, Any] = {
                         "chat_id": chat_id,
                         "document": str(_zip_path),
@@ -556,25 +565,31 @@ async def run_download(
         if use_media_group and file_cache and cache_key:
             items = [(fid, ft) for r in results if (ex := _extract_file_id(r)) for fid, ft in [ex]]
             if items:
-                await file_cache.put_group(
-                    cache_key,
-                    items,
-                    title=job.title,
-                    file_size=file_size,
-                )
+                try:
+                    await file_cache.put_group(
+                        cache_key,
+                        items,
+                        title=job.title,
+                        file_size=file_size,
+                    )
+                except Exception as _ce:
+                    logger.warning("file_cache.put_group failed (non-fatal): %s", _ce)
 
         for result in ([] if use_media_group else results):
             fid = _extract_file_id(result)
             if fid and file_cache and cache_key:
-                await file_cache.put(
-                    cache_key,
-                    file_id=fid[0],
-                    file_type=fid[1],
-                    title=job.title,
-                    file_size=file_size,
-                    duration=job.duration,
-                    url=url,
-                )
+                try:
+                    await file_cache.put(
+                        cache_key,
+                        file_id=fid[0],
+                        file_type=fid[1],
+                        title=job.title,
+                        file_size=file_size,
+                        duration=job.duration,
+                        url=url,
+                    )
+                except Exception as _ce:
+                    logger.warning("file_cache.put failed (non-fatal): %s", _ce)
                 break
 
         if dl_log:
@@ -589,6 +604,8 @@ async def run_download(
                 group_id=group_id,
                 thread_id=thread_id,
                 message_id=results[0].message.message_id if results else None,
+                clip_start=clip.start_sec if clip else None,
+                clip_end=clip.end_sec if clip else None,
             )
 
         metrics.inc("downloads_ok")
