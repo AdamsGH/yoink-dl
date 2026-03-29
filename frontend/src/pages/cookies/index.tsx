@@ -18,6 +18,7 @@ interface CookieEntry {
   id: number
   domain: string
   is_valid: boolean
+  is_pool: boolean
   updated_at: string
   validated_at?: string | null
   inherited?: boolean
@@ -249,7 +250,7 @@ export default function CookiesPage() {
                       <div className="flex items-center gap-2 py-2 px-1">
                         <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="text-xs text-muted-foreground">
-                          {t('cookies.inherited_label', { defaultValue: 'From admin' })}
+                          {t('cookies.pool_label', { defaultValue: 'Cookie pool' })}
                         </span>
                         <div className="flex-1 border-t border-dashed border-border" />
                       </div>
@@ -263,7 +264,7 @@ export default function CookiesPage() {
                           <ItemTitle className="text-muted-foreground">{c.domain}</ItemTitle>
                           <ItemDescription className="flex items-center gap-1">
                             <ShieldCheck className="h-3 w-3" />
-                            {t('cookies.inherited_desc', { defaultValue: 'Admin cookie' })}
+                            {t('cookies.pool_desc', { defaultValue: 'Shared pool' })}
                           </ItemDescription>
                         </ItemContent>
                         <ItemActions>

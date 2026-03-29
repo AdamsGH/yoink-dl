@@ -539,10 +539,12 @@ async def submit_cookies(
         )).scalar_one_or_none()
 
         if existing is None:
-            session.add(Cookie(user_id=user_id, domain=domain, content=content, is_valid=True))
+            session.add(Cookie(user_id=user_id, domain=domain, content=content,
+                               is_valid=True, is_pool=False))
         else:
             existing.content = content
             existing.is_valid = True
+            existing.is_pool = False
             existing.updated_at = now
 
     await session.commit()
