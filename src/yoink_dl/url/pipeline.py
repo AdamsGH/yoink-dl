@@ -137,11 +137,18 @@ def _extract_file_id(result) -> tuple[str, str] | None:
     return None
 
 
+_UNSAFE_CHAR_MAP = {
+    '<': '＜', '>': '＞', ':': '：', '"': '＂',
+    '/': '／', '\\': '＼', '|': '｜', '?': '？', '*': '＊',
+}
+
 def _safe_filename(name: str) -> str:
-    """Strip characters unsafe for filenames, collapse whitespace."""
+    """Replace Windows-unsafe characters with Unicode lookalikes, collapse whitespace."""
     import re
-    name = re.sub(r'[\\/:*?"<>|]', '', name).strip()
-    name = re.sub(r'\s+', ' ', name)
+    name = re.sub(r'[\u0000-\u001f\u007f-\u009f]', '', name)
+    for char, replacement in _UNSAFE_CHAR_MAP.items():
+        name = name.replace(char, replacement)
+    name = re.sub(r'\s+', ' ', name).strip()
     return name[:80] or "gallery"
 
 
