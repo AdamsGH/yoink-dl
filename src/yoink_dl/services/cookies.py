@@ -198,9 +198,7 @@ class CookieManager:
         self._pool_iters: dict[str, itertools.cycle] = {}
         self._pool_lock = threading.Lock()
 
-    # ------------------------------------------------------------------ #
     # Helpers
-    # ------------------------------------------------------------------ #
 
     async def _ensure_user(self, session, user_id: int) -> None:
         user = await session.get(User, user_id)
@@ -208,9 +206,7 @@ class CookieManager:
             session.add(User(id=user_id))
             await session.flush()
 
-    # ------------------------------------------------------------------ #
     # Personal cookies (user-owned, is_pool=False)
-    # ------------------------------------------------------------------ #
 
     async def store(self, user_id: int, domain: str, content: str) -> None:
         """Save or replace a personal cookie for (user_id, domain)."""
@@ -285,9 +281,7 @@ class CookieManager:
                 await session.commit()
         logger.warning("Marked cookie invalid: user=%d domain=%s", user_id, domain)
 
-    # ------------------------------------------------------------------ #
     # Pool cookies (is_pool=True, shared across users)
-    # ------------------------------------------------------------------ #
 
     @staticmethod
     def _extract_session_key(domain: str, content: str) -> str | None:
@@ -483,9 +477,7 @@ class CookieManager:
             self._pool_iters.clear()
         logger.warning("Marked pool cookie invalid: id=%d", cookie_id)
 
-    # ------------------------------------------------------------------ #
     # Set-Cookie update (works for both personal and pool)
-    # ------------------------------------------------------------------ #
 
     async def update_from_headers(self, cookie_id: int, set_cookie_header: str) -> bool:
         """
@@ -526,9 +518,7 @@ class CookieManager:
         logger.debug("Synced cookie from file: id=%d path=%s", cookie_id, path)
         return True
 
-    # ------------------------------------------------------------------ #
     # Main lookup: returns (tmp_path, cookie_id) for pipeline use
-    # ------------------------------------------------------------------ #
 
     async def get_path_for_url(
         self,
