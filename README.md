@@ -63,12 +63,13 @@ Mounted at `/api/v1/dl/`. Auth: JWT Bearer token.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | /downloads | user | My download history |
+| GET | /downloads | user | My download history (includes media_type, group_title) |
 | GET | /downloads/all | admin | All downloads |
 | GET | /settings | user | My dl settings |
 | PATCH | /settings | user | Update dl settings |
 | GET | /stats/overview | admin | Download statistics |
-| GET | /cookies | user | My cookies |
+| GET | /cookies | user | My cookies (includes inherited flag) |
+| GET | /cookies/inherited | user | Cookies inherited via shared_cookies permission |
 | POST | /cookies | user | Add cookie |
 | GET | /cookies/all | admin | All cookies |
 | DELETE | /cookies/{domain} | user | Delete cookie |
@@ -77,8 +78,8 @@ Mounted at `/api/v1/dl/`. Auth: JWT Bearer token.
 
 | Path | Role | Description |
 |---|---|---|
-| `/history` | user | Personal download history |
-| `/admin/cookies` | admin | Cookie management |
+| `/history` | user | Personal download history; Item list with per-type layout (video/audio/gallery/clip), dynamic search + period filter (7d/30d/90d/All), ExternalLink for supergroup messages |
+| `/admin/cookies` | admin | Cookie management; Item layout with favicons, inherited cookies, Upload button |
 | `/admin/nsfw` | admin | NSFW ruleset management |
 | `/admin/bot-settings` | admin | Global bot settings |
 | `/admin/stats` | admin | Download analytics |
@@ -92,11 +93,14 @@ Mounted at `/api/v1/dl/`. Auth: JWT Bearer token.
 - **NSFW detection** - configurable blur rules per domain/tag
 - **Rate limiting** - per-minute/hour/day limits per user
 - **Inline mode** - YouTube search (`@bot query`) with result caching
-- **Clipping** - `/cut` cuts video by `HH:MM:SS-HH:MM:SS` range via ffmpeg
+- **Clipping** - `/cut` cuts video by `HH:MM:SS-HH:MM:SS` range via ffmpeg; `clip_start`/`clip_end` written to download_log on success
+- **Clip media type** - clips are stored with `media_type="clip"` (separate from video); shown with Clapperboard icon in history
 - **Forum topics** - respects group forum topics, auto-creates "Downloads" DM topic
-- **Cookie management** - per-user Netscape cookie files passed to yt-dlp
+- **Cookie management** - per-user Netscape cookie files passed to yt-dlp; inherited cookies via `shared_cookies` permission
 - **Progress tracking** - real-time download progress in chat
-- **gallery-dl** - e621.net and similar sites; multi-file results sent as media groups
+- **gallery-dl** - e621.net and similar sites; multi-file results sent as media groups; gallery title fetched before download; zip archives named after the pool/gallery (`{Pool Name}.zip`)
+- **IPv6 rotation** - optional outbound IPv6 source address rotation via `IPv6Pool` service; applied to both yt-dlp and gallery-dl requests
+- **Download log** - all download outcomes (ok, cached, error) written to download_log with `user_id`, `group_id`, `thread_id`, `media_type`, `group_title`
 
 ## Configuration
 
@@ -108,6 +112,8 @@ Mounted at `/api/v1/dl/`. Auth: JWT Bearer token.
 | `dl_rate_limit_per_hour` | `30` | Downloads per user per hour |
 | `dl_rate_limit_per_day` | `100` | Downloads per user per day |
 | `dl_nsfw_enabled` | `false` | Enable NSFW detection and blur |
+| `ipv6_cidr` | - | IPv6 CIDR block to rotate source addresses from (e.g. `2001:db8::/48`) |
+| `ipv6_domains` | - | Comma-separated domains that should use IPv6 rotation |
 
 ## Package structure
 
@@ -122,7 +128,11 @@ src/yoink_dl/
   upload/              # Telegram upload, caption builder, media group sender
   url/                 # URL extraction, normalization, resolution, pipeline
   storage/             # SQLAlchemy models and repos
-  services/            # proxy, cookies, NSFW detection
+  services/
+    proxy.py           # round-robin proxy selector
+    cookies.py         # per-user Netscape cookie files
+    nsfw.py            # NSFW blur rules
+    ipv6_pool.py       # IPv6 source address rotation (IPv6Pool)
   i18n/locales/        # translations (en.yml, ru.yml)
 frontend/
   manifest.tsx         # plugin route registration
