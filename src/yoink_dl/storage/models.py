@@ -104,7 +104,12 @@ class RateLimit(Base):
 
 class Cookie(Base):
     __tablename__ = "cookies"
-    __table_args__ = (UniqueConstraint("user_id", "domain", "is_pool"),)
+    __table_args__ = (
+        # Personal cookies: unique per (user_id, domain) — enforced via partial index in DB
+        # Pool cookies: multiple rows per domain allowed (one per account)
+        UniqueConstraint("user_id", "domain", name="cookies_personal_unique",
+                         postgresql_where="is_pool = false"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
@@ -114,6 +119,7 @@ class Cookie(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     is_valid: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_pool: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    label: Mapped[str | None] = mapped_column(String(128), nullable=True)
     validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

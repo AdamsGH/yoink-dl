@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle, CookieIcon, Database, RefreshCw, Trash2, Upload } from 'lucide-react'
+import { CheckCircle, ChevronDown, ChevronRight, CookieIcon, Database, RefreshCw, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
 import { useTranslation } from 'react-i18next'
@@ -345,6 +345,7 @@ export default function AdminCookiesPage() {
   const [poolItems, setPoolItems] = useState<Cookie[]>([])
   const [poolLoading, setPoolLoading] = useState(true)
   const [poolFetching, setPoolFetching] = useState(false)
+  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
 
   const [personalItems, setPersonalItems] = useState<Cookie[]>([])
   const [personalLoading, setPersonalLoading] = useState(true)
@@ -358,17 +359,22 @@ export default function AdminCookiesPage() {
 
   const userMap = new Map(users.map((u) => [u.id, u]))
 
-  const poolDomainCounts = poolItems.reduce<Map<string, number>>((acc, c) => {
-    acc.set(c.domain, (acc.get(c.domain) ?? 0) + 1)
+  // Group pool items by domain
+  const poolByDomain = poolItems.reduce<Map<string, Cookie[]>>((acc, c) => {
+    const list = acc.get(c.domain) ?? []
+    list.push(c)
+    acc.set(c.domain, list)
     return acc
   }, new Map())
 
-  const poolDomains = Array.from(
-    poolItems.reduce<Map<string, Cookie>>((acc, c) => {
-      if (!acc.has(c.domain)) acc.set(c.domain, c)
-      return acc
-    }, new Map()).values()
-  )
+  const poolDomains = Array.from(poolByDomain.keys()).sort()
+
+  const toggleDomain = (domain: string) =>
+    setExpandedDomains(prev => {
+      const next = new Set(prev)
+      next.has(domain) ? next.delete(domain) : next.add(domain)
+      return next
+    })
 
   const loadPool = (isInitial = false) => {
     if (isInitial) setPoolLoading(true)
@@ -448,9 +454,6 @@ export default function AdminCookiesPage() {
     }
   }
 
-  const poolRepresentative = (domain: string): Cookie | undefined =>
-    poolItems.find((c) => c.domain === domain)
-
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4">
@@ -493,71 +496,97 @@ export default function AdminCookiesPage() {
                 className="divide-y divide-border px-3 py-1 transition-opacity duration-150"
                 style={{ opacity: poolFetching ? 0.5 : 1 }}
               >
-                {poolDomains.map((cookie) => {
-                  const count = poolDomainCounts.get(cookie.domain) ?? 1
-                  const rep = poolRepresentative(cookie.domain)
+                {poolDomains.map((domain) => {
+                  const accounts = poolByDomain.get(domain) ?? []
+                  const expanded = expandedDomains.has(domain)
+                  const anyInvalid = accounts.some(c => !c.is_valid)
 
                   return (
-                    <Item key={cookie.domain} size="sm" className="py-2.5 rounded-none border-0">
-                      <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
-                        <CookieFavicon domain={cookie.domain} />
-                      </ItemMedia>
-                      <ItemContent>
-                        <ItemTitle>{cookie.domain}</ItemTitle>
-                        <ItemDescription>
-                          {t('cookies.accounts_count', { count, defaultValue: `${count} accounts` })}
-                        </ItemDescription>
-                      </ItemContent>
-                      <ItemActions>
-                        {rep && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <CookieStatusBadge valid={rep.is_valid} />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {rep.validated_at
-                                ? `${t('cookies.validated_col', { defaultValue: 'Validated' })}: ${formatDate(rep.validated_at)}`
-                                : t('cookies.never', { defaultValue: 'Never validated' })}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        {rep && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={validating === rep.id}
-                                onClick={() => validate(rep.id)}
-                              >
-                                {validating === rep.id
-                                  ? <RefreshCw className="h-4 w-4 animate-spin" />
-                                  : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('cookies.revalidate')}</TooltipContent>
-                          </Tooltip>
-                        )}
-                        {rep && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                disabled={deleting === rep.id}
-                                onClick={() => removePool(rep.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('common.delete')}</TooltipContent>
-                          </Tooltip>
-                        )}
-                      </ItemActions>
-                    </Item>
+                    <div key={domain}>
+                      {/* Domain row — click to expand */}
+                      <Item
+                        size="sm"
+                        className="py-2.5 rounded-none border-0 cursor-pointer hover:bg-muted/40"
+                        onClick={() => toggleDomain(domain)}
+                      >
+                        <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
+                          <CookieFavicon domain={domain} />
+                        </ItemMedia>
+                        <ItemContent>
+                          <ItemTitle>{domain}</ItemTitle>
+                          <ItemDescription>
+                            {t('cookies.accounts_count', { count: accounts.length, defaultValue: `${accounts.length} accounts` })}
+                          </ItemDescription>
+                        </ItemContent>
+                        <ItemActions>
+                          {anyInvalid && (
+                            <span className="text-xs text-destructive">
+                              {t('cookies.some_invalid', { defaultValue: 'some invalid' })}
+                            </span>
+                          )}
+                          {expanded
+                            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                        </ItemActions>
+                      </Item>
+
+                      {/* Expanded account list */}
+                      {expanded && (
+                        <div className="border-l-2 border-border ml-4 pl-2 mb-1">
+                          {accounts.map((c) => (
+                            <Item key={c.id} size="sm" className="py-2 rounded-none border-0">
+                              <ItemContent>
+                                <ItemTitle className="text-sm font-mono">
+                                  {c.label ?? `#${c.id}`}
+                                </ItemTitle>
+                                <ItemDescription>
+                                  {t('cookies.added', { defaultValue: 'Added' })} {formatDate(c.created_at)}
+                                </ItemDescription>
+                              </ItemContent>
+                              <ItemActions>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span><CookieStatusBadge valid={c.is_valid} /></span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {c.validated_at
+                                      ? `${t('cookies.validated_col', { defaultValue: 'Validated' })}: ${formatDate(c.validated_at)}`
+                                      : t('cookies.never', { defaultValue: 'Never validated' })}
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost" size="icon"
+                                      disabled={validating === c.id}
+                                      onClick={(e) => { e.stopPropagation(); validate(c.id) }}
+                                    >
+                                      {validating === c.id
+                                        ? <RefreshCw className="h-4 w-4 animate-spin" />
+                                        : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{t('cookies.revalidate')}</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost" size="icon"
+                                      className="text-destructive hover:text-destructive"
+                                      disabled={deleting === c.id}
+                                      onClick={(e) => { e.stopPropagation(); removePool(c.id) }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{t('common.delete')}</TooltipContent>
+                                </Tooltip>
+                              </ItemActions>
+                            </Item>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>

@@ -36,6 +36,77 @@ def validate_netscape(content: str) -> bool:
     return False
 
 
+def extract_account_label(domain: str, content: str) -> str | None:
+    """
+    Try to extract a human-readable account label from a Netscape cookie file.
+    Looks for well-known identity cookies per domain.
+    Returns None if nothing useful found.
+    """
+    # Map: domain suffix -> list of cookie names that carry username/id info
+    _IDENTITY_COOKIES: dict[str, list[str]] = {
+        "youtube.com":   ["SAPISID", "LOGIN_INFO", "__Secure-1PSID"],
+        "google.com":    ["SAPISID", "__Secure-1PSID"],
+        "instagram.com": ["ds_user_id", "sessionid"],
+        "twitter.com":   ["auth_token", "twid"],
+        "x.com":         ["auth_token", "twid"],
+        "tiktok.com":    ["sid_tt", "uid_tt"],
+        "reddit.com":    ["reddit_session", "token_v2"],
+        "facebook.com":  ["c_user", "xs"],
+        "soundcloud.com":["sc_anonymous_id", "oauth_token"],
+    }
+
+    bare = domain.removeprefix("www.")
+    candidates: list[str] = []
+    for d, names in _IDENTITY_COOKIES.items():
+        if bare == d or bare.endswith("." + d):
+            candidates = names
+            break
+
+    if not candidates:
+        return None
+
+    values: dict[str, str] = {}
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) < 7:
+            continue
+        name, value = parts[5], parts[6]
+        if name in candidates:
+            values[name] = value
+
+    # Per-domain: extract something readable
+    if bare in ("instagram.com",):
+        uid = values.get("ds_user_id")
+        if uid:
+            return f"uid:{uid}"
+    if bare in ("twitter.com", "x.com"):
+        twid = values.get("twid", "")
+        # twid looks like "u%3D1234567890"
+        uid = twid.replace("u%3D", "").replace("u=", "")
+        if uid:
+            return f"uid:{uid}"
+    if bare in ("tiktok.com",):
+        uid = values.get("uid_tt")
+        if uid:
+            return f"uid:{uid[:16]}"
+    if bare in ("facebook.com",):
+        uid = values.get("c_user")
+        if uid:
+            return f"uid:{uid}"
+    if bare in ("reddit.com",):
+        # token_v2 is opaque, just confirm session exists
+        if values.get("token_v2") or values.get("reddit_session"):
+            return "authenticated"
+
+    # Generic: just confirm we found a session cookie
+    if values:
+        return "authenticated"
+    return None
+
+
 def _write_tmp(content: str) -> Path:
     """Write cookie content to a temp file and return its path."""
     fd, tmp_str = tempfile.mkstemp(suffix=".txt", prefix="ck_")
@@ -207,10 +278,11 @@ class CookieManager:
 
     async def store_pool(self, owner_id: int, domain: str, content: str) -> Cookie:
         """Add a new pool cookie for a domain (owner/admin only)."""
+        label = extract_account_label(domain, content)
         async with self._factory() as session:
             await self._ensure_user(session, owner_id)
             row = Cookie(user_id=owner_id, domain=domain, content=content,
-                         is_valid=True, is_pool=True)
+                         is_valid=True, is_pool=True, label=label)
             session.add(row)
             await session.commit()
             await session.refresh(row)

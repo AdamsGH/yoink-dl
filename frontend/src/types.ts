@@ -51,6 +51,7 @@ export interface Cookie {
   domain: string
   is_valid: boolean
   is_pool: boolean
+  label: string | null
   validated_at: string | null
   created_at: string
   updated_at: string

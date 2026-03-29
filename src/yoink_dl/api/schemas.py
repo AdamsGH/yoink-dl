@@ -38,6 +38,7 @@ class CookieResponse(BaseModel):
     domain: str
     is_valid: bool
     is_pool: bool = False
+    label: str | None = None
     validated_at: datetime | None
     created_at: datetime
     updated_at: datetime
