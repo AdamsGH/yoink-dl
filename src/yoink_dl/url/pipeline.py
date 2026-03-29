@@ -28,6 +28,49 @@ from yoink_dl.upload.caption import build_caption, build_group_caption
 from yoink_dl.upload.sender import MediaMeta, SendResult, classify_files, send_files, send_media_group
 from yoink_dl.utils.formatting import humanbytes
 from yoink_dl.utils.mediainfo import get_report as mediainfo_report
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """
+    True for transient errors that make sense to retry:
+    - ffmpeg crashes (exit code, OOM)
+    - network glitches (timeout, connection reset)
+    Not retryable: auth errors, geo-block, unsupported URL, rate limit, file too large.
+    """
+    from yoink_dl.utils.errors import (  # noqa: PLC0415
+        BotError, GeoBlockedError, PrivateContentError, FileTooLargeError,
+        LiveStreamError, UnsupportedUrlError, BlacklistedDomainError,
+        RateLimitError, NsfwError, CookieError,
+    )
+    # Never retry these
+    if isinstance(exc, (
+        GeoBlockedError, PrivateContentError, FileTooLargeError,
+        LiveStreamError, UnsupportedUrlError, BlacklistedDomainError,
+        RateLimitError, NsfwError, CookieError,
+    )):
+        return False
+    # Auth errors in raw exception message — no point retrying
+    err_lower = str(exc).lower()
+    no_retry_hints = (
+        "http error 403", "http error 401", "http error 404",
+        "sign in", "log in", "login required", "private video",
+        "not available in your country", "geo",
+    )
+    if any(h in err_lower for h in no_retry_hints):
+        return False
+    # ffmpeg crash, network timeout, connection reset — retry
+    retry_hints = (
+        "exited with code", "timed out", "timeout", "connection",
+        "reset", "broken pipe", "ssl", "network",
+    )
+    if any(h in err_lower for h in retry_hints):
+        return True
+    # Generic BotError (DownloadError without specific cause) — retry
+    from yoink_dl.utils.errors import DownloadError  # noqa: PLC0415
+    if isinstance(exc, DownloadError):
+        return True
+    # Unknown exceptions — retry cautiously
+    return not isinstance(exc, BotError)
 from yoink_dl.utils.safe_telegram import delete_many
 from yoink.core.metrics import metrics
 from yoink_dl.url.clip import ClipSpec
@@ -422,8 +465,38 @@ async def run_download(
         _action_task = asyncio.create_task(
             _chat_action_loop(context.bot, chat_id, _dl_action, thread_id, _action_stop)
         )
+        _bot_settings_repo = context.bot_data.get("bot_settings_repo")
+        _retries_raw = None
+        if _bot_settings_repo is not None:
+            _retries_raw = await _bot_settings_repo.get("dl.download_retries")
+        _max_retries = max(1, int(_retries_raw) if _retries_raw is not None else settings.download_retries)
+        _last_exc: Exception | None = None
         try:
-            job = await manager.run(job, progress_cb=tracker.ytdlp_hook)
+            for _attempt in range(_max_retries):
+                try:
+                    job = await manager.run(job, progress_cb=tracker.ytdlp_hook)
+                    _last_exc = None
+                    break
+                except Exception as _exc:
+                    _last_exc = _exc
+                    if not _is_retryable(_exc):
+                        raise
+                    if _attempt < _max_retries - 1:
+                        logger.warning(
+                            "Download attempt %d/%d failed (retrying): %s",
+                            _attempt + 1, _max_retries, _exc,
+                        )
+                        try:
+                            await status.edit_text(
+                                t("pipeline.retrying", lang,
+                                  attempt=_attempt + 1, max=_max_retries,
+                                  defaultValue=f"⏳ Retrying ({_attempt + 1}/{_max_retries})..."),
+                            )
+                        except Exception:
+                            pass
+                        await asyncio.sleep(2 ** _attempt)  # 1s, 2s, 4s backoff
+                    else:
+                        raise
         finally:
             _action_stop.set()
             _action_task.cancel()
@@ -634,7 +707,16 @@ async def run_download(
         from yoink_dl.utils.errors import BotError
         metrics.inc("downloads_error")
         logger.exception("Download failed for %s: %s", url, e)
-        err_text = str(e)[:300] if isinstance(e, BotError) else t("errors.unknown", "en")
+        if isinstance(e, BotError):
+            err_text = t(e.message_key, lang, **e.kwargs)
+        else:
+            # Non-BotError: show a sanitized version of the actual message
+            raw = str(e)
+            # Strip yt-dlp ANSI formatting prefix if present
+            import re as _re  # noqa: PLC0415
+            raw = _re.sub(r'\x1b\[[0-9;]*m', '', raw)
+            raw = raw.removeprefix("ERROR: ")
+            err_text = raw[:300] if raw else t("errors.unknown", lang)
         try:
             await status.edit_text(f"❌ {err_text}", parse_mode=ParseMode.HTML)
         except Exception:

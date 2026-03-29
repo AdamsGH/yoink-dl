@@ -21,6 +21,8 @@ from yoink_dl.api.schemas import (
     CookieResponse,
     CookieSubmitRequest,
     CookieTokenResponse,
+    DlAdminSettings,
+    DlAdminSettingsPatch,
     DlUserSettingsResponse,
     DlUserSettingsUpdate,
     DownloadLogResponse,
@@ -144,6 +146,76 @@ async def list_all_downloads(
         [DownloadLogResponse.model_validate(r) for r in rows],
         total, offset, limit,
     )
+
+
+# dl admin settings (global, stored in BotSetting KV with prefix "dl.")
+
+_DL_ADMIN_DEFAULTS: dict[str, str] = {
+    "dl.download_retries":     "3",
+    "dl.download_timeout":     "1200",
+    "dl.max_file_size_gb":     "2.0",
+    "dl.rate_limit_per_minute": "5",
+    "dl.rate_limit_per_hour":  "30",
+    "dl.rate_limit_per_day":   "100",
+    "dl.max_playlist_count":   "50",
+}
+
+
+async def _get_dl_admin_settings(request: Request) -> DlAdminSettings:
+    from yoink.core.db.repos.bot_settings import BotSettingsRepo  # noqa: PLC0415
+    repo: BotSettingsRepo = request.app.state.bot_data["bot_settings_repo"]
+    raw: dict[str, str] = {}
+    for key, default in _DL_ADMIN_DEFAULTS.items():
+        val = await repo.get(key)
+        raw[key] = val if val is not None else default
+
+    def _int(k: str) -> int:
+        return int(raw[k])
+
+    def _float(k: str) -> float:
+        return float(raw[k])
+
+    return DlAdminSettings(
+        download_retries=_int("dl.download_retries"),
+        download_timeout=_int("dl.download_timeout"),
+        max_file_size_gb=_float("dl.max_file_size_gb"),
+        rate_limit_per_minute=_int("dl.rate_limit_per_minute"),
+        rate_limit_per_hour=_int("dl.rate_limit_per_hour"),
+        rate_limit_per_day=_int("dl.rate_limit_per_day"),
+        max_playlist_count=_int("dl.max_playlist_count"),
+    )
+
+
+@router.get("/admin/settings", response_model=DlAdminSettings, summary="Get global downloader settings (admin+)")
+async def get_dl_admin_settings(
+    request: Request,
+    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+) -> DlAdminSettings:
+    return await _get_dl_admin_settings(request)
+
+
+@router.patch("/admin/settings", response_model=DlAdminSettings, summary="Update global downloader settings (admin+)")
+async def update_dl_admin_settings(
+    body: DlAdminSettingsPatch,
+    request: Request,
+    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+) -> DlAdminSettings:
+    from yoink.core.db.repos.bot_settings import BotSettingsRepo  # noqa: PLC0415
+    repo: BotSettingsRepo = request.app.state.bot_data["bot_settings_repo"]
+    mapping = {
+        "download_retries":     "dl.download_retries",
+        "download_timeout":     "dl.download_timeout",
+        "max_file_size_gb":     "dl.max_file_size_gb",
+        "rate_limit_per_minute": "dl.rate_limit_per_minute",
+        "rate_limit_per_hour":  "dl.rate_limit_per_hour",
+        "rate_limit_per_day":   "dl.rate_limit_per_day",
+        "max_playlist_count":   "dl.max_playlist_count",
+    }
+    for field, key in mapping.items():
+        value = getattr(body, field)
+        if value is not None:
+            await repo.set(key, str(value))
+    return await _get_dl_admin_settings(request)
 
 
 # dl-specific user settings

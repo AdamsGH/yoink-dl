@@ -117,6 +117,27 @@ class DlUserSettingsResponse(BaseModel):
     updated_at: datetime
 
 
+class DlAdminSettings(BaseModel):
+    """Global downloader settings stored in BotSetting KV (prefix dl.*)."""
+    download_retries: int = 3
+    download_timeout: int = 1200
+    max_file_size_gb: float = 2.0
+    rate_limit_per_minute: int = 5
+    rate_limit_per_hour: int = 30
+    rate_limit_per_day: int = 100
+    max_playlist_count: int = 50
+
+
+class DlAdminSettingsPatch(BaseModel):
+    download_retries: int | None = None
+    download_timeout: int | None = None
+    max_file_size_gb: float | None = None
+    rate_limit_per_minute: int | None = None
+    rate_limit_per_hour: int | None = None
+    rate_limit_per_day: int | None = None
+    max_playlist_count: int | None = None
+
+
 class StatsOverview(BaseModel):
     total_downloads: int
     downloads_today: int

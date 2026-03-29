@@ -1,4 +1,4 @@
-import { Cookie, Download, Settings, ShieldAlert } from 'lucide-react'
+import { Cookie, Download, Settings, ShieldAlert, Sliders } from 'lucide-react'
 
 import type { PluginManifest } from '@core/types/plugin'
 
@@ -8,6 +8,7 @@ import CookiesPage      from './src/pages/cookies'
 import AdminCookiesPage from './src/pages/admin/cookies'
 import AdminNsfwPage    from './src/pages/admin/nsfw'
 import DlStatsPage      from './src/pages/admin/stats/index'
+import { DlSettingsSection } from './src/pages/admin/bot-settings/DlSettingsSection'
 
 export const dlPlugin: PluginManifest = {
   id: 'dl',
@@ -44,6 +45,15 @@ export const dlPlugin: PluginManifest = {
   ],
 
   // These items extend the core Admin group declared in corePlugin (same label merges in AppLayout)
+
+  botSettingsSections: [
+    {
+      title: 'Downloader',
+      icon: <Sliders className="h-4 w-4 text-muted-foreground" />,
+      content: <DlSettingsSection />,
+      minRole: 'admin',
+    },
+  ],
 
   resources: [
     { name: 'settings',   list: '/settings' },

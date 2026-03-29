@@ -168,6 +168,7 @@ pipeline:
   welcome_pending: "<b>Welcome!</b>\n\nYour account is pending approval. An admin will grant you access shortly."
   nsfw_blocked: "🔞 NSFW content is not allowed in this group."
   uploading: "Uploading {size}…"
+  retrying: "⏳ Retrying ({attempt}/{max})…"
 
 vid:
   help: |

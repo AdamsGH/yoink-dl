@@ -18,6 +18,7 @@ class DownloaderConfig(BaseSettings):
     rate_limit_per_minute: int = 5
     rate_limit_per_hour: int = 30
     rate_limit_per_day: int = 100
+    download_retries: int = 3  # fallback default; runtime value stored in BotSetting dl.download_retries
 
     # YouTube
     youtube_pot_enabled: bool = True
