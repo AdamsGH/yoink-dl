@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, ExternalLink, RefreshCw, Trash2, Upload } from 'lucide-react'
+import { CheckCircle, CookieIcon, ExternalLink, Globe, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
@@ -8,7 +8,10 @@ import { CookieStatusBadge } from '@core/components/app/StatusBadge'
 import { Button } from '@core/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
 import { Input } from '@core/components/ui/input'
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@core/components/ui/item'
 import { Label } from '@core/components/ui/label'
+import { Skeleton } from '@core/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
 import { toast } from '@core/components/ui/toast'
 
 interface CookieEntry {
@@ -16,6 +19,30 @@ interface CookieEntry {
   domain: string
   is_valid: boolean
   updated_at: string
+  validated_at?: string | null
+  inherited?: boolean
+}
+
+// favicon cache: domain -> img url (or null = failed)
+const faviconCache = new Map<string, string | null>()
+
+function useFavicon(domain: string): string | null {
+  const [src, setSrc] = useState<string | null>(() => faviconCache.get(domain) ?? null)
+  useEffect(() => {
+    if (faviconCache.has(domain)) { setSrc(faviconCache.get(domain)!); return }
+    const url = `https://www.google.com/s2/favicons?sz=32&domain=${domain}`
+    const img = new Image()
+    img.onload = () => { faviconCache.set(domain, url); setSrc(url) }
+    img.onerror = () => { faviconCache.set(domain, null); setSrc(null) }
+    img.src = url
+  }, [domain])
+  return src
+}
+
+function CookieFavicon({ domain }: { domain: string }) {
+  const src = useFavicon(domain)
+  if (src) return <img src={src} alt="" className="size-4 rounded-sm object-contain" />
+  return <Globe className="size-4" />
 }
 
 function parseDomainFromNetscape(text: string): string {
@@ -120,226 +147,301 @@ export default function CookiesPage() {
     }
   }
 
+  const own = cookies.filter(c => !c.inherited)
+  const inherited = cookies.filter(c => c.inherited)
+
   return (
-    <div className="space-y-5">
-      {/* Stored list */}
-      <Card>
-        <CardHeader className="px-4 py-3">
-          <CardTitle className="text-base">{t('cookies.stored', { defaultValue: 'Stored cookies' })}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center py-10 text-muted-foreground text-sm">
-              {t('common.loading')}
+    <TooltipProvider delayDuration={300}>
+      <div className="space-y-4">
+        {/* Stored list */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CookieIcon className="h-4 w-4 text-muted-foreground" />
+                {loading
+                  ? t('cookies.stored', { defaultValue: 'Cookies' })
+                  : t('cookies.count_other', { count: own.length, defaultValue: `${own.length} cookies` })}
+              </CardTitle>
+              <Button
+                size="sm"
+                className="h-7 px-2.5 text-xs"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="mr-1.5 h-3 w-3" />
+                {t('cookies.upload', { defaultValue: 'Upload' })}
+              </Button>
             </div>
-          ) : cookies.length === 0 ? (
-            <div className="flex justify-center py-10 text-muted-foreground text-sm">
-              {t('cookies.empty', { defaultValue: 'No cookies stored yet' })}
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {cookies.map(c => (
-                <div key={c.id} className="flex items-center justify-between px-4 py-3 gap-3">
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="text-sm font-medium">{c.domain}</p>
-                    <div className="flex items-center gap-2 pt-0.5">
-                      <CookieStatusBadge valid={c.is_valid} className="text-xs" />
-                      <span className="text-xs text-muted-foreground">
-                        {t('cookies.updated', { defaultValue: 'Updated' })} {formatDate(c.updated_at)}
-                      </span>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="divide-y divide-border px-3 py-1">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 py-2.5">
+                    <Skeleton className="size-8 rounded-md shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3.5 w-32" />
+                      <Skeleton className="h-3 w-20" />
                     </div>
+                    <Skeleton className="h-5 w-14" />
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost" size="icon"
-                      title={t('cookies.validate_btn', { defaultValue: 'Re-validate' })}
-                      disabled={validating === c.id}
-                      onClick={() => validate(c.id)}
-                    >
-                      {validating === c.id
-                        ? <RefreshCw className="h-4 w-4 animate-spin" />
-                        : <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                      }
-                    </Button>
-                    <Button
-                      variant="ghost" size="icon"
-                      className="text-destructive hover:text-destructive"
-                      disabled={deleting === c.id}
-                      onClick={() => remove(c.id, c.domain)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                ))}
+              </div>
+            ) : own.length === 0 && inherited.length === 0 ? (
+              <div className="flex justify-center py-12 text-muted-foreground text-sm">
+                {t('cookies.empty', { defaultValue: 'No cookies stored yet' })}
+              </div>
+            ) : (
+              <div className="divide-y divide-border px-3 py-1">
+                {own.map((c) => (
+                  <Item key={c.id} size="sm" className="py-2.5 rounded-none border-0">
+                    <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
+                      <CookieFavicon domain={c.domain} />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{c.domain}</ItemTitle>
+                      <ItemDescription>
+                        {t('cookies.updated', { defaultValue: 'Updated' })} {formatDate(c.updated_at)}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span><CookieStatusBadge valid={c.is_valid} /></span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {c.validated_at
+                            ? `${t('cookies.validated_col', { defaultValue: 'Validated' })}: ${formatDate(c.validated_at)}`
+                            : t('cookies.never', { defaultValue: 'Never validated' })}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled={validating === c.id} onClick={() => validate(c.id)}>
+                            {validating === c.id
+                              ? <RefreshCw className="h-4 w-4 animate-spin" />
+                              : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('cookies.validate_btn', { defaultValue: 'Re-validate' })}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost" size="icon"
+                            className="text-destructive hover:text-destructive"
+                            disabled={deleting === c.id}
+                            onClick={() => remove(c.id, c.domain)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('common.delete', { defaultValue: 'Delete' })}</TooltipContent>
+                      </Tooltip>
+                    </ItemActions>
+                  </Item>
+                ))}
+
+                {inherited.length > 0 && (
+                  <>
+                    {own.length > 0 && (
+                      <div className="flex items-center gap-2 py-2 px-1">
+                        <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="text-xs text-muted-foreground">
+                          {t('cookies.inherited_label', { defaultValue: 'From admin' })}
+                        </span>
+                        <div className="flex-1 border-t border-dashed border-border" />
+                      </div>
+                    )}
+                    {inherited.map((c) => (
+                      <Item key={c.id} size="sm" className="py-2.5 rounded-none border-0 opacity-60">
+                        <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
+                          <CookieFavicon domain={c.domain} />
+                        </ItemMedia>
+                        <ItemContent>
+                          <ItemTitle className="text-muted-foreground">{c.domain}</ItemTitle>
+                          <ItemDescription className="flex items-center gap-1">
+                            <ShieldCheck className="h-3 w-3" />
+                            {t('cookies.inherited_desc', { defaultValue: 'Admin cookie' })}
+                          </ItemDescription>
+                        </ItemContent>
+                        <ItemActions>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span><CookieStatusBadge valid={c.is_valid} /></span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {c.validated_at
+                                ? `${t('cookies.validated_col', { defaultValue: 'Validated' })}: ${formatDate(c.validated_at)}`
+                                : t('cookies.never', { defaultValue: 'Never validated' })}
+                            </TooltipContent>
+                          </Tooltip>
+                        </ItemActions>
+                      </Item>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Hidden file input - triggered by Upload button */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,text/plain"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {/* Upload form - shown after file selected */}
+        {uploadFile && (
+          <Card>
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-base">{uploadFile.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="upload-domain">{t('cookies.domain_label', { defaultValue: 'Domain' })}</Label>
+                <Input
+                  id="upload-domain"
+                  placeholder="youtube.com"
+                  value={uploadDomain}
+                  onChange={(e) => setUploadDomain(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('cookies.domain_auto', { defaultValue: 'Auto-detected from file. Edit if incorrect.' })}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setUploadFile(null); setUploadContent(''); setUploadDomain(''); if (fileInputRef.current) fileInputRef.current.value = '' }}>
+                  {t('common.cancel', { defaultValue: 'Cancel' })}
+                </Button>
+                <Button size="sm" onClick={handleUpload} disabled={uploading || !uploadDomain}>
+                  {uploading ? t('common.loading') : t('cookies.upload_btn', { defaultValue: 'Upload' })}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Get cookies.txt extension */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-base">
+              {t('cookies.extension_title', { defaultValue: 'Get cookies via browser extension' })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm px-4 pb-4">
+            <p className="text-muted-foreground">
+              {t('cookies.extension_hint', {
+                defaultValue: 'The easiest way to export cookies from any site is with the "Get cookies.txt LOCALLY" extension.',
+              })}
+            </p>
+
+            <a
+              href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
+            >
+              <ExternalLink className="h-4 w-4 shrink-0" />
+              {t('cookies.extension_link', { defaultValue: 'Get cookies.txt LOCALLY' })}
+            </a>
+
+            <div className="space-y-3 pt-1">
+              {[
+                {
+                  n: 1,
+                  title: t('cookies.step1_title', { defaultValue: 'Install the extension' }),
+                  desc: t('cookies.step1_desc', { defaultValue: 'Available for Chrome, Chromium, and Edge.' }),
+                },
+                {
+                  n: 2,
+                  title: t('cookies.step2_title', { defaultValue: 'Log in to the site' }),
+                  desc: t('cookies.step2_desc', { defaultValue: 'Open the site (YouTube, Instagram, etc.) and log in.' }),
+                },
+                {
+                  n: 3,
+                  title: t('cookies.step3_title', { defaultValue: 'Export cookies' }),
+                  desc: t('cookies.step3_desc', { defaultValue: 'Click the extension icon and press "Export" - you\'ll get a cookies.txt file.' }),
+                },
+                {
+                  n: 4,
+                  title: t('cookies.step4_title', { defaultValue: 'Upload the file' }),
+                  desc: t('cookies.step4_desc', { defaultValue: 'Tap "Upload" above and select the file.' }),
+                },
+              ].map(({ n, title, desc }) => (
+                <div key={n} className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
+                    {n}
+                  </span>
+                  <div>
+                    <p className="font-medium">{title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Manual file upload */}
-      <Card>
-        <CardHeader className="px-4 py-3">
-          <CardTitle className="text-base">{t('cookies.upload_title', { defaultValue: 'Upload cookie file' })}</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 py-3 space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {t('cookies.upload_hint', { defaultValue: 'Upload a Netscape cookies.txt file exported from your browser.' })}
-          </p>
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".txt,text/plain"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <div
-              className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4 shrink-0" />
-              {uploadFile ? uploadFile.name : t('cookies.select_file_btn', { defaultValue: 'Click to select .txt file...' })}
-            </div>
-          </div>
-          {uploadFile && (
-            <div className="space-y-1.5">
-              <Label htmlFor="upload-domain">{t('cookies.domain_label', { defaultValue: 'Domain' })}</Label>
-              <Input
-                id="upload-domain"
-                placeholder="youtube.com"
-                value={uploadDomain}
-                onChange={(e) => setUploadDomain(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('cookies.domain_auto', { defaultValue: 'Auto-detected from file. Edit if incorrect.' })}
-              </p>
-            </div>
-          )}
-          {uploadFile && (
-            <Button onClick={handleUpload} disabled={uploading || !uploadDomain} size="sm">
-              {uploading
-                ? t('common.loading')
-                : t('cookies.upload_btn', { defaultValue: 'Upload' })}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Get cookies.txt extension */}
-      <Card>
-        <CardHeader className="px-4 py-3">
-          <CardTitle className="text-base">
-            {t('cookies.extension_title', { defaultValue: 'Get cookies via browser extension' })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <p className="text-muted-foreground">
-            {t('cookies.extension_hint', {
-              defaultValue: 'The easiest way to export cookies from any site is with the "Get cookies.txt LOCALLY" extension.',
-            })}
-          </p>
-
-          <a
-            href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
-          >
-            <ExternalLink className="h-4 w-4 shrink-0" />
-            {t('cookies.extension_link', { defaultValue: 'Get cookies.txt LOCALLY - Chrome Web Store' })}
-          </a>
-
-          <div className="space-y-3 pt-1">
-            {[
-              {
-                n: 1,
-                title: t('cookies.step1_title', { defaultValue: 'Install the extension' }),
-                desc: t('cookies.step1_desc', { defaultValue: 'Available for Chrome, Chromium, and Edge.' }),
-              },
-              {
-                n: 2,
-                title: t('cookies.step2_title', { defaultValue: 'Log in to the site' }),
-                desc: t('cookies.step2_desc', { defaultValue: 'Open the site (YouTube, Instagram, etc.) and log in.' }),
-              },
-              {
-                n: 3,
-                title: t('cookies.step3_title', { defaultValue: 'Export cookies' }),
-                desc: t('cookies.step3_desc', { defaultValue: 'Click the extension icon and press "Export" - you\'ll get a cookies.txt file.' }),
-              },
-              {
-                n: 4,
-                title: t('cookies.step4_title', { defaultValue: 'Upload the file above' }),
-                desc: t('cookies.step4_desc', { defaultValue: 'Use the upload form above to save it to the bot.' }),
-              },
-            ].map(({ n, title, desc }) => (
-              <div key={n} className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
-                  {n}
-                </span>
-                <div>
-                  <p className="font-medium">{title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+        {/* Auto-sync extension */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-base">
+              {t('cookies.sync_title', { defaultValue: 'Auto-sync via Yoink Cookie Sync' })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm px-4 pb-4">
+            <p className="text-muted-foreground">
+              {t('cookies.sync_hint', { defaultValue: 'For automatic sync, use the Yoink Cookie Sync browser extension.' })}
+            </p>
+            <div className="space-y-3">
+              {[
+                {
+                  n: 1,
+                  title: t('cookies.sync_step1_title', { defaultValue: 'Install the Yoink Cookie Sync extension' }),
+                  desc: t('cookies.sync_step1_desc', { defaultValue: 'Available for Chrome, Chromium, Edge. Ask your admin for the .zip file.' }),
+                },
+                {
+                  n: 2,
+                  title: t('cookies.sync_step2_title', { defaultValue: 'Log in to your sites' }),
+                  desc: t('cookies.sync_step2_desc', { defaultValue: 'Instagram, YouTube, X, TikTok - in the same browser.' }),
+                },
+                {
+                  n: 3,
+                  title: t('cookies.sync_step3_title', { defaultValue: 'Get a token from the bot' }),
+                  desc: (
+                    <>
+                      {t('cookies.sync_step3_desc', { defaultValue: 'Send ' })}
+                      <code className="bg-muted px-1 rounded">/cookie token</code>
+                      {t('cookies.sync_step3_desc2', { defaultValue: ' to the bot in Telegram.' })}
+                    </>
+                  ),
+                },
+                {
+                  n: 4,
+                  title: t('cookies.sync_step4_title', { defaultValue: 'Paste token in the extension' }),
+                  desc: t('cookies.sync_step4_desc', { defaultValue: 'Token is valid for 10 minutes and single-use. Repeat when cookies expire.' }),
+                },
+              ].map(({ n, title, desc }) => (
+                <div key={n} className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
+                    {n}
+                  </span>
+                  <div>
+                    <p className="font-medium">{title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Extension (Yoink Cookie Sync) */}
-      <Card>
-        <CardHeader className="px-4 py-3">
-          <CardTitle className="text-base">
-            {t('cookies.sync_title', { defaultValue: 'Auto-sync via Yoink Cookie Sync' })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <p className="text-muted-foreground">
-            {t('cookies.sync_hint', { defaultValue: 'For automatic sync, use the Yoink Cookie Sync browser extension.' })}
-          </p>
-          <div className="space-y-3">
-            {[
-              {
-                n: 1,
-                title: t('cookies.sync_step1_title', { defaultValue: 'Install the Yoink Cookie Sync extension' }),
-                desc: t('cookies.sync_step1_desc', { defaultValue: 'Available for Chrome, Chromium, Edge. Ask your admin for the .zip file.' }),
-              },
-              {
-                n: 2,
-                title: t('cookies.sync_step2_title', { defaultValue: 'Log in to your sites' }),
-                desc: t('cookies.sync_step2_desc', { defaultValue: 'Instagram, YouTube, X, TikTok - in the same browser.' }),
-              },
-              {
-                n: 3,
-                title: t('cookies.sync_step3_title', { defaultValue: 'Get a token from the bot' }),
-                desc: (
-                  <>
-                    {t('cookies.sync_step3_desc', { defaultValue: 'Send ' })}
-                    <code className="bg-muted px-1 rounded">/cookie token</code>
-                    {t('cookies.sync_step3_desc2', { defaultValue: ' to the bot in Telegram.' })}
-                  </>
-                ),
-              },
-              {
-                n: 4,
-                title: t('cookies.sync_step4_title', { defaultValue: 'Paste token in the extension' }),
-                desc: t('cookies.sync_step4_desc', { defaultValue: 'Token is valid for 10 minutes and single-use. Repeat when cookies expire.' }),
-              },
-            ].map(({ n, title, desc }) => (
-              <div key={n} className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
-                  {n}
-                </span>
-                <div>
-                  <p className="font-medium">{title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </TooltipProvider>
   )
 }

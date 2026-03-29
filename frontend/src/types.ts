@@ -42,6 +42,7 @@ export interface DownloadLog {
   clip_start: number | null
   clip_end: number | null
   created_at: string
+  media_type: 'video' | 'audio' | 'gallery' | 'clip' | 'error'
 }
 
 export interface Cookie {

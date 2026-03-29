@@ -305,8 +305,8 @@ export default function AdminCookiesPage() {
                   ? t('cookies.title', { defaultValue: 'Cookies' })
                   : t('cookies.count_other', { count: items.length })}
               </CardTitle>
-              <Button size="sm" onClick={() => setUploadOpen(true)}>
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
+              <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => setUploadOpen(true)}>
+                <Upload className="mr-1.5 h-3 w-3" />
                 {t('cookies.upload')}
               </Button>
             </div>
