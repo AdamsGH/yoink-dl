@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     BigInteger, Boolean, DateTime, Float, Index,
-    Integer, String, Text, UniqueConstraint, ForeignKey,
+    Integer, String, Text, ForeignKey,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -104,12 +104,7 @@ class RateLimit(Base):
 
 class Cookie(Base):
     __tablename__ = "cookies"
-    __table_args__ = (
-        # Personal cookies: unique per (user_id, domain) — enforced via partial index in DB
-        # Pool cookies: multiple rows per domain allowed (one per account)
-        UniqueConstraint("user_id", "domain", name="cookies_personal_unique",
-                         postgresql_where="is_pool = false"),
-    )
+
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
