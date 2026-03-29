@@ -56,8 +56,7 @@ const SPLIT_OPTIONS = [
   { value: String(500 * 1024 * 1024),  label: '500 MB' },
   { value: String(1000 * 1024 * 1024), label: '1 GB' },
   { value: String(1500 * 1024 * 1024), label: '1.5 GB' },
-  { value: String(2000 * 1024 * 1024), label: '2 GB' },
-  { value: '2043000000',               label: '2 GB (Telegram limit)' },
+  { value: '2043000000',               label: '2 GB (max)' },
 ]
 
 const KEYBOARD_OPTIONS = [
@@ -72,7 +71,7 @@ const SUBS_LANG_OPTIONS = ['en', 'ru', 'de', 'fr', 'es', 'it', 'pt', 'ja', 'zh',
 // Row with label on left, control on right
 function SettingRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2.5 border-b border-border last:border-0">
+    <div className="flex items-center justify-between gap-4 py-2.5">
       <div className="min-w-0 flex-1">
         <p className="text-sm">{label}</p>
         {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
@@ -234,10 +233,10 @@ export default function SettingsPage() {
             <ControlledSelect name="quality" options={QUALITY_OPTIONS} control={control} />
           </SettingRow>
           <SettingRow label={t('settings.codec_label')}>
-            <ControlledSelect name="codec" options={CODEC_OPTIONS} control={control} className="w-40" />
+            <ControlledSelect name="codec" options={CODEC_OPTIONS} control={control} />
           </SettingRow>
           <SettingRow label={t('settings.container_label')}>
-            <ControlledSelect name="container" options={CONTAINER_OPTIONS} control={control} className="w-24" />
+            <ControlledSelect name="container" options={CONTAINER_OPTIONS} control={control} />
           </SettingRow>
         </CardContent>
       </Card>
@@ -249,10 +248,10 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="px-4 pb-1">
           <SettingRow label={t('settings.split_label')}>
-            <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} className="w-44" />
+            <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} />
           </SettingRow>
           <SettingRow label={t('settings.keyboard_label')}>
-            <ControlledSelect name="keyboard" options={KEYBOARD_OPTIONS} control={control} className="w-32" />
+            <ControlledSelect name="keyboard" options={KEYBOARD_OPTIONS} control={control} />
           </SettingRow>
           <ControlledSwitch name="send_as_file" label={t('settings.send_as_file')} hint={t('settings.send_as_file_hint')} control={control} />
           <ControlledSwitch name="nsfw_blur" label={t('settings.nsfw_blur')} hint={t('settings.nsfw_blur_hint')} control={control} />
@@ -295,7 +294,6 @@ export default function SettingsPage() {
                   name="subs_lang"
                   options={SUBS_LANG_OPTIONS.map((c) => ({ value: c, label: c }))}
                   control={control}
-                  className="w-24"
                 />
               </SettingRow>
               <ControlledSwitch name="subs_auto" label={t('settings.subs_auto')} hint={t('settings.subs_auto_hint')} control={control} />
@@ -339,8 +337,8 @@ export default function SettingsPage() {
         <CardHeader className="px-4 py-3">
           <CardTitle className="text-base">{t('settings.interface')}</CardTitle>
         </CardHeader>
-        <CardContent className="px-4 pb-4 space-y-4">
-          <div className="space-y-2">
+        <CardContent className="px-4 pb-4">
+          <div className="py-2.5 space-y-2">
             <p className="text-sm">{t('settings.theme_label')}</p>
             <div className="grid grid-cols-4 gap-2">
               {THEME_OPTIONS.map((th) => (
@@ -363,8 +361,8 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">{t('settings.theme_hint')}</p>
           </div>
 
-          <div className="space-y-1.5 border-t pt-3">
-            <p className="text-sm">{t('settings.language_label')}</p>
+
+          <SettingRow label={t('settings.language_label')}>
             <Select
               value={currentLang}
               onValueChange={(v) => handleLangChange(v as SupportedLanguage)}
@@ -381,8 +379,7 @@ export default function SettingsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">{t('settings.language_hint')}</p>
-          </div>
+          </SettingRow>
         </CardContent>
       </Card>
 

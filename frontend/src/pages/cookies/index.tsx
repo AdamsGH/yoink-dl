@@ -11,6 +11,7 @@ import { Input } from '@core/components/ui/input'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@core/components/ui/item'
 import { Label } from '@core/components/ui/label'
 import { Skeleton } from '@core/components/ui/skeleton'
+import { Switch } from '@core/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
 import { toast } from '@core/components/ui/toast'
 
@@ -69,6 +70,8 @@ export default function CookiesPage() {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [validating, setValidating] = useState<number | null>(null)
+  const [usePool, setUsePool] = useState<boolean | null>(null)
+  const [poolSaving, setPoolSaving] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -84,7 +87,24 @@ export default function CookiesPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    apiClient.get<{ use_pool_cookies: boolean }>('/dl/settings')
+      .then(r => setUsePool(r.data.use_pool_cookies))
+      .catch(() => {})
+  }, [])
+
+  const togglePool = async (val: boolean) => {
+    setPoolSaving(true)
+    try {
+      await apiClient.patch('/dl/settings', { use_pool_cookies: val })
+      setUsePool(val)
+    } catch {
+      toast.error(t('common.error', { defaultValue: 'Error' }))
+    } finally {
+      setPoolSaving(false)
+    }
+  }
 
   const remove = async (id: number, domain: string) => {
     setDeleting(id)
@@ -164,14 +184,36 @@ export default function CookiesPage() {
                   ? t('cookies.stored', { defaultValue: 'Cookies' })
                   : t('cookies.count_other', { count: own.length, defaultValue: `${own.length} cookies` })}
               </CardTitle>
-              <Button
-                size="sm"
-                className="h-7 px-2.5 text-xs"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="mr-1.5 h-3 w-3" />
-                {t('cookies.upload', { defaultValue: 'Upload' })}
-              </Button>
+              <div className="flex items-center gap-2">
+                {usePool !== null && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className={`h-3.5 w-3.5 ${usePool ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <Switch
+                          checked={usePool}
+                          onCheckedChange={togglePool}
+                          disabled={poolSaving}
+                          className="scale-75 origin-right"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {usePool
+                        ? t('settings.use_pool_cookies', { defaultValue: 'Shared pool: on' })
+                        : t('cookies.pool_off', { defaultValue: 'Shared pool: off' })}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                <Button
+                  size="sm"
+                  className="h-7 px-2.5 text-xs"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="mr-1.5 h-3 w-3" />
+                  {t('cookies.upload', { defaultValue: 'Upload' })}
+                </Button>
+              </div>
             </div>
           </CardHeader>
 
@@ -248,22 +290,24 @@ export default function CookiesPage() {
                   <>
                     {own.length > 0 && (
                       <div className="flex items-center gap-1.5 py-2 px-1">
-                        <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <ShieldCheck className={`h-3 w-3 shrink-0 ${usePool ? 'text-primary' : 'text-muted-foreground'}`} />
                         <span className="text-xs text-muted-foreground">
                           {t('cookies.pool_label', { defaultValue: 'Cookie pool' })}
                         </span>
                       </div>
                     )}
                     {inherited.map((c) => (
-                      <Item key={c.id} size="sm" className="py-2.5 rounded-none border-0 opacity-60">
+                      <Item key={c.id} size="sm" className={`py-2.5 rounded-none border-0 transition-opacity ${usePool ? 'opacity-80' : 'opacity-35'}`}>
                         <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
                           <CookieFavicon domain={c.domain} />
                         </ItemMedia>
                         <ItemContent>
                           <ItemTitle className="text-muted-foreground">{c.domain}</ItemTitle>
                           <ItemDescription className="flex items-center gap-1">
-                            <ShieldCheck className="h-3 w-3" />
-                            {t('cookies.pool_desc', { defaultValue: 'Shared pool' })}
+                            <ShieldCheck className={`h-3 w-3 ${usePool ? 'text-primary' : 'text-muted-foreground'}`} />
+                            {usePool
+                              ? t('cookies.pool_active', { defaultValue: 'In rotation' })
+                              : t('cookies.pool_inactive', { defaultValue: 'Pool disabled' })}
                           </ItemDescription>
                         </ItemContent>
                         <ItemActions>
