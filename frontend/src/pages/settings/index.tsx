@@ -173,11 +173,7 @@ export default function SettingsPage() {
       .then((res) => {
         const { user_id: _uid, args_json: _args, theme: _theme, language: _lang, updated_at: _ua, ...rest } = res.data
         reset(rest)
-        // Show pool toggle if user is admin/owner or has the field
-        setHasPoolAccess(
-          identity?.role === 'admin' || identity?.role === 'owner' ||
-          res.data.use_pool_cookies !== undefined
-        )
+        setHasPoolAccess(res.data.has_pool_access === true)
       })
       .catch(() => toast.error(t('settings.save_error')))
 

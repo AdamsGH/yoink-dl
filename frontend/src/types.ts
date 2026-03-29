@@ -18,6 +18,7 @@ export interface UserSettings {
   send_as_file: boolean
   gallery_zip: boolean
   use_pool_cookies: boolean
+  has_pool_access: boolean
   theme: string
   keyboard: string
   args_json: Record<string, unknown>

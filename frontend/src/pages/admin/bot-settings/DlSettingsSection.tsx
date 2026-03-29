@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { apiClient } from '@core/lib/api-client'
-import { Input } from '@core/components/ui/input'
 import { Button } from '@core/components/ui/button'
+import { Input } from '@core/components/ui/input'
 import { Skeleton } from '@core/components/ui/skeleton'
+import { Slider } from '@core/components/ui/slider'
 import { toast } from '@core/components/ui/toast'
 
 interface DlAdminSettings {
@@ -19,13 +20,40 @@ interface DlAdminSettings {
 
 function SettingRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2.5">
+    <div className="flex items-center justify-between gap-4 py-1.5">
       <div className="min-w-0 flex-1">
         <p className="text-sm">{label}</p>
-        {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </div>
-      <div className="shrink-0 w-24">{children}</div>
+      <div className="shrink-0">{children}</div>
     </div>
+  )
+}
+
+// Numeric input — no spinners, right-aligned text, free editing
+function NumInput({ value, onChange, min, max }: { value: number; onChange: (v: number) => void; min?: number; max?: number }) {
+  const [raw, setRaw] = useState(String(value))
+
+  // Sync when external value changes (e.g. after load/save)
+  useEffect(() => { setRaw(String(value)) }, [value])
+
+  return (
+    <Input
+      className="w-20 h-8 text-xs text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+      type="text"
+      inputMode="numeric"
+      value={raw}
+      onChange={e => {
+        setRaw(e.target.value)
+        const n = parseInt(e.target.value, 10)
+        if (!isNaN(n) && (min === undefined || n >= min) && (max === undefined || n <= max)) onChange(n)
+      }}
+      onBlur={() => {
+        // Snap back to last valid value if field left empty/invalid
+        const n = parseInt(raw, 10)
+        if (isNaN(n)) setRaw(String(value))
+      }}
+    />
   )
 }
 
@@ -38,21 +66,16 @@ export function DlSettingsSection() {
   useEffect(() => {
     apiClient.get<DlAdminSettings>('/dl/admin/settings')
       .then(r => setData(r.data))
-      .catch(() => toast.error(t('common.load_error', { defaultValue: 'Failed to load' })))
+      .catch(() => toast.error('Failed to load downloader settings'))
   }, [])
 
-  const set = <K extends keyof DlAdminSettings>(key: K, raw: string) => {
-    const num = key === 'max_file_size_gb' ? parseFloat(raw) : parseInt(raw, 10)
-    if (!isNaN(num)) setDirty(prev => ({ ...prev, [key]: num }))
-  }
+  const set = <K extends keyof DlAdminSettings>(key: K, value: DlAdminSettings[K]) =>
+    setDirty(prev => ({ ...prev, [key]: value }))
 
-  const val = <K extends keyof DlAdminSettings>(key: K): string => {
-    const v = dirty[key] ?? data?.[key]
-    return v !== undefined ? String(v) : ''
-  }
+  const val = <K extends keyof DlAdminSettings>(key: K): DlAdminSettings[K] =>
+    (dirty[key] ?? data?.[key]) as DlAdminSettings[K]
 
   const save = async () => {
-    if (!Object.keys(dirty).length) return
     setSaving(true)
     try {
       const updated = await apiClient.patch<DlAdminSettings>('/dl/admin/settings', dirty)
@@ -68,11 +91,11 @@ export function DlSettingsSection() {
 
   if (!data) {
     return (
-      <div className="space-y-3">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="flex items-center justify-between py-2.5">
+      <div>
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex items-center justify-between py-1.5">
             <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-20" />
           </div>
         ))}
       </div>
@@ -83,49 +106,52 @@ export function DlSettingsSection() {
 
   return (
     <div>
-      <SettingRow
-        label={t('bot_settings.dl_retries', { defaultValue: 'Download retries' })}
-        hint={t('bot_settings.dl_retries_hint', { defaultValue: 'Retry transient errors (ffmpeg crash, network glitch)' })}
-      >
-        <Input className="h-8 text-xs text-right" type="number" min={1} max={10} value={val('download_retries')} onChange={e => set('download_retries', e.target.value)} />
-      </SettingRow>
-      <SettingRow
-        label={t('bot_settings.dl_timeout', { defaultValue: 'Download timeout (s)' })}
-        hint={t('bot_settings.dl_timeout_hint', { defaultValue: 'Max seconds per download job' })}
-      >
-        <Input className="h-8 text-xs text-right" type="number" min={60} value={val('download_timeout')} onChange={e => set('download_timeout', e.target.value)} />
-      </SettingRow>
-      <SettingRow
-        label={t('bot_settings.dl_max_size', { defaultValue: 'Max file size (GB)' })}
-      >
-        <Input className="h-8 text-xs text-right" type="number" min={0.1} max={4} step={0.1} value={val('max_file_size_gb')} onChange={e => set('max_file_size_gb', e.target.value)} />
-      </SettingRow>
-      <SettingRow
-        label={t('bot_settings.dl_rl_min', { defaultValue: 'Rate limit / minute' })}
-      >
-        <Input className="h-8 text-xs text-right" type="number" min={1} value={val('rate_limit_per_minute')} onChange={e => set('rate_limit_per_minute', e.target.value)} />
-      </SettingRow>
-      <SettingRow
-        label={t('bot_settings.dl_rl_hour', { defaultValue: 'Rate limit / hour' })}
-      >
-        <Input className="h-8 text-xs text-right" type="number" min={1} value={val('rate_limit_per_hour')} onChange={e => set('rate_limit_per_hour', e.target.value)} />
-      </SettingRow>
-      <SettingRow
-        label={t('bot_settings.dl_rl_day', { defaultValue: 'Rate limit / day' })}
-      >
-        <Input className="h-8 text-xs text-right" type="number" min={1} value={val('rate_limit_per_day')} onChange={e => set('rate_limit_per_day', e.target.value)} />
-      </SettingRow>
-      <SettingRow
-        label={t('bot_settings.dl_playlist', { defaultValue: 'Max playlist items' })}
-      >
-        <Input className="h-8 text-xs text-right" type="number" min={1} max={500} value={val('max_playlist_count')} onChange={e => set('max_playlist_count', e.target.value)} />
+      <SettingRow label="Download retries" hint="Retry on ffmpeg crash or network glitch">
+        <NumInput value={val('download_retries')} min={1} max={10} onChange={v => set('download_retries', v)} />
       </SettingRow>
 
-      <div className={`flex justify-end pt-3 transition-opacity ${isDirty ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <Button size="sm" className="h-7 px-3 text-xs" onClick={save} disabled={saving || !isDirty}>
-          {saving ? t('common.loading', { defaultValue: 'Saving…' }) : t('common.save', { defaultValue: 'Save' })}
-        </Button>
+      <SettingRow label="Download timeout (s)" hint="Max seconds per job before it's killed">
+        <NumInput value={val('download_timeout')} min={60} onChange={v => set('download_timeout', v)} />
+      </SettingRow>
+
+      <div className="py-1.5 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm">Max file size</p>
+            <p className="text-xs text-muted-foreground">Telegram bot limit is 2 GB</p>
+          </div>
+          <span className="text-sm font-medium tabular-nums">{val('max_file_size_gb')} GB</span>
+        </div>
+        <Slider
+          min={0.5} max={2} step={0.5}
+          value={[val('max_file_size_gb')]}
+          onValueChange={([v]) => set('max_file_size_gb', v)}
+        />
       </div>
+
+      <SettingRow label="Rate limit / minute">
+        <NumInput value={val('rate_limit_per_minute')} min={1} onChange={v => set('rate_limit_per_minute', v)} />
+      </SettingRow>
+
+      <SettingRow label="Rate limit / hour">
+        <NumInput value={val('rate_limit_per_hour')} min={1} onChange={v => set('rate_limit_per_hour', v)} />
+      </SettingRow>
+
+      <SettingRow label="Rate limit / day">
+        <NumInput value={val('rate_limit_per_day')} min={1} onChange={v => set('rate_limit_per_day', v)} />
+      </SettingRow>
+
+      <SettingRow label="Max playlist items">
+        <NumInput value={val('max_playlist_count')} min={1} max={500} onChange={v => set('max_playlist_count', v)} />
+      </SettingRow>
+
+      {isDirty && (
+        <div className="pt-2">
+          <Button className="w-full h-8 text-xs" onClick={save} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

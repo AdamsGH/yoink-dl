@@ -71,6 +71,7 @@ export default function CookiesPage() {
   const [deleting, setDeleting] = useState<number | null>(null)
   const [validating, setValidating] = useState<number | null>(null)
   const [usePool, setUsePool] = useState<boolean | null>(null)
+  const [hasPoolAccess, setHasPoolAccess] = useState(false)
   const [poolSaving, setPoolSaving] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -89,8 +90,11 @@ export default function CookiesPage() {
 
   useEffect(() => {
     load()
-    apiClient.get<{ use_pool_cookies: boolean }>('/dl/settings')
-      .then(r => setUsePool(r.data.use_pool_cookies))
+    apiClient.get<{ use_pool_cookies: boolean; has_pool_access: boolean }>('/dl/settings')
+      .then(r => {
+        setHasPoolAccess(r.data.has_pool_access === true)
+        setUsePool(r.data.use_pool_cookies)
+      })
       .catch(() => {})
   }, [])
 
@@ -185,7 +189,7 @@ export default function CookiesPage() {
                   : t('cookies.count_other', { count: own.length, defaultValue: `${own.length} cookies` })}
               </CardTitle>
               <div className="flex items-center gap-2">
-                {usePool !== null && (
+                {hasPoolAccess && usePool !== null && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1.5">

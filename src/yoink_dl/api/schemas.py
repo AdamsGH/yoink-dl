@@ -115,6 +115,8 @@ class DlUserSettingsResponse(BaseModel):
     gallery_zip: bool
     use_pool_cookies: bool
     updated_at: datetime
+    # Computed: true when user may see/use the shared cookie pool
+    has_pool_access: bool = False
 
 
 class DlAdminSettings(BaseModel):

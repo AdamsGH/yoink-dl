@@ -220,18 +220,38 @@ async def update_dl_admin_settings(
 
 # dl-specific user settings
 
+async def _has_pool_access(session: AsyncSession, user: User) -> bool:
+    """True when the user may see/use shared cookie pool."""
+    if user.role in (UserRole.admin, UserRole.owner):
+        return True
+    perm = await session.execute(
+        select(UserPermission).where(
+            UserPermission.user_id == user.id,
+            UserPermission.plugin == "dl",
+            UserPermission.feature == "shared_cookies",
+        )
+    )
+    return perm.scalar_one_or_none() is not None
+
+
+async def _settings_response(session: AsyncSession, user: User) -> DlUserSettingsResponse:
+    row = await session.get(UserSettings, user.id)
+    if row is None:
+        row = UserSettings(user_id=user.id)
+        session.add(row)
+        await session.commit()
+        await session.refresh(row)
+    resp = DlUserSettingsResponse.model_validate(row)
+    resp.has_pool_access = await _has_pool_access(session, user)
+    return resp
+
+
 @router.get("/settings", response_model=DlUserSettingsResponse, summary="My downloader settings")
 async def get_dl_settings(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DlUserSettingsResponse:
-    row = await session.get(UserSettings, current_user.id)
-    if row is None:
-        row = UserSettings(user_id=current_user.id)
-        session.add(row)
-        await session.commit()
-        await session.refresh(row)
-    return DlUserSettingsResponse.model_validate(row)
+    return await _settings_response(session, current_user)
 
 
 @router.patch("/settings", response_model=DlUserSettingsResponse, summary="Update my downloader settings", description="Fields: `max_quality` (144-2160), `prefer_format` (`mp4`/`webm`/`best`), `audio_only` (bool).")
@@ -248,7 +268,7 @@ async def update_dl_settings(
         setattr(row, field, value)
     await session.commit()
     await session.refresh(row)
-    return DlUserSettingsResponse.model_validate(row)
+    return await _settings_response(session, current_user)
 
 
 # Stats

@@ -120,9 +120,9 @@ function ExpandedDetails({ item }: { item: DownloadLog }) {
     setRetrying(true)
     try {
       await apiClient.post<RetryResponse>(`/dl/downloads/${item.id}/retry`)
-      toast.success('URL sent to bot - check your Telegram chat')
+      toast.success(t('history.retry_ok'))
     } catch {
-      toast.error('Failed to queue retry')
+      toast.error(t('history.retry_error'))
     } finally {
       setRetrying(false)
     }
@@ -138,24 +138,24 @@ function ExpandedDetails({ item }: { item: DownloadLog }) {
   const chips: { label: string; value: string; highlight?: boolean }[] = []
 
   if (type === 'clip') {
-    chips.push({ label: 'Clip', value: `${fmtSecs(item.clip_start!)} → ${fmtSecs(item.clip_end!)}`, highlight: true })
-    if (item.quality) chips.push({ label: 'Quality', value: item.quality })
-    if (item.duration != null && item.duration > 0) chips.push({ label: 'Duration', value: fmtSecs(Math.round(item.duration)) })
-    if (item.file_size != null) chips.push({ label: 'Size', value: formatBytes(item.file_size) })
+    chips.push({ label: t('history.clip'), value: `${fmtSecs(item.clip_start!)} → ${fmtSecs(item.clip_end!)}`, highlight: true })
+    if (item.quality) chips.push({ label: t('history.quality'), value: item.quality })
+    if (item.duration != null && item.duration > 0) chips.push({ label: t('history.duration'), value: fmtSecs(Math.round(item.duration)) })
+    if (item.file_size != null) chips.push({ label: t('history.size'), value: formatBytes(item.file_size) })
   } else if (type === 'video' || type === 'error') {
-    if (item.quality) chips.push({ label: 'Quality', value: item.quality })
-    if (item.duration != null && item.duration > 0) chips.push({ label: 'Duration', value: fmtSecs(Math.round(item.duration)) })
-    if (item.file_size != null) chips.push({ label: 'Size', value: formatBytes(item.file_size) })
+    if (item.quality) chips.push({ label: t('history.quality'), value: item.quality })
+    if (item.duration != null && item.duration > 0) chips.push({ label: t('history.duration'), value: fmtSecs(Math.round(item.duration)) })
+    if (item.file_size != null) chips.push({ label: t('history.size'), value: formatBytes(item.file_size) })
   } else if (type === 'audio') {
-    if (item.duration != null && item.duration > 0) chips.push({ label: 'Duration', value: fmtSecs(Math.round(item.duration)) })
-    if (item.file_size != null) chips.push({ label: 'Size', value: formatBytes(item.file_size) })
+    if (item.duration != null && item.duration > 0) chips.push({ label: t('history.duration'), value: fmtSecs(Math.round(item.duration)) })
+    if (item.file_size != null) chips.push({ label: t('history.size'), value: formatBytes(item.file_size) })
   } else if (type === 'gallery') {
-    if (item.file_count != null) chips.push({ label: 'Files', value: String(item.file_count) })
-    if (item.file_size != null) chips.push({ label: 'Size', value: formatBytes(item.file_size) })
+    if (item.file_count != null) chips.push({ label: t('history.file_count'), value: String(item.file_count) })
+    if (item.file_size != null) chips.push({ label: t('history.size'), value: formatBytes(item.file_size) })
   }
 
-  if (item.group_title) chips.push({ label: 'Group', value: item.group_title })
-  else if (item.group_id) chips.push({ label: 'Group', value: String(item.group_id) })
+  if (item.group_title) chips.push({ label: t('history.group'), value: item.group_title })
+  else if (item.group_id) chips.push({ label: t('history.group'), value: String(item.group_id) })
 
   return (
     <div className="pt-2 pb-1 space-y-2.5 text-xs" onClick={(e) => e.stopPropagation()}>
@@ -342,7 +342,7 @@ export default function HistoryPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('history.period_all', { defaultValue: 'All time' })}</SelectItem>
+              <SelectItem value="all">{t('history.period_all')}</SelectItem>
               <SelectItem value="7">7d</SelectItem>
               <SelectItem value="30">30d</SelectItem>
               <SelectItem value="90">90d</SelectItem>
