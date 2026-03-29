@@ -35,6 +35,10 @@ class DownloaderConfig(BaseSettings):
     browser_profile_path: str | None = None
     browser_cookie_domains: list[str] = []
 
+    # IPv6 rotation — prefix must be routed to this host (local route)
+    ipv6_cidr: str | None = None
+    ipv6_domains: list[str] = []
+
     # Proxy
     proxy_urls: list[str] = []
     proxy_strategy: str = "round_robin"

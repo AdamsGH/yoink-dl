@@ -14,13 +14,14 @@ from telegram import Message
 
 from yoink_dl.config import DownloaderConfig as Settings
 from yoink_dl.services.proxy import ProxyConfig, ProxyManager
+from yoink_dl.services.ipv6_pool import IPv6Pool, IPv6Binding
 from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.resolver import ResolvedUrl, Engine
 from yoink_dl.url.clip import ClipSpec
 from yoink_dl.utils.errors import DownloadError, FileTooLargeError
 from yoink_dl.utils.formatting import humanbytes
 from . import ytdlp as ytdlp_mod
-from .gallery import download_gallery, GalleryDlError, is_available as gallery_available
+from .gallery import download_gallery, fetch_gallery_title, GalleryDlError, is_available as gallery_available
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class DownloadManager:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._proxy = ProxyManager.from_settings(settings)
+        self._ipv6 = IPv6Pool.from_settings(settings)
 
     async def run(
         self,
@@ -98,6 +100,10 @@ class DownloadManager:
 
     async def _extract_info(self, job: DownloadJob) -> None:
         proxy = self._pick_proxy(job)
+        ipv6 = self._pick_ipv6(job)
+        extra: dict[str, Any] = {}
+        if ipv6:
+            extra["source_address"] = ipv6.as_ytdlp()
         opts = ytdlp_mod.build_ytdlp_opts(
             resolved=job.resolved,
             settings=job.settings,
@@ -108,6 +114,7 @@ class DownloadManager:
             info_only=True,
             clip=job.clip,
             use_browser_cookies=job.use_browser_cookies,
+            extra_opts=extra or None,
         )
         info = await ytdlp_mod.extract_info(opts, job.resolved.url)
         job.info = info
@@ -125,7 +132,10 @@ class DownloadManager:
 
     async def _download(self, job: DownloadJob, progress_cb: ProgressCallback | None) -> None:
         proxy = self._pick_proxy(job)
+        ipv6 = self._pick_ipv6(job)
         extra: dict[str, Any] = {}
+        if ipv6:
+            extra["source_address"] = ipv6.as_ytdlp()
         if job.audio_only:
             extra["format"] = "bestaudio/best"
             extra["postprocessors"] = [{
@@ -176,11 +186,26 @@ class DownloadManager:
         proxy_cfg = self._pick_proxy(job)
         proxy_url = proxy_cfg.as_ytdlp() if proxy_cfg else None
 
+        # Fetch title before downloading (non-fatal)
+        if not job.title:
+            try:
+                fetched = await fetch_gallery_title(
+                    url=job.resolved.url,
+                    cookie_path=job.cookie_path,
+                    proxy=proxy_url,
+                )
+                if fetched:
+                    job.title = fetched
+            except Exception as exc:
+                logger.debug("gallery title fetch failed: %s", exc)
+
+        ipv6 = self._pick_ipv6(job)
         files = await download_gallery(
             url=job.resolved.url,
             download_dir=job.download_dir,
             cookie_path=job.cookie_path,
             proxy=proxy_url,
+            source_address=ipv6.as_ytdlp() if ipv6 else None,
             playlist_start=job.resolved.playlist_start,
             playlist_end=job.resolved.playlist_end,
         )
@@ -202,6 +227,14 @@ class DownloadManager:
         if not job.resolved.use_proxy:
             return None
         return self._proxy.get()
+
+    def _pick_ipv6(self, job: DownloadJob) -> IPv6Binding | None:
+        if not self._ipv6:
+            return None
+        from yoink_dl.url.domains import domain_matches
+        if not domain_matches(job.resolved.domain, self._settings.ipv6_domains):
+            return None
+        return self._ipv6.get()
 
     def _cleanup(self, job: DownloadJob) -> None:
         try:
