@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle, ChevronDown, ChevronRight, CookieIcon, Database, RefreshCw, Trash2, Upload } from 'lucide-react'
+import { CheckCircle, ChevronDown, ChevronRight, CookieIcon, Database, RefreshCw, ScanSearch, Trash2, Upload } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
 import { useTranslation } from 'react-i18next'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@core/components/ui/avatar'
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
 import type { Cookie } from '@dl/types'
@@ -353,6 +354,7 @@ export default function AdminCookiesPage() {
 
   const [deleting, setDeleting] = useState<number | null>(null)
   const [validating, setValidating] = useState<number | null>(null)
+  const [refreshingLabels, setRefreshingLabels] = useState(false)
   const [addPoolOpen, setAddPoolOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [users, setUsers] = useState<User[]>([])
@@ -424,6 +426,19 @@ export default function AdminCookiesPage() {
     }
   }
 
+  const refreshLabels = async () => {
+    setRefreshingLabels(true)
+    try {
+      const r = await apiClient.post<{ updated: number }>('/dl/cookies/pool/refresh-labels', {})
+      toast.success(t('cookies.labels_refreshed', { count: r.data.updated, defaultValue: `Updated ${r.data.updated} labels` }))
+      loadPool()
+    } catch {
+      toast.error(t('common.error', { defaultValue: 'Error' }))
+    } finally {
+      setRefreshingLabels(false)
+    }
+  }
+
   const removePool = async (id: number) => {
     const ok = await showConfirm(t('cookies.delete_confirm', { defaultValue: 'Delete this cookie?' }))
     if (!ok) return
@@ -466,10 +481,20 @@ export default function AdminCookiesPage() {
                   ? t('cookies.pool_title', { defaultValue: 'Cookie Pool' })
                   : t('cookies.pool_count', { count: poolItems.length, defaultValue: `Cookie Pool (${poolItems.length})` })}
               </CardTitle>
-              <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => setAddPoolOpen(true)}>
-                <Upload className="mr-1.5 h-3 w-3" />
-                {t('cookies.add', { defaultValue: 'Add' })}
-              </Button>
+              <div className="flex gap-1.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={refreshLabels} disabled={refreshingLabels}>
+                      {refreshingLabels ? <RefreshCw className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('cookies.refresh_labels', { defaultValue: 'Refresh account info' })}</TooltipContent>
+                </Tooltip>
+                <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => setAddPoolOpen(true)}>
+                  <Upload className="mr-1.5 h-3 w-3" />
+                  {t('cookies.add', { defaultValue: 'Add' })}
+                </Button>
+              </div>
             </div>
           </CardHeader>
 
@@ -535,8 +560,16 @@ export default function AdminCookiesPage() {
                         <div className="border-l-2 border-border ml-4 pl-2 mb-1">
                           {accounts.map((c) => (
                             <Item key={c.id} size="sm" className="py-2 rounded-none border-0">
+                              <ItemMedia variant="icon" className="size-8 rounded-full overflow-hidden bg-muted">
+                                <Avatar className="size-8">
+                                  {c.avatar_url && <AvatarImage src={c.avatar_url} alt={c.label ?? ''} />}
+                                  <AvatarFallback className="text-xs">
+                                    {(c.label ?? `#${c.id}`).slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </ItemMedia>
                               <ItemContent>
-                                <ItemTitle className="text-sm font-mono">
+                                <ItemTitle className="text-sm">
                                   {c.label ?? `#${c.id}`}
                                 </ItemTitle>
                                 <ItemDescription>

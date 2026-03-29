@@ -36,74 +36,87 @@ def validate_netscape(content: str) -> bool:
     return False
 
 
-def extract_account_label(domain: str, content: str) -> str | None:
-    """
-    Try to extract a human-readable account label from a Netscape cookie file.
-    Looks for well-known identity cookies per domain.
-    Returns None if nothing useful found.
-    """
-    # Map: domain suffix -> list of cookie names that carry username/id info
-    _IDENTITY_COOKIES: dict[str, list[str]] = {
-        "youtube.com":   ["SAPISID", "LOGIN_INFO", "__Secure-1PSID"],
-        "google.com":    ["SAPISID", "__Secure-1PSID"],
-        "instagram.com": ["ds_user_id", "sessionid"],
-        "twitter.com":   ["auth_token", "twid"],
-        "x.com":         ["auth_token", "twid"],
-        "tiktok.com":    ["sid_tt", "uid_tt"],
-        "reddit.com":    ["reddit_session", "token_v2"],
-        "facebook.com":  ["c_user", "xs"],
-        "soundcloud.com":["sc_anonymous_id", "oauth_token"],
-    }
-
-    bare = domain.removeprefix("www.")
-    candidates: list[str] = []
-    for d, names in _IDENTITY_COOKIES.items():
-        if bare == d or bare.endswith("." + d):
-            candidates = names
-            break
-
-    if not candidates:
-        return None
-
+def _parse_netscape_cookies(content: str) -> dict[str, str]:
+    """Parse Netscape cookie file into {name: value} dict."""
     values: dict[str, str] = {}
     for line in content.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
         parts = line.split("\t")
-        if len(parts) < 7:
-            continue
-        name, value = parts[5], parts[6]
-        if name in candidates:
-            values[name] = value
+        if len(parts) >= 7:
+            values[parts[5]] = parts[6]
+    return values
 
-    # Per-domain: extract something readable
-    if bare in ("instagram.com",):
-        uid = values.get("ds_user_id")
+
+def extract_account_label(domain: str, content: str) -> str | None:
+    """
+    Extract a human-readable account label from a Netscape cookie file.
+    Strategy per domain:
+      - YouTube/Google: HSID fingerprint (7 chars) + timezone from PREF
+      - Instagram/TikTok/Facebook/Twitter: numeric uid from identity cookie
+      - Reddit: 'authenticated' if session cookie present
+    Returns None if no useful info found.
+    """
+    bare = domain.removeprefix("www.")
+    cookies = _parse_netscape_cookies(content)
+
+    # YouTube / Google: HSID is short, stable, visually distinct
+    if bare in ("youtube.com", "google.com") or bare.endswith((".youtube.com", ".google.com")):
+        hsid = cookies.get("HSID")
+        if hsid:
+            tz_raw = ""
+            pref = cookies.get("PREF", "")
+            for part in pref.split("&"):
+                if part.startswith("tz="):
+                    tz_raw = part[3:].replace(".", "/")
+                    break
+            label = f"HSID:{hsid[:7]}"
+            if tz_raw:
+                label += f" ({tz_raw})"
+            return label
+        if any(k in cookies for k in ("SAPISID", "__Secure-1PSID", "SID")):
+            return "authenticated"
+        return None
+
+    # Instagram
+    if bare in ("instagram.com",) or bare.endswith(".instagram.com"):
+        uid = cookies.get("ds_user_id")
         if uid:
             return f"uid:{uid}"
-    if bare in ("twitter.com", "x.com"):
-        twid = values.get("twid", "")
-        # twid looks like "u%3D1234567890"
-        uid = twid.replace("u%3D", "").replace("u=", "")
+        return "authenticated" if "sessionid" in cookies else None
+
+    # Twitter / X
+    if bare in ("twitter.com", "x.com") or bare.endswith((".twitter.com", ".x.com")):
+        twid = cookies.get("twid", "")
+        uid = twid.replace("u%3D", "").replace("u=", "").strip()
         if uid:
             return f"uid:{uid}"
-    if bare in ("tiktok.com",):
-        uid = values.get("uid_tt")
+        return "authenticated" if "auth_token" in cookies else None
+
+    # TikTok
+    if bare in ("tiktok.com",) or bare.endswith(".tiktok.com"):
+        uid = cookies.get("uid_tt")
         if uid:
             return f"uid:{uid[:16]}"
-    if bare in ("facebook.com",):
-        uid = values.get("c_user")
+        return "authenticated" if "sid_tt" in cookies else None
+
+    # Facebook
+    if bare in ("facebook.com",) or bare.endswith(".facebook.com"):
+        uid = cookies.get("c_user")
         if uid:
             return f"uid:{uid}"
-    if bare in ("reddit.com",):
-        # token_v2 is opaque, just confirm session exists
-        if values.get("token_v2") or values.get("reddit_session"):
-            return "authenticated"
+        return "authenticated" if "xs" in cookies else None
 
-    # Generic: just confirm we found a session cookie
-    if values:
+    # Reddit
+    if bare in ("reddit.com",) or bare.endswith(".reddit.com"):
+        return "authenticated" if ("token_v2" in cookies or "reddit_session" in cookies) else None
+
+    # Generic fallback: any session-like cookie
+    session_hints = {"sessionid", "session", "auth_token", "access_token", "token", "sid"}
+    if session_hints & set(k.lower() for k in cookies):
         return "authenticated"
+
     return None
 
 
@@ -278,11 +291,20 @@ class CookieManager:
 
     async def store_pool(self, owner_id: int, domain: str, content: str) -> Cookie:
         """Add a new pool cookie for a domain (owner/admin only)."""
-        label = extract_account_label(domain, content)
+        from yoink_dl.services.cookie_account import fetch_account_info  # noqa: PLC0415
+        info = None
+        try:
+            info = await fetch_account_info(domain, content)
+        except Exception:
+            logger.debug("fetch_account_info failed for %s", domain, exc_info=True)
+
+        label = (info.name if info else None) or extract_account_label(domain, content)
+        avatar_url = info.avatar_url if info else None
+
         async with self._factory() as session:
             await self._ensure_user(session, owner_id)
             row = Cookie(user_id=owner_id, domain=domain, content=content,
-                         is_valid=True, is_pool=True, label=label)
+                         is_valid=True, is_pool=True, label=label, avatar_url=avatar_url)
             session.add(row)
             await session.commit()
             await session.refresh(row)
@@ -305,6 +327,29 @@ class CookieManager:
                 with self._pool_lock:
                     self._pool_iters.pop(row[0], None)
             return result.rowcount > 0
+
+    async def refresh_pool_labels(self) -> int:
+        """Fetch real account info for all pool cookies missing a label. Returns count updated."""
+        from yoink_dl.services.cookie_account import fetch_account_info  # noqa: PLC0415
+        updated = 0
+        async with self._factory() as session:
+            rows = list((await session.execute(
+                select(Cookie).where(Cookie.is_pool.is_(True))
+            )).scalars().all())
+            for row in rows:
+                try:
+                    info = await fetch_account_info(row.domain, row.content)
+                except Exception:
+                    info = None
+                label = (info.name if info else None) or extract_account_label(row.domain, row.content)
+                avatar_url = info.avatar_url if info else None
+                if label != row.label or avatar_url != row.avatar_url:
+                    row.label = label
+                    row.avatar_url = avatar_url
+                    updated += 1
+            if updated:
+                await session.commit()
+        return updated
 
     async def list_pool(self, domain: str | None = None) -> list[Cookie]:
         async with self._factory() as session:

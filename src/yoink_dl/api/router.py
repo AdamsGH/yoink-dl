@@ -346,6 +346,16 @@ async def add_pool_cookie(
     return CookieResponse.model_validate(row)
 
 
+@router.post("/cookies/pool/refresh-labels", response_model=dict, summary="Re-extract labels for pool cookies (admin+)")
+async def refresh_pool_labels(
+    request: Request,
+    _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
+) -> dict:
+    cookie_mgr: CookieManager = request.app.state.bot_data["cookie_manager"]
+    updated = await cookie_mgr.refresh_pool_labels()
+    return {"updated": updated}
+
+
 @router.delete("/cookies/pool/{cookie_id}", status_code=204, summary="Delete pool cookie (admin+)")
 async def delete_pool_cookie(
     cookie_id: int,

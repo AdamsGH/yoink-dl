@@ -115,6 +115,7 @@ class Cookie(Base):
     is_valid: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_pool: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     label: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
