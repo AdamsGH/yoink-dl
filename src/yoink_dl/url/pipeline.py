@@ -49,7 +49,7 @@ def _is_retryable(exc: Exception) -> bool:
         RateLimitError, NsfwError, CookieError,
     )):
         return False
-    # Auth errors in raw exception message — no point retrying
+    # Auth errors in raw exception message - no point retrying
     err_lower = str(exc).lower()
     no_retry_hints = (
         "http error 403", "http error 401", "http error 404",
@@ -58,18 +58,18 @@ def _is_retryable(exc: Exception) -> bool:
     )
     if any(h in err_lower for h in no_retry_hints):
         return False
-    # ffmpeg crash, network timeout, connection reset — retry
+    # ffmpeg crash, network timeout, connection reset - retry
     retry_hints = (
         "exited with code", "timed out", "timeout", "connection",
         "reset", "broken pipe", "ssl", "network",
     )
     if any(h in err_lower for h in retry_hints):
         return True
-    # Generic BotError (DownloadError without specific cause) — retry
+    # Generic BotError (DownloadError without specific cause) - retry
     from yoink_dl.utils.errors import DownloadError  # noqa: PLC0415
     if isinstance(exc, DownloadError):
         return True
-    # Unknown exceptions — retry cautiously
+    # Unknown exceptions - retry cautiously
     return not isinstance(exc, BotError)
 from yoink_dl.utils.safe_telegram import delete_many
 from yoink.core.metrics import metrics
@@ -692,7 +692,7 @@ async def run_download(
                 clip_end=clip.end_sec if clip else None,
             )
 
-        # Sync cookie file back to DB — yt-dlp may have refreshed the session
+        # Sync cookie file back to DB - yt-dlp may have refreshed the session
         if cookie_path is not None and cookie_id is not None and cookie_mgr is not None:
             try:
                 await cookie_mgr.sync_from_file(cookie_id, cookie_path)

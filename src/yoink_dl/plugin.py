@@ -20,8 +20,10 @@ class DownloaderPlugin:
         return DownloaderConfig
 
     def get_models(self) -> list:
-        from yoink_dl.storage.models import DlBase
-        return [DlBase]
+        from yoink_dl.storage.models import (
+            Cookie, DownloadLog, FileCache, NsfwDomain, NsfwKeyword, RateLimit, UserSettings,
+        )
+        return [UserSettings, DownloadLog, FileCache, RateLimit, Cookie, NsfwDomain, NsfwKeyword]
 
     def get_handlers(self) -> list:
         from yoink_dl.commands import get_handler_specs
@@ -246,3 +248,7 @@ class DownloaderPlugin:
         bd["nsfw_checker"] = nsfw_checker
 
         bd["settings"] = self._config
+
+        from yoink.core.activity import register_activity_provider  # noqa: PLC0415
+        from yoink_dl.activity import dl_activity_provider  # noqa: PLC0415
+        register_activity_provider("dl", dl_activity_provider)

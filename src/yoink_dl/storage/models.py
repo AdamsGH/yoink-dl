@@ -1,7 +1,7 @@
 """Downloader plugin ORM models."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import (
     BigInteger, Boolean, DateTime, Float, Index,
@@ -9,15 +9,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from yoink.core.db.base import Base
-
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-# Alias for plugin model discovery
-DlBase = Base
+from yoink.core.db.base import Base, _now
 
 
 class UserSettings(Base):

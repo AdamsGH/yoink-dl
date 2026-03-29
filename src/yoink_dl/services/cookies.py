@@ -542,7 +542,7 @@ class CookieManager:
 
         Lookup order:
           1. User's personal cookie for the domain
-          2. Pool cookie (round-robin) — only if use_pool=True
+          2. Pool cookie (round-robin) - only if use_pool=True
           3. None
 
         Returns (tmp_path, cookie_id) so the caller can sync back after download.
@@ -580,7 +580,7 @@ class CookieManager:
             elif pool_cookie is None:
                 row = personal
             else:
-                # Both available — rotate: personal first, then pool on next call
+                # Both available - rotate: personal first, then pool on next call
                 row = await self._rotate_personal_and_pool(user_id, domain, personal, pool_cookie)
 
         if row is None:
