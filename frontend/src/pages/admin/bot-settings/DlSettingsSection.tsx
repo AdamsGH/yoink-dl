@@ -2,12 +2,9 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { apiClient } from '@core/lib/api-client'
-import { Button } from '@core/components/ui/button'
-import { Input } from '@core/components/ui/input'
-import { Skeleton } from '@core/components/ui/skeleton'
-import { Slider } from '@core/components/ui/slider'
+import { Button, Input, Skeleton, Slider } from '@ui'
 import { toast } from '@core/components/ui/toast'
-import { SettingRow } from '@core/components/app/SettingRow'
+import { SettingRow } from '@app'
 
 interface DlAdminSettings {
   download_retries: number

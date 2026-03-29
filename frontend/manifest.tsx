@@ -2,12 +2,12 @@ import { Cookie, Download, Settings, ShieldAlert, Sliders } from 'lucide-react'
 
 import type { PluginManifest } from '@core/types/plugin'
 
-import HistoryPage      from './src/pages/history'
-import SettingsPage     from './src/pages/settings'
-import CookiesPage      from './src/pages/cookies'
-import AdminCookiesPage from './src/pages/admin/cookies'
-import AdminNsfwPage    from './src/pages/admin/nsfw'
-import DlStatsPage      from './src/pages/admin/stats/index'
+import HistoryPage      from './src/pages/history/HistoryPage'
+import SettingsPage     from './src/pages/settings/SettingsPage'
+import CookiesPage      from './src/pages/cookies/CookiesPage'
+import AdminCookiesPage from './src/pages/admin/cookies/AdminCookiesPage'
+import AdminNsfwPage    from './src/pages/admin/nsfw/AdminNsfwPage'
+import DlStatsPage      from './src/pages/admin/stats/DlStatsPage'
 import { DlSettingsSection } from './src/pages/admin/bot-settings/DlSettingsSection'
 
 export const dlPlugin: PluginManifest = {

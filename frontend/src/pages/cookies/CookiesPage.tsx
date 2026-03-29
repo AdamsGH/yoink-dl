@@ -4,15 +4,8 @@ import { CheckCircle, CookieIcon, ExternalLink, RefreshCw, ShieldCheck, Trash2, 
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
-import { CookieStatusBadge } from '@core/components/app/StatusBadge'
-import { Button } from '@core/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
-import { Input } from '@core/components/ui/input'
-import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@core/components/ui/item'
-import { Label } from '@core/components/ui/label'
-import { Skeleton } from '@core/components/ui/skeleton'
-import { Switch } from '@core/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
+import { CookieStatusBadge } from '@app'
 import { toast } from '@core/components/ui/toast'
 
 interface CookieEntry {

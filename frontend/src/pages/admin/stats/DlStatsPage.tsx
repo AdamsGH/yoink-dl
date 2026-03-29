@@ -7,8 +7,7 @@ import {
 
 import { apiClient } from '@core/lib/api-client'
 import type { StatsOverview } from '@dl/types'
-import { Card, CardContent, CardHeader, CardTitle } from '@core/components/ui/card'
-import { Skeleton } from '@core/components/ui/skeleton'
+import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@ui'
 import { chartColors, PeriodToggle, StatCard, StatCardSkeleton } from '@core/components/charts'
 import type { Period } from '@core/components/charts'
 
