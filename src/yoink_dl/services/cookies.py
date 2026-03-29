@@ -191,11 +191,26 @@ def _merge_set_cookie(original: str, set_cookie_header: str) -> str:
     return "".join(new_lines)
 
 
+class _CookieCycle:
+    """Thin wrapper around itertools.cycle that tracks the ids of its items.
+
+    itertools.cycle is a C extension and does not allow arbitrary attribute
+    assignment, so we keep the ids list separately.
+    """
+
+    def __init__(self, items: list) -> None:
+        self.ids: list[int] = [getattr(item, "id", item) for item in items]
+        self._cycle = itertools.cycle(items)
+
+    def __next__(self):
+        return next(self._cycle)
+
+
 class CookieManager:
     def __init__(self, session_factory: async_sessionmaker) -> None:
         self._factory = session_factory
         # In-memory round-robin counters keyed by domain: pool cookie ids cycle
-        self._pool_iters: dict[str, itertools.cycle] = {}
+        self._pool_iters: dict[str, _CookieCycle] = {}
         self._pool_lock = threading.Lock()
 
     # Helpers
@@ -456,13 +471,10 @@ class CookieManager:
 
         with self._pool_lock:
             cycle = self._pool_iters.get(domain)
-            # Rebuild cycle if ids changed (cookie added/removed)
             current_ids = [r.id for r in rows]
-            if cycle is None or getattr(cycle, "_ids", None) != current_ids:
-                new_cycle = itertools.cycle(rows)
-                new_cycle._ids = current_ids  # type: ignore[attr-defined]
-                self._pool_iters[domain] = new_cycle
-                cycle = new_cycle
+            if cycle is None or cycle.ids != current_ids:
+                cycle = _CookieCycle(rows)
+                self._pool_iters[domain] = cycle
             return next(cycle)
 
     async def mark_pool_invalid(self, cookie_id: int) -> None:
@@ -589,9 +601,7 @@ class CookieManager:
         with self._pool_lock:
             cycle = self._pool_iters.get(key)
             ids = [personal.id, pool_cookie.id]
-            if cycle is None or getattr(cycle, "_ids", None) != ids:
-                cookies = [personal, pool_cookie]
-                cycle = itertools.cycle(cookies)
-                cycle._ids = ids  # type: ignore[attr-defined]
+            if cycle is None or cycle.ids != ids:
+                cycle = _CookieCycle([personal, pool_cookie])
                 self._pool_iters[key] = cycle
             return next(cycle)
