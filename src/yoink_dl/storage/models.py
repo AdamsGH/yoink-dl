@@ -104,7 +104,7 @@ class RateLimit(Base):
 
 class Cookie(Base):
     __tablename__ = "cookies"
-    __table_args__ = (UniqueConstraint("user_id", "domain"),)
+    __table_args__ = (UniqueConstraint("user_id", "domain", "is_pool"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
