@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CheckCircle, ChevronDown, ChevronRight, CookieIcon, Database, RefreshCw, ScanSearch, Trash2, Upload } from 'lucide-react'
 import { CookieFavicon } from '@dl/components/CookieFavicon'
 import { parseDomainFromNetscape } from '@dl/lib/cookie-utils'
@@ -9,10 +9,10 @@ import { useTranslation } from 'react-i18next'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, CardHeader, CardTitle, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
-import type { Cookie } from '@dl/types'
-import type { User, PaginatedResponse } from '@core/types/api'
+import type { User } from '@core/types/api'
 import { CookieStatusBadge, RoleBadge } from '@app'
 import { toast } from '@core/components/ui/toast'
+import { useAdminCookies } from './useAdminCookies'
 
 
 type Identity = { id: number; role: string }
@@ -304,140 +304,36 @@ function AddPoolDialog({
 export default function AdminCookiesPage() {
   const { t } = useTranslation()
   const { data: identity } = useGetIdentity<Identity>()
-  const [confirmMsg, setConfirmMsg] = useState<string | null>(null)
-  const confirmResolveRef = useRef<((val: boolean) => void) | null>(null)
-
-  const askConfirm = useCallback((message: string): Promise<boolean> =>
-    new Promise((resolve) => {
-      confirmResolveRef.current = resolve
-      setConfirmMsg(message)
-    }), [])
-
-  const [poolItems, setPoolItems] = useState<Cookie[]>([])
-  const [poolLoading, setPoolLoading] = useState(true)
-  const [poolFetching, setPoolFetching] = useState(false)
-  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
-
-  const [personalItems, setPersonalItems] = useState<Cookie[]>([])
-  const [personalLoading, setPersonalLoading] = useState(true)
-  const [personalFetching, setPersonalFetching] = useState(false)
-
-  const [deleting, setDeleting] = useState<number | null>(null)
-  const [validating, setValidating] = useState<number | null>(null)
-  const [refreshingLabels, setRefreshingLabels] = useState(false)
-  const [addPoolOpen, setAddPoolOpen] = useState(false)
-  const [uploadOpen, setUploadOpen] = useState(false)
-  const [users, setUsers] = useState<User[]>([])
-
-  const userMap = new Map(users.map((u) => [u.id, u]))
-
-  // Group pool items by domain
-  const poolByDomain = poolItems.reduce<Map<string, Cookie[]>>((acc, c) => {
-    const list = acc.get(c.domain) ?? []
-    list.push(c)
-    acc.set(c.domain, list)
-    return acc
-  }, new Map())
-
-  const poolDomains = Array.from(poolByDomain.keys()).sort()
-
-  const toggleDomain = (domain: string) =>
-    setExpandedDomains(prev => {
-      const next = new Set(prev)
-      next.has(domain) ? next.delete(domain) : next.add(domain)
-      return next
-    })
-
-  const loadPool = (isInitial = false) => {
-    if (isInitial) setPoolLoading(true)
-    else setPoolFetching(true)
-    apiClient
-      .get<Cookie[]>('/dl/cookies/pool')
-      .then((res) => setPoolItems(res.data))
-      .catch(() => toast.error(t('common.load_error')))
-      .finally(() => { setPoolLoading(false); setPoolFetching(false) })
-  }
-
-  const loadPersonal = (isInitial = false) => {
-    if (isInitial) setPersonalLoading(true)
-    else setPersonalFetching(true)
-    apiClient
-      .get<Cookie[]>('/dl/cookies/all')
-      .then((res) => setPersonalItems(res.data.filter((c) => !c.is_pool)))
-      .catch(() => toast.error(t('common.load_error')))
-      .finally(() => { setPersonalLoading(false); setPersonalFetching(false) })
-  }
-
-  useEffect(() => {
-    loadPool(true)
-    loadPersonal(true)
-    apiClient
-      .get<PaginatedResponse<User>>('/users', { params: { limit: 200 } })
-      .then((res) => setUsers(res.data.items))
-      .catch(() => {})
-  }, [])
-
-  const validate = async (id: number) => {
-    setValidating(id)
-    try {
-      const r = await apiClient.post<Cookie>(`/dl/cookies/${id}/validate`, {})
-      const updater = (prev: Cookie[]) => prev.map((c) => c.id === id ? { ...c, is_valid: r.data.is_valid } : c)
-      setPoolItems(updater)
-      setPersonalItems(updater)
-      toast.success(
-        r.data.is_valid
-          ? t('cookies.valid_ok', { defaultValue: 'Cookie is valid' })
-          : t('cookies.invalid_msg', { defaultValue: 'Cookie appears invalid' })
-      )
-    } catch {
-      toast.error(t('cookies.validate_error', { defaultValue: 'Validation failed' }))
-    } finally {
-      setValidating(null)
-    }
-  }
-
-  const refreshLabels = async () => {
-    setRefreshingLabels(true)
-    try {
-      const r = await apiClient.post<{ updated: number }>('/dl/cookies/pool/refresh-labels', {})
-      toast.success(t('cookies.labels_refreshed', { count: r.data.updated, defaultValue: `Updated ${r.data.updated} labels` }))
-      loadPool()
-    } catch {
-      toast.error(t('common.error', { defaultValue: 'Error' }))
-    } finally {
-      setRefreshingLabels(false)
-    }
-  }
-
-  const removePool = async (id: number, domain: string) => {
-    const ok = await askConfirm(t('cookies.delete_confirm', { domain, defaultValue: `Delete cookie for ${domain}?` }))
-    if (!ok) return
-    setDeleting(id)
-    try {
-      await apiClient.delete(`/dl/cookies/pool/${id}`)
-      toast.success(t('cookies.deleted', { defaultValue: 'Cookie deleted' }))
-      loadPool()
-    } catch {
-      toast.error(t('cookies.delete_error', { defaultValue: 'Failed to delete' }))
-    } finally {
-      setDeleting(null)
-    }
-  }
-
-  const removePersonal = async (id: number, domain: string) => {
-    const ok = await askConfirm(t('cookies.delete_confirm', { domain, defaultValue: `Delete cookie for ${domain}?` }))
-    if (!ok) return
-    setDeleting(id)
-    try {
-      await apiClient.delete(`/dl/cookies/by-id/${id}`)
-      toast.success(t('cookies.deleted', { defaultValue: 'Cookie deleted' }))
-      loadPersonal()
-    } catch {
-      toast.error(t('cookies.delete_error', { defaultValue: 'Failed to delete' }))
-    } finally {
-      setDeleting(null)
-    }
-  }
+  const {
+    poolItems,
+    poolLoading,
+    poolFetching,
+    poolByDomain,
+    poolDomains,
+    expandedDomains,
+    toggleDomain,
+    loadPool,
+    refreshLabels,
+    removePool,
+    personalItems,
+    personalLoading,
+    personalFetching,
+    loadPersonal,
+    removePersonal,
+    users,
+    userMap,
+    deleting,
+    validating,
+    refreshingLabels,
+    validate,
+    addPoolOpen,
+    setAddPoolOpen,
+    uploadOpen,
+    setUploadOpen,
+    confirmMsg,
+    setConfirmMsg,
+    confirmResolveRef,
+  } = useAdminCookies()
 
   return (
     <TooltipProvider delayDuration={300}>
