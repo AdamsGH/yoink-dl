@@ -20,8 +20,7 @@ import { toast } from '@core/components/ui/toast'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
 import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
 
-// ── Dialogs ───────────────────────────────────────────────────────────────────
-
+// Dialogs
 function EntryDialog({
   open,
   title,
@@ -225,8 +224,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
   )
 }
 
-// ── Icon button with tooltip ──────────────────────────────────────────────────
-
+// Icon button with tooltip
 function IconBtn({
   tooltip,
   onClick,
@@ -258,8 +256,7 @@ function IconBtn({
   )
 }
 
-// ── Item list ─────────────────────────────────────────────────────────────────
-
+// Item list
 interface ListItem {
   id: number
   primary: string
@@ -331,8 +328,7 @@ function ItemList<T extends ListItem>({
   )
 }
 
-// ── Check panel ───────────────────────────────────────────────────────────────
-
+// Check panel
 function CheckPanel() {
   const { t } = useTranslation()
   const [url, setUrl] = useState('')
@@ -414,8 +410,7 @@ function CheckPanel() {
   )
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
-
+// Main page
 export default function AdminNsfwPage() {
   const { t } = useTranslation()
   const { showConfirm, haptic } = useTelegramWebApp()
