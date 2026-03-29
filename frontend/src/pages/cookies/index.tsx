@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, CookieIcon, ExternalLink, Globe, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
+import { CheckCircle, CookieIcon, ExternalLink, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
 
 import { apiClient } from '@core/lib/api-client'
 import { formatDate } from '@core/lib/utils'
@@ -25,44 +25,8 @@ interface CookieEntry {
   inherited?: boolean
 }
 
-// favicon cache: domain -> img url (or null = failed)
-const faviconCache = new Map<string, string | null>()
-
-function useFavicon(domain: string): string | null {
-  const [src, setSrc] = useState<string | null>(() => faviconCache.get(domain) ?? null)
-  useEffect(() => {
-    if (faviconCache.has(domain)) { setSrc(faviconCache.get(domain)!); return }
-    const url = `https://www.google.com/s2/favicons?sz=32&domain=${domain}`
-    const img = new Image()
-    img.onload = () => { faviconCache.set(domain, url); setSrc(url) }
-    img.onerror = () => { faviconCache.set(domain, null); setSrc(null) }
-    img.src = url
-  }, [domain])
-  return src
-}
-
-function CookieFavicon({ domain }: { domain: string }) {
-  const src = useFavicon(domain)
-  if (src) return <img src={src} alt="" className="size-4 rounded-sm object-contain" />
-  return <Globe className="size-4" />
-}
-
-function parseDomainFromNetscape(text: string): string {
-  for (const line of text.split('\n')) {
-    const t = line.trim()
-    if (!t || t.startsWith('#')) continue
-    const parts = t.split('\t')
-    if (parts.length >= 7) {
-      const host = parts[0].replace(/^\./, '')
-      const dot = host.lastIndexOf('.')
-      if (dot > 0) {
-        const prev = host.lastIndexOf('.', dot - 1)
-        return prev >= 0 ? host.slice(prev + 1) : host
-      }
-    }
-  }
-  return ''
-}
+import { CookieFavicon } from '@dl/components/CookieFavicon'
+import { parseDomainFromNetscape } from '@dl/lib/cookie-utils'
 
 export default function CookiesPage() {
   const { t } = useTranslation()

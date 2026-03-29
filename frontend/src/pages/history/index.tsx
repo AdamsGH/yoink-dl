@@ -33,24 +33,7 @@ type PeriodFilter = '7' | '30' | '90' | 'all'
 
 const PAGE_SIZE = 25
 
-// favicon cache
-const faviconCache = new Map<string, string | null>()
-
-function useFavicon(domain: string | null): string | null {
-  const [src, setSrc] = useState<string | null>(() =>
-    domain ? (faviconCache.get(domain) ?? null) : null
-  )
-  useEffect(() => {
-    if (!domain) return
-    if (faviconCache.has(domain)) { setSrc(faviconCache.get(domain)!); return }
-    const url = `https://www.google.com/s2/favicons?sz=32&domain=${domain}`
-    const img = new Image()
-    img.onload = () => { faviconCache.set(domain, url); setSrc(url) }
-    img.onerror = () => { faviconCache.set(domain, null); setSrc(null) }
-    img.src = url
-  }, [domain])
-  return src
-}
+import { useFavicon } from '@dl/hooks/useFavicon'
 
 function fmtSecs(secs: number): string {
   const h = Math.floor(secs / 3600)

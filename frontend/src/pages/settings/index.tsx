@@ -7,6 +7,7 @@ import { Coffee, Ghost, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { apiClient } from '@core/lib/api-client'
 import { cn } from '@core/lib/utils'
 import { setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@core/lib/i18n'
+import { SettingRow } from '@core/components/app/SettingRow'
 import type { UserSettings } from '@dl/types'
 import type { User } from '@core/types/api'
 import { Button } from '@core/components/ui/button'
@@ -68,18 +69,6 @@ const KEYBOARD_OPTIONS = [
 
 const SUBS_LANG_OPTIONS = ['en', 'ru', 'de', 'fr', 'es', 'it', 'pt', 'ja', 'zh', 'ko']
 
-// Row with label on left, control on right
-function SettingRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm">{label}</p>
-        {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  )
-}
 
 function ControlledSelect({
   name, options, control, className,

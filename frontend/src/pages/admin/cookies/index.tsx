@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { CheckCircle, ChevronDown, ChevronRight, CookieIcon, Database, RefreshCw, ScanSearch, Trash2, Upload } from 'lucide-react'
+import { CookieFavicon } from '@dl/components/CookieFavicon'
+import { parseDomainFromNetscape } from '@dl/lib/cookie-utils'
 import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
 import { useTranslation } from 'react-i18next'
@@ -22,38 +24,9 @@ import { Skeleton } from '@core/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@core/components/ui/tooltip'
 import { toast } from '@core/components/ui/toast'
 
-const faviconCache = new Map<string, string | null>()
-
-function useFavicon(domain: string): string | null {
-  const [src, setSrc] = useState<string | null>(() => faviconCache.get(domain) ?? null)
-  useEffect(() => {
-    if (faviconCache.has(domain)) { setSrc(faviconCache.get(domain)!); return }
-    const url = `https://www.google.com/s2/favicons?sz=32&domain=${domain}`
-    const img = new Image()
-    img.onload = () => { faviconCache.set(domain, url); setSrc(url) }
-    img.onerror = () => { faviconCache.set(domain, null); setSrc(null) }
-    img.src = url
-  }, [domain])
-  return src
-}
-
-function CookieFavicon({ domain }: { domain: string }) {
-  const src = useFavicon(domain)
-  if (src) return <img src={src} alt="" className="size-4 rounded-sm object-contain" />
-  return <CookieIcon className="size-4" />
-}
 
 type Identity = { id: number; role: string }
 
-function parseDomainFromNetscape(content: string): string | null {
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    const parts = trimmed.split('\t')
-    if (parts.length >= 7) return parts[0].replace(/^\./, '')
-  }
-  return null
-}
 
 function UserCombobox({
   value,
@@ -542,7 +515,7 @@ export default function AdminCookiesPage() {
                         onClick={() => toggleDomain(domain)}
                       >
                         <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
-                          <CookieFavicon domain={domain} />
+                          <CookieFavicon domain={domain} fallback={<CookieIcon className="size-4" />} />
                         </ItemMedia>
                         <ItemContent>
                           <ItemTitle>{domain}</ItemTitle>
@@ -682,7 +655,7 @@ export default function AdminCookiesPage() {
                   return (
                     <Item key={cookie.id} size="sm" className="py-2.5 rounded-none border-0">
                       <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
-                        <CookieFavicon domain={cookie.domain} />
+                        <CookieFavicon domain={cookie.domain} fallback={<CookieIcon className="size-4" />} />
                       </ItemMedia>
                       <ItemContent>
                         <ItemTitle>{cookie.domain}</ItemTitle>

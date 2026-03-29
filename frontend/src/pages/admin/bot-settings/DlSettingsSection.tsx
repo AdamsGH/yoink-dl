@@ -7,6 +7,7 @@ import { Input } from '@core/components/ui/input'
 import { Skeleton } from '@core/components/ui/skeleton'
 import { Slider } from '@core/components/ui/slider'
 import { toast } from '@core/components/ui/toast'
+import { SettingRow } from '@core/components/app/SettingRow'
 
 interface DlAdminSettings {
   download_retries: number
@@ -18,17 +19,6 @@ interface DlAdminSettings {
   max_playlist_count: number
 }
 
-function SettingRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-1.5">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm">{label}</p>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  )
-}
 
 // Numeric input — no spinners, right-aligned text, free editing
 function NumInput({ value, onChange, min, max }: { value: number; onChange: (v: number) => void; min?: number; max?: number }) {
