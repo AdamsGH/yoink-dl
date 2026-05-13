@@ -227,6 +227,7 @@ errors:
   cookie_required: "🍪 This content requires authentication. Use /cookie to set up cookies."
   geo_blocked: "🌍 This content is not available in your region. Try enabling /proxy."
   private_content: "🔒 This content is private. Upload cookies with /cookie."
+  age_restricted: "🔞 This video requires age verification. Add your YouTube account cookies via /cookie - without them the download is blocked."
   rate_limited: "⏳ Rate limit reached. Please wait."
   disk_full: "❌ Not enough disk space."
   unknown: "❌ An unexpected error occurred. Please try again."

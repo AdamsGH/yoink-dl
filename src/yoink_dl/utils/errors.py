@@ -12,12 +12,21 @@ class BotError(Exception):
 
 class DownloadError(BotError):
     def __init__(self, error: str = "", **kwargs: object) -> None:
+        self.error = error
         super().__init__("errors.download_failed", error=error, **kwargs)
+
+    def __str__(self) -> str:
+        return self.error if self.error else self.message_key
 
 
 class CookieError(BotError):
     def __init__(self, **kwargs: object) -> None:
         super().__init__("errors.cookie_required", **kwargs)
+
+
+class AgeRestrictedError(BotError):
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__("errors.age_restricted", **kwargs)
 
 
 class GeoBlockedError(BotError):

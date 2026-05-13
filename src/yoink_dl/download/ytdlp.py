@@ -15,7 +15,7 @@ from yoink_dl.services.proxy import ProxyConfig
 from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.resolver import ResolvedUrl
 from yoink_dl.url.clip import ClipSpec
-from yoink_dl.utils.errors import DownloadError, LiveStreamError, FileTooLargeError
+from yoink_dl.utils.errors import AgeRestrictedError, DownloadError, LiveStreamError, FileTooLargeError
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +50,14 @@ def build_format_string(settings: UserSettings) -> str:
         height = int(quality.rstrip("p"))
 
     if height is None:
-        # best quality
         if codec == "av01":
-            fmt = f"bestvideo[vcodec^=av01]+bestaudio/bestvideo+bestaudio/best"
+            fmt = "bestvideo[vcodec^=av01]+bestaudio/bestvideo+bestaudio/best"
         elif codec == "vp9":
             fmt = "bestvideo[vcodec^=vp9]+bestaudio/bestvideo+bestaudio/best"
-        else:
+        elif codec == "avc1":
             fmt = "bestvideo[vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best"
+        else:  # any
+            fmt = "bestvideo+bestaudio/best"
     else:
         if codec == "av01":
             fmt = (
@@ -72,17 +73,23 @@ def build_format_string(settings: UserSettings) -> str:
                 f"/bestvideo[height<={height}]+bestaudio"
                 f"/best[height<={height}]/best"
             )
-        else:
+        elif codec == "avc1":
             fmt = (
                 f"bestvideo[height={height}][vcodec^=avc1]+bestaudio"
                 f"/bestvideo[height<={height}][vcodec^=avc1]+bestaudio"
                 f"/bestvideo[height<={height}]+bestaudio"
                 f"/best[height<={height}]/best"
             )
+        else:  # any
+            fmt = (
+                f"bestvideo[height={height}]+bestaudio"
+                f"/bestvideo[height<={height}]+bestaudio"
+                f"/best[height<={height}]/best"
+            )
 
-    # Prefer mp4/mkv container
-    if container == "mkv":
-        fmt += f"/bestvideo+bestaudio"
+    # Unconditional last-resort: single best stream (no merge needed)
+    if fmt.split("/")[-1] != "best":
+        fmt += "/best"
 
     return fmt
 
@@ -107,20 +114,31 @@ def build_ytdlp_opts(
         "geo_bypass": True,
         "check_certificate": False,
         "live_from_start": True,
+        "retries": 5,
+        "fragment_retries": 5,
+        "file_access_retries": 3,
         "extractor_args": {
             "generic": {"impersonate": ["chrome"]},
             "youtubetab": {"skip": ["authcheck"]},
+            # tv client provides full DASH format list without requiring a PO token.
+            # The default 'web' client only returns a single 360p stream without one.
+            "youtube": {"player_client": ["tv"]},
         },
         "referer": resolved.url,
-        "js_runtimes": {"node": {}},
+        "js_runtimes": {"deno": {}},
+        "remote_components": ["ejs:github"],
     }
 
     if info_only:
         opts.update({
             "skip_download": True,
             "forcejson": True,
-            "simulate": True,
             "extract_flat": False,
+            # simulate=True causes yt-dlp to validate format mergeability without
+            # downloading, which raises "Requested format is not available" for
+            # DASH/HLS streams even when the format exists. skip_download alone
+            # is sufficient - it fetches metadata and skips the actual download.
+            "format": "bestvideo*+bestaudio/bestvideo+bestaudio/best",
         })
         if resolved.is_playlist and resolved.playlist_start is not None:
             start = resolved.playlist_start
@@ -213,7 +231,7 @@ def _add_pot(opts: dict[str, Any], url: str, settings: Settings) -> None:
         return
     ea = opts.setdefault("extractor_args", {})
     ea.setdefault("youtubepot-bgutilhttp", {})["base_url"] = [settings.youtube_pot_url]
-    ea.setdefault("youtube", {})["player_client"] = ["web", "android"]
+    ea.setdefault("youtube", {})["player_client"] = ["tv", "web", "android"]
 
 
 def _apply_user_args(opts: dict[str, Any], args: dict[str, Any]) -> None:
@@ -267,8 +285,11 @@ async def extract_info(
         return await loop.run_in_executor(_executor, _run)
     except yt_dlp.utils.DownloadError as e:
         err = str(e)
-        if "live" in err.lower() or "is live" in err.lower():
+        err_lower = err.lower()
+        if "live" in err_lower or "is live" in err_lower:
             raise LiveStreamError()
+        if "sign in to confirm your age" in err_lower or "age-restricted" in err_lower:
+            raise AgeRestrictedError()
         raise DownloadError(error=err) from e
 
 
@@ -291,7 +312,10 @@ async def download(
     try:
         await loop.run_in_executor(_executor, _run)
     except yt_dlp.utils.DownloadError as e:
-        raise DownloadError(error=str(e)) from e
+        err = str(e)
+        if "sign in to confirm your age" in err.lower() or "age-restricted" in err.lower():
+            raise AgeRestrictedError()
+        raise DownloadError(error=err) from e
 
     after = set(download_dir.glob("*"))
     new_files = sorted(after - before, key=lambda p: p.stat().st_mtime)

@@ -125,6 +125,8 @@ class DownloadManager:
             job.duration = float(job.clip.duration_sec)
         elif full_duration:
             job.duration = full_duration
+        job.width = int(info.get("width") or 0)
+        job.height = int(info.get("height") or 0)
         logger.info(
             "Info extracted: user=%s url=%s title=%r duration=%.0fs",
             job.user_id, job.resolved.url, job.title, job.duration,
