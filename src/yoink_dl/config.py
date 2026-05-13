@@ -45,6 +45,9 @@ class DownloaderConfig(BaseSettings):
     proxy_strategy: str = "round_robin"
     proxy_domains: list[str] = []
 
+    # Web frontend
+    yoink_domain: str | None = None
+
     # Bot-specific
     log_channel: int | None = None
     log_exception_channel: int | None = None

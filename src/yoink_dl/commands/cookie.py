@@ -71,7 +71,7 @@ async def _handle_cookie(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # No args - list all cookies
     if not args:
         settings = get_settings(context)
-        bot_url = getattr(settings, "yoink_domain", None)
+        bot_url = settings.yoink_domain
         keyboard = None
         if bot_url:
             keyboard = InlineKeyboardMarkup([[
@@ -90,7 +90,7 @@ async def _handle_cookie(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # /cookie token - generate a token for the browser extension
     if subcmd == "token":
         settings = get_settings(context)
-        bot_url = getattr(settings, "yoink_domain", None)
+        bot_url = settings.yoink_domain
         token = ct.generate(user_id)
         ttl_min = ct.TTL // 60
         if bot_url:
