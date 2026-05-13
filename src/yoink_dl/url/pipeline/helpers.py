@@ -162,7 +162,7 @@ def _is_retryable(exc: Exception) -> bool:
     )
     if any(h in err_lower for h in no_retry_hints):
         return False
-    retry_hints = ("exited with code", "timed out", "timeout", "connection", "reset", "broken pipe", "ssl", "network")
+    retry_hints = ("exited with code", "timed out", "timeout", "connection", "reset by peer", "connection reset", "broken pipe", "ssl", "network", "got error")
     if any(h in err_lower for h in retry_hints):
         return True
     from yoink_dl.utils.errors import DownloadError  # noqa: PLC0415

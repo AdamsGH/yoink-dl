@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 
-from telegram import ForceReply, Update
+from telegram import Update
 from telegram.constants import ChatType
 from telegram.ext import Application, CommandHandler, ContextTypes
 
@@ -91,25 +91,13 @@ async def _cmd_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await _run_download(update, context, url, clip=None, playlist_start=start, playlist_end=end)
         context.user_data.pop(FORCE_MODE_KEY, None)
     elif _is_group(update):
-        prompt = await update.message.reply_html(
-            "Usage: <code>/audio &lt;url&gt;</code>",
-            reply_markup=ForceReply(
-                input_field_placeholder="https://...",
-                selective=True,
-            ),
-        )
+        await update.message.reply_html("Usage: <code>/audio &lt;url&gt;</code>")
         context.user_data[FORCE_MODE_KEY] = "audio"
-        context.user_data["_group_prompt"] = {
-            "prompt_id": prompt.message_id,
-            "command_id": update.message.message_id,
-            "chat_id": update.message.chat_id,
-        }
     else:
         context.user_data[FORCE_MODE_KEY] = "audio"
         await update.message.reply_html(
             "🎵 Send me a URL to extract audio.\n"
             "<i>Tip: <code>/audio 1-5 URL</code> for a playlist range.</i>",
-            reply_markup=ForceReply(input_field_placeholder="https://..."),
         )
 
 
@@ -127,23 +115,11 @@ async def _cmd_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         from yoink_dl.url.pipeline import run_download as _run_download
         await _run_download(update, context, url, clip=None, playlist_start=start, playlist_end=end)
     elif _is_group(update):
-        prompt = await update.message.reply_html(
-            "Usage: <code>/video &lt;url&gt;</code>",
-            reply_markup=ForceReply(
-                input_field_placeholder="https://...",
-                selective=True,
-            ),
-        )
-        context.user_data["_group_prompt"] = {
-            "prompt_id": prompt.message_id,
-            "command_id": update.message.message_id,
-            "chat_id": update.message.chat_id,
-        }
+        await update.message.reply_html("Usage: <code>/video &lt;url&gt;</code>")
     else:
         await update.message.reply_html(
             "📹 Send me a URL to download as video.\n"
             "<i>Tip: <code>/video 1-5 URL</code> for a playlist range.</i>",
-            reply_markup=ForceReply(input_field_placeholder="https://..."),
         )
 
 
@@ -162,24 +138,12 @@ async def _cmd_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await _run_download(update, context, url, clip=None)
         context.user_data.pop(FORCE_MODE_KEY, None)
     elif _is_group(update):
-        prompt = await update.message.reply_html(
-            "Usage: <code>/image &lt;url&gt;</code>",
-            reply_markup=ForceReply(
-                input_field_placeholder="https://...",
-                selective=True,
-            ),
-        )
+        await update.message.reply_html("Usage: <code>/image &lt;url&gt;</code>")
         context.user_data[FORCE_MODE_KEY] = "gallery"
-        context.user_data["_group_prompt"] = {
-            "prompt_id": prompt.message_id,
-            "command_id": update.message.message_id,
-            "chat_id": update.message.chat_id,
-        }
     else:
         context.user_data[FORCE_MODE_KEY] = "gallery"
         await update.message.reply_html(
             "🖼️ Send me a URL to download images.",
-            reply_markup=ForceReply(input_field_placeholder="https://..."),
         )
 
 

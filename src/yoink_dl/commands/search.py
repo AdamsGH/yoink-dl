@@ -106,7 +106,7 @@ async def _cmd_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def _cb_search_pick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """User tapped a search result  - trigger download via user_data flag."""
+    """User tapped a search result - trigger download directly."""
     query: CallbackQuery | None = update.callback_query
     if not query or not query.data:
         return
@@ -117,15 +117,22 @@ async def _cb_search_pick(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.answer("Invalid URL", show_alert=True)
         return
 
-    # Delete the search results message
-    await query.message.delete()  # type: ignore[union-attr]
+    chat_id = query.message.chat.id if query.message and query.message.chat else None
+    if not chat_id:
+        return
 
-    # Send the URL as a new message so the main url_handler picks it up
-    if query.message and query.message.chat:
-        await context.bot.send_message(
-            chat_id=query.message.chat.id,
-            text=url,
-        )
+    # Delete the search results message
+    try:
+        await query.message.delete()  # type: ignore[union-attr]
+    except Exception:
+        pass
+
+    # Clear any lingering force_mode (e.g. from a previous /audio command)
+    # so the search pick always downloads as video.
+    context.user_data.pop("force_mode", None)
+
+    from yoink_dl.url.pipeline import run_download as _run_download
+    await _run_download(update, context, url, clip=None, target_chat_id=chat_id)
 
 
 def register(app: Application) -> None:

@@ -352,11 +352,26 @@ async def run_download(
         tracker.set_phase("upload")
         await status.edit_text(t("pipeline.uploading", lang, size=humanbytes(file_size)))
 
+        meta_width = job.width
+        meta_height = job.height
+        # After postprocessing a single video, re-probe dims: rotation baking
+        # (90/270 transpose) swaps width and height vs the yt-dlp info dict.
+        if len(files) == 1 and files[0].suffix.lower() in (".mp4", ".m4v", ".mkv"):
+            from yoink_dl.download.postprocess import _probe_streams  # noqa: PLC0415
+            pp_vcodec, _, pp_w, pp_h, _ = _probe_streams(files[0])
+            if pp_w and pp_h:
+                meta_width, meta_height = pp_w, pp_h
+
+        thumb = job.thumb
+        if thumb is None and len(files) == 1 and files[0].suffix.lower() in (".mp4", ".m4v", ".mkv", ".webm", ".mov"):
+            from yoink_dl.download.ffmpeg import make_thumbnail  # noqa: PLC0415
+            thumb = await make_thumbnail(files[0])
+
         meta = MediaMeta(
             duration=int(job.duration),
-            width=job.width,
-            height=job.height,
-            thumb=job.thumb,
+            width=meta_width,
+            height=meta_height,
+            thumb=thumb,
         )
 
         if is_private:
@@ -555,6 +570,7 @@ async def run_download(
                 "sign in", "log in", "login required",
                 "not available", "private video",
                 "cookies", "this video is private",
+                "confirm your age", "age-restricted",
             )
             if any(h in err_lower for h in auth_hints):
                 try:
