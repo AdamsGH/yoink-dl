@@ -86,13 +86,26 @@ async def _handle_cookie(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         bot_url = getattr(settings, "yoink_domain", None)
         token = ct.generate(user_id)
         ttl_min = ct.TTL // 60
-        url_hint = f"\n\n<b>Bot URL:</b> <code>https://{bot_url}</code>" if bot_url else ""
-        await msg.reply_html(
-            f"🔑 <b>Browser Extension Token</b>\n\n"
-            f"<code>{token}</code>\n\n"
-            f"Paste this into the extension popup, then click <b>Send Cookies</b>.\n"
-            f"Valid for <b>{ttl_min} minutes</b>, single-use.{url_hint}",
-        )
+        if bot_url:
+            sync_url = f"https://{bot_url}/cookie-sync?token={token}"
+            await msg.reply_html(
+                f"🔑 <b>Cookie sync token</b>\n\n"
+                f"<b>Mobile / quick upload:</b>\n"
+                f"<a href=\"{sync_url}\">Open upload page</a> - open in the browser where you're logged in, "
+                f"then pick the cookies.txt file.\n\n"
+                f"<b>Browser extension:</b>\n"
+                f"<code>{token}</code>\n"
+                f"Paste into the extension popup and click <b>Send Cookies</b>.\n\n"
+                f"Valid for <b>{ttl_min} minutes</b>, single-use.",
+                disable_web_page_preview=True,
+            )
+        else:
+            await msg.reply_html(
+                f"🔑 <b>Browser Extension Token</b>\n\n"
+                f"<code>{token}</code>\n\n"
+                f"Paste this into the extension popup, then click <b>Send Cookies</b>.\n"
+                f"Valid for <b>{ttl_min} minutes</b>, single-use.",
+            )
         return
 
     # /cookie clear

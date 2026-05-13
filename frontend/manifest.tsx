@@ -5,6 +5,7 @@ import type { PluginManifest } from '@core/types/plugin'
 import HistoryPage      from './src/pages/history/HistoryPage'
 import SettingsPage     from './src/pages/settings/SettingsPage'
 import CookiesPage      from './src/pages/cookies/CookiesPage'
+import CookieSyncPage   from './src/pages/cookie-sync/CookieSyncPage'
 import AdminCookiesPage from './src/pages/admin/cookies/AdminCookiesPage'
 import AdminNsfwPage    from './src/pages/admin/nsfw/AdminNsfwPage'
 import DlStatsPage      from './src/pages/admin/stats/DlStatsPage'
@@ -14,6 +15,10 @@ export const dlPlugin: PluginManifest = {
   id: 'dl',
   name: 'Yoink DL',
   userStatsEndpoint: '/users/me/stats',
+
+  publicRoutes: [
+    { path: '/cookie-sync', element: <CookieSyncPage /> },
+  ],
 
   routes: [
     { path: '/settings',      element: <SettingsPage /> },
