@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, CookieIcon, ExternalLink, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
+import { CheckCircle, Copy, CookieIcon, ExternalLink, Key, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
 
 import { cookiesApi } from '@dl/api/cookies'
+import type { CookieTokenResponse } from '@dl/api/cookies'
 import { dlSettingsApi } from '@dl/api/settings'
 import { formatDate } from '@core/lib/utils'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
@@ -37,6 +38,16 @@ export default function CookiesPage() {
   const [uploadContent, setUploadContent] = useState('')
   const [uploadDomain, setUploadDomain] = useState('')
   const [uploading, setUploading] = useState(false)
+
+  // Paste mode (manual textarea input)
+  const [pasteMode, setPasteMode] = useState(false)
+  const [pasteContent, setPasteContent] = useState('')
+  const [pasteDomain, setPasteDomain] = useState('')
+
+  // Sync token
+  const [syncToken, setSyncToken] = useState<CookieTokenResponse | null>(null)
+  const [tokenLoading, setTokenLoading] = useState(false)
+  const [tokenCopied, setTokenCopied] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -97,6 +108,26 @@ export default function CookiesPage() {
     }
   }
 
+  const generateToken = async () => {
+    setTokenLoading(true)
+    setSyncToken(null)
+    try {
+      const r = await cookiesApi.getToken()
+      setSyncToken(r.data)
+    } catch {
+      toast.error(t('cookies.token_error', { defaultValue: 'Failed to generate token' }))
+    } finally {
+      setTokenLoading(false)
+    }
+  }
+
+  const copyToken = async () => {
+    if (!syncToken) return
+    await navigator.clipboard.writeText(syncToken.token)
+    setTokenCopied(true)
+    setTimeout(() => setTokenCopied(false), 2000)
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -122,6 +153,32 @@ export default function CookiesPage() {
       setUploadContent('')
       setUploadDomain('')
       if (fileInputRef.current) fileInputRef.current.value = ''
+      load()
+    } catch {
+      toast.error(t('cookies.upload_error', { defaultValue: 'Upload failed' }))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handlePasteContentChange = (text: string) => {
+    setPasteContent(text)
+    if (!pasteDomain) {
+      const domain = parseDomainFromNetscape(text)
+      if (domain) setPasteDomain(domain)
+    }
+  }
+
+  const handlePasteUpload = async () => {
+    if (!pasteContent) { toast.error(t('cookies.select_file', { defaultValue: 'Select a file first' })); return }
+    if (!pasteDomain) { toast.error(t('cookies.domain_required', { defaultValue: 'Domain is required' })); return }
+    setUploading(true)
+    try {
+      await cookiesApi.uploadPersonal({ domain: pasteDomain, content: pasteContent })
+      toast.success(t('cookies.uploaded', { defaultValue: 'Cookie uploaded for {{domain}}', domain: pasteDomain }))
+      setPasteContent('')
+      setPasteDomain('')
+      setPasteMode(false)
       load()
     } catch {
       toast.error(t('cookies.upload_error', { defaultValue: 'Upload failed' }))
@@ -167,6 +224,14 @@ export default function CookiesPage() {
                     </TooltipContent>
                   </Tooltip>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 text-xs"
+                  onClick={() => { setPasteMode(true); setUploadFile(null) }}
+                >
+                  {t('cookies.paste_btn', { defaultValue: 'Paste' })}
+                </Button>
                 <Button
                   size="sm"
                   className="h-7 px-2.5 text-xs"
@@ -293,7 +358,7 @@ export default function CookiesPage() {
           </CardContent>
         </Card>
 
-        {/* Hidden file input - triggered by Upload button */}
+        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -302,8 +367,8 @@ export default function CookiesPage() {
           onChange={handleFileChange}
         />
 
-        {/* Upload form - shown after file selected */}
-        {uploadFile && (
+        {/* File upload form */}
+        {uploadFile && !pasteMode && (
           <Card>
             <CardHeader className="px-4 py-3">
               <CardTitle className="text-base">{uploadFile.name}</CardTitle>
@@ -326,6 +391,49 @@ export default function CookiesPage() {
                   {t('common.cancel', { defaultValue: 'Cancel' })}
                 </Button>
                 <Button size="sm" onClick={handleUpload} disabled={uploading || !uploadDomain}>
+                  {uploading ? t('common.loading') : t('cookies.upload_btn', { defaultValue: 'Upload' })}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Paste form */}
+        {pasteMode && (
+          <Card>
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-base">
+                {t('cookies.paste_title', { defaultValue: 'Paste cookies.txt content' })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="paste-content">{t('cookies.paste_label', { defaultValue: 'Netscape cookie file content' })}</Label>
+                <textarea
+                  id="paste-content"
+                  className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono resize-y"
+                  placeholder={'# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t...'}
+                  value={pasteContent}
+                  onChange={(e) => handlePasteContentChange(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('cookies.paste_hint', { defaultValue: 'Export via "Get cookies.txt LOCALLY" extension, then paste the file content here.' })}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="paste-domain">{t('cookies.domain_label', { defaultValue: 'Domain' })}</Label>
+                <Input
+                  id="paste-domain"
+                  placeholder="youtube.com"
+                  value={pasteDomain}
+                  onChange={(e) => setPasteDomain(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setPasteMode(false); setPasteContent(''); setPasteDomain('') }}>
+                  {t('common.cancel', { defaultValue: 'Cancel' })}
+                </Button>
+                <Button size="sm" onClick={handlePasteUpload} disabled={uploading || !pasteDomain || !pasteContent}>
                   {uploading ? t('common.loading') : t('cookies.upload_btn', { defaultValue: 'Upload' })}
                 </Button>
               </div>
@@ -405,6 +513,51 @@ export default function CookiesPage() {
             <p className="text-muted-foreground">
               {t('cookies.sync_hint', { defaultValue: 'For automatic sync, use the Yoink Cookie Sync browser extension.' })}
             </p>
+
+            {/* Token generator */}
+            <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium flex items-center gap-1.5">
+                  <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                  {t('cookies.token_label', { defaultValue: 'Sync token' })}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 text-xs"
+                  onClick={generateToken}
+                  disabled={tokenLoading}
+                >
+                  {tokenLoading
+                    ? <RefreshCw className="h-3 w-3 animate-spin" />
+                    : t('cookies.token_generate', { defaultValue: 'Generate' })}
+                </Button>
+              </div>
+
+              {syncToken && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded bg-muted px-2 py-1.5 text-xs font-mono break-all select-all">
+                      {syncToken.token}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0"
+                      onClick={copyToken}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {tokenCopied
+                      ? t('cookies.token_copied', { defaultValue: 'Copied!' })
+                      : t('cookies.token_hint', { defaultValue: 'Valid for {{sec}}s, single-use. Paste into the extension.', sec: syncToken.expires_in })}
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-3">
               {[
                 {
@@ -419,14 +572,8 @@ export default function CookiesPage() {
                 },
                 {
                   n: 3,
-                  title: t('cookies.sync_step3_title', { defaultValue: 'Get a token from the bot' }),
-                  desc: (
-                    <>
-                      {t('cookies.sync_step3_desc', { defaultValue: 'Send ' })}
-                      <code className="bg-muted px-1 rounded">/cookie token</code>
-                      {t('cookies.sync_step3_desc2', { defaultValue: ' to the bot in Telegram.' })}
-                    </>
-                  ),
+                  title: t('cookies.sync_step3_title', { defaultValue: 'Get a token' }),
+                  desc: t('cookies.sync_step3_desc_web', { defaultValue: 'Click "Generate" above, or send /cookie token to the bot in Telegram.' }),
                 },
                 {
                   n: 4,

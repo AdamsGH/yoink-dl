@@ -2,6 +2,12 @@ import { apiClient } from '@core/lib/api-client'
 import type { Cookie } from '@dl/types'
 import type { User, PaginatedResponse } from '@core/types/api'
 
+export interface CookieTokenResponse {
+  token: string
+  expires_in: number
+  submit_url: string
+}
+
 export interface CookieUploadBody {
   user_id: number
   domain: string
@@ -40,6 +46,9 @@ export const cookiesApi = {
 
   deletePoolById: (id: number) =>
     apiClient.delete(`/dl/cookies/pool/${id}`),
+
+  getToken: () =>
+    apiClient.post<CookieTokenResponse>('/dl/cookies/token', {}),
 
   refreshLabels: () =>
     apiClient.post<{ updated: number }>('/dl/cookies/pool/refresh-labels', {}),
