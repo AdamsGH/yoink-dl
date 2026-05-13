@@ -20,7 +20,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
@@ -70,12 +70,19 @@ async def _handle_cookie(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # No args - list all cookies
     if not args:
+        settings = get_settings(context)
+        bot_url = getattr(settings, "yoink_domain", None)
+        keyboard = None
+        if bot_url:
+            keyboard = InlineKeyboardMarkup([[
+                InlineKeyboardButton("Manage cookies", web_app=WebAppInfo(url=f"https://{bot_url}/cookies"))
+            ]])
         domains = await mgr.list_domains(user_id)
         if not domains:
-            await msg.reply_text("No cookies stored.")
+            await msg.reply_text("No cookies stored.", reply_markup=keyboard)
         else:
             lines = "\n".join(f"• <code>{d}</code>" for d in domains)
-            await msg.reply_text(f"Stored cookies:\n{lines}", parse_mode=ParseMode.HTML)
+            await msg.reply_html(f"Stored cookies:\n{lines}", reply_markup=keyboard)
         return
 
     subcmd = args[0].lower()
@@ -88,15 +95,18 @@ async def _handle_cookie(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         ttl_min = ct.TTL // 60
         if bot_url:
             sync_url = f"https://{bot_url}/cookie-sync?token={token}"
+            cookies_url = f"https://{bot_url}/cookies"
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("Manage cookies", web_app=WebAppInfo(url=cookies_url))],
+                [InlineKeyboardButton("Upload page (mobile)", url=sync_url)],
+            ])
             await msg.reply_html(
                 f"🔑 <b>Cookie sync token</b>\n\n"
-                f"<b>Mobile / quick upload:</b>\n"
-                f"<a href=\"{sync_url}\">Open upload page</a> - open in the browser where you're logged in, "
-                f"then pick the cookies.txt file.\n\n"
                 f"<b>Browser extension:</b>\n"
                 f"<code>{token}</code>\n"
                 f"Paste into the extension popup and click <b>Send Cookies</b>.\n\n"
                 f"Valid for <b>{ttl_min} minutes</b>, single-use.",
+                reply_markup=keyboard,
                 disable_web_page_preview=True,
             )
         else:
