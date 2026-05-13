@@ -21,9 +21,24 @@ logger = logging.getLogger(__name__)
 _NETSCAPE_HEADER = "# Netscape HTTP Cookie File"
 
 
+_DOMAIN_ALIASES: dict[str, str] = {
+    "youtu.be": "youtube.com",
+    "m.youtube.com": "youtube.com",
+    "music.youtube.com": "youtube.com",
+    "x.com": "twitter.com",
+    "m.twitter.com": "twitter.com",
+    "m.instagram.com": "instagram.com",
+    "m.tiktok.com": "tiktok.com",
+    "m.facebook.com": "facebook.com",
+    "m.reddit.com": "reddit.com",
+    "old.reddit.com": "reddit.com",
+}
+
+
 def _domain_from_url(url: str) -> str:
     host = urlparse(url).netloc.lower().split(":")[0]
-    return host.removeprefix("www.")
+    host = host.removeprefix("www.")
+    return _DOMAIN_ALIASES.get(host, host)
 
 
 def validate_netscape(content: str) -> bool:
@@ -118,6 +133,24 @@ def extract_account_label(domain: str, content: str) -> str | None:
         return "authenticated"
 
     return None
+
+
+def _merge_netscape_updates(content: str, updates: dict[str, str]) -> str:
+    """Update values of existing cookies in a Netscape file. Does not add new lines."""
+    lines = content.splitlines(keepends=True)
+    result = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            result.append(line)
+            continue
+        parts = stripped.split("\t")
+        if len(parts) >= 7 and parts[5] in updates:
+            parts[6] = updates[parts[5]]
+            result.append("\t".join(parts) + "\n")
+        else:
+            result.append(line)
+    return "".join(result)
 
 
 def _write_tmp(content: str) -> Path:
@@ -508,6 +541,57 @@ class CookieManager:
             await session.commit()
         logger.debug("Updated cookie content from Set-Cookie: id=%d", cookie_id)
         return True
+
+    async def validate_live(self, cookie_id: int) -> bool:
+        """
+        Validate a cookie by calling the platform API with it.
+        Merges any Set-Cookie tokens returned back into the DB row (rolling refresh).
+        Returns True if the cookie is authenticated.
+        """
+        from yoink_dl.services.cookie_account import fetch_account_info, _fetch_youtube  # noqa: PLC0415
+
+        async with self._factory() as session:
+            row = await session.get(Cookie, cookie_id)
+            if row is None:
+                return False
+            domain = row.domain
+            content = row.content
+
+        bare = domain.removeprefix("www.")
+        new_cookies: dict[str, str] = {}
+        is_valid = False
+
+        try:
+            if bare in ("youtube.com", "google.com") or bare.endswith((".youtube.com", ".google.com")):
+                result = await _fetch_youtube(content, return_set_cookie=True)
+                info, new_cookies = result  # type: ignore[misc]
+                is_valid = info is not None
+            else:
+                info = await fetch_account_info(domain, content)
+                is_valid = info is not None
+        except Exception:
+            logger.debug("validate_live: fetch failed for %s", domain, exc_info=True)
+            is_valid = False
+
+        # Merge rotated tokens back into DB content (pplx-style rolling refresh)
+        updated_content = content
+        if new_cookies:
+            updated_content = _merge_netscape_updates(content, new_cookies)
+
+        now = datetime.now(timezone.utc)
+        async with self._factory() as session:
+            row = await session.get(Cookie, cookie_id)
+            if row is not None:
+                row.is_valid = is_valid
+                row.validated_at = now
+                if updated_content != content:
+                    row.content = updated_content
+                    row.updated_at = now
+                await session.commit()
+
+        logger.info("validate_live: id=%d domain=%s is_valid=%s new_cookies=%s",
+                    cookie_id, domain, is_valid, list(new_cookies.keys()))
+        return is_valid
 
     async def sync_from_file(self, cookie_id: int, path: Path) -> bool:
         """

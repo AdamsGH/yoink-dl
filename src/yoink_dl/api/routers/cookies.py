@@ -149,9 +149,16 @@ async def upload_cookie_file(
     current_user: User = Depends(get_current_user),
 ) -> CookieResponse:
     """Upload a raw Netscape cookie file for the current user."""
-    from yoink_dl.services.cookies import validate_netscape  # noqa: PLC0415
+    from yoink_dl.services.cookies import validate_netscape, extract_account_label  # noqa: PLC0415
     if not validate_netscape(body.content):
         raise HTTPException(status_code=422, detail="Invalid Netscape cookie format")
+    # Reject files that contain no auth tokens for the declared domain.
+    # This catches the common mistake of exporting cookies while not logged in.
+    if extract_account_label(body.domain, body.content) is None:
+        raise HTTPException(
+            status_code=422,
+            detail="No authentication cookies found for this domain. Make sure you are logged in before exporting.",
+        )
     row = (await session.execute(
         select(Cookie).where(Cookie.user_id == current_user.id, Cookie.domain == body.domain)
     )).scalar_one_or_none()
@@ -166,14 +173,14 @@ async def upload_cookie_file(
     return CookieResponse.model_validate(row)
 
 
-@router.post("/cookies/{cookie_id}/validate", response_model=CookieResponse, summary="Re-validate cookie by HTTP request to domain")
+@router.post("/cookies/{cookie_id}/validate", response_model=CookieResponse, summary="Re-validate cookie via platform API")
 async def validate_cookie(
     cookie_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CookieResponse:
-    """Validate a stored cookie: structural check, then live GET request to the domain."""
-    import httpx  # noqa: PLC0415
+    """Validate by calling the platform API with the stored cookie. Merges rotated tokens back."""
     from yoink_dl.services.cookies import validate_netscape  # noqa: PLC0415
 
     row = await session.get(Cookie, cookie_id)
@@ -182,38 +189,15 @@ async def validate_cookie(
     if current_user.role not in (UserRole.admin, UserRole.owner) and row.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your cookie")
 
-    content = row.content or ""
-    if not validate_netscape(content):
+    if not validate_netscape(row.content or ""):
         row.is_valid = False
         await session.commit()
         await session.refresh(row)
         return CookieResponse.model_validate(row)
 
-    jar = httpx.Cookies()
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        parts = line.split("\t")
-        if len(parts) < 7:
-            continue
-        domain, _, path, _, _, name, value = parts[:7]
-        jar.set(name, value, domain=domain.lstrip("."), path=path)
+    cookie_mgr: CookieManager = request.app.state.bot_data["cookie_manager"]
+    await cookie_mgr.validate_live(cookie_id)
 
-    is_valid = False
-    try:
-        async with httpx.AsyncClient(
-            cookies=jar, follow_redirects=True, timeout=10.0,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; YoinkBot/1.0)"},
-        ) as client:
-            resp = await client.get(f"https://{row.domain}")
-            is_valid = resp.status_code not in (401, 403)
-    except Exception:
-        is_valid = True  # network error - don't mark invalid
-
-    row.is_valid = is_valid
-    row.validated_at = datetime.now(timezone.utc)
-    await session.commit()
     await session.refresh(row)
     return CookieResponse.model_validate(row)
 
@@ -285,24 +269,32 @@ async def submit_cookies(
             host = c.get("domain", "")
             if not host.startswith("."):
                 host = "." + host
-            http_only = str(c.get("httpOnly", False)).upper()
+            # httpOnly cookies get a #HttpOnly_ prefix on the domain (yt-dlp convention)
+            if c.get("httpOnly"):
+                host = "#HttpOnly_" + host
+            include_subdomains = "TRUE"
             secure = str(c.get("secure", False)).upper()
             exp = int(c.get("expirationDate") or 0) or 2147483647
             path = c.get("path", "/")
             name = c.get("name", "")
             value = c.get("value", "")
-            lines.append(f"{host}\t{http_only}\t{path}\tFALSE\t{exp}\t{secure}\t{name}\t{value}")
+            # Netscape format: domain  subdomainMatch  path  secure  expiry  name  value
+            lines.append(f"{host}\t{include_subdomains}\t{path}\t{secure}\t{exp}\t{name}\t{value}")
 
         content = "\n".join(lines) + "\n"
+
+        from yoink_dl.services.cookies import extract_account_label  # noqa: PLC0415
+        has_auth = extract_account_label(domain, content) is not None
+
         existing = (await session.execute(
             select(Cookie).where(Cookie.user_id == user_id, Cookie.domain == domain)
         )).scalar_one_or_none()
 
         if existing is None:
-            session.add(Cookie(user_id=user_id, domain=domain, content=content, is_valid=True, is_pool=False))
+            session.add(Cookie(user_id=user_id, domain=domain, content=content, is_valid=has_auth, is_pool=False))
         else:
             existing.content = content
-            existing.is_valid = True
+            existing.is_valid = has_auth
             existing.is_pool = False
             existing.updated_at = now
 

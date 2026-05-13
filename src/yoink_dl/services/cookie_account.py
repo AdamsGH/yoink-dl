@@ -74,11 +74,11 @@ def _find_first(obj: object, key: str) -> object | None:
     return None
 
 
-async def _fetch_youtube(content: str) -> AccountInfo | None:
+async def _fetch_youtube(content: str, *, return_set_cookie: bool = False) -> AccountInfo | None | tuple[AccountInfo | None, dict[str, str]]:
     cookies = _netscape_to_dict(content)
     sapisid = cookies.get("SAPISID") or cookies.get("__Secure-3PAPISID")
     if not sapisid:
-        return None
+        return (None, {}) if return_set_cookie else None
 
     origin = "https://www.youtube.com"
     auth_header = _sapisid_hash(sapisid, origin)
@@ -107,13 +107,21 @@ async def _fetch_youtube(content: str) -> AccountInfo | None:
                     }
                 },
             )
+
+        # Parse Set-Cookie for caller to persist
+        new_cookies: dict[str, str] = {}
+        for value in resp.headers.get_list("set-cookie") if hasattr(resp.headers, "get_list") else []:
+            part = value.split(";")[0].strip()
+            if "=" in part:
+                k, _, v = part.partition("=")
+                new_cookies[k.strip()] = v.strip()
+
         if resp.status_code != 200:
             logger.debug("YouTube account_menu returned %d", resp.status_code)
-            return None
+            return (None, new_cookies) if return_set_cookie else None
 
         data = resp.json()
 
-        # Response structure varies - use recursive search
         name_obj = _find_first(data, "accountName")
         handle_obj = _find_first(data, "channelHandle")
         photo_obj = _find_first(data, "accountPhoto")
@@ -130,13 +138,12 @@ async def _fetch_youtube(content: str) -> AccountInfo | None:
             if thumbs:
                 avatar = thumbs[-1].get("url")
 
-        if not name:
-            return None
-        return AccountInfo(name=name, avatar_url=avatar)
+        info = AccountInfo(name=name, avatar_url=avatar) if name else None
+        return (info, new_cookies) if return_set_cookie else info
 
     except Exception:
         logger.debug("YouTube account info fetch failed", exc_info=True)
-        return None
+        return (None, {}) if return_set_cookie else None
 
 
 async def _fetch_instagram(content: str) -> AccountInfo | None:

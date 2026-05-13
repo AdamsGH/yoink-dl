@@ -214,9 +214,38 @@ class DownloaderPlugin:
                         "Evicted %d expired file cache entries", evicted
                     )
 
+        async def _warmup_cookies(context: object) -> None:
+            import logging
+            from yoink_dl.services.cookies import CookieManager
+            from yoink_dl.storage.models import Cookie
+            from sqlalchemy import select
+            log = logging.getLogger(__name__)
+
+            mgr: CookieManager | None = None
+            if hasattr(context, "bot_data"):
+                mgr = context.bot_data.get("cookie_manager")
+            if mgr is None:
+                return
+
+            async with mgr._factory() as session:
+                rows = list((await session.execute(
+                    select(Cookie.id).where(Cookie.is_valid.is_(True))
+                )).scalars().all())
+
+            if not rows:
+                return
+
+            log.debug("cookie warmup: refreshing %d cookie(s)", len(rows))
+            for cookie_id in rows:
+                try:
+                    await mgr.validate_live(cookie_id)
+                except Exception:
+                    log.debug("cookie warmup: failed for id=%d", cookie_id, exc_info=True)
+
         return [
             JobSpec(callback=_flush_job, interval=1.0, first=1.0, name="dl_progress_flush"),
             JobSpec(callback=_evict_cache, interval=3600.0, first=60.0, name="dl_cache_evict"),
+            JobSpec(callback=_warmup_cookies, interval=8*3600.0, first=300.0, name="dl_cookie_warmup"),
         ]
 
     async def setup(self, ctx: PluginContext) -> None:
