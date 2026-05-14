@@ -12,6 +12,7 @@ dependencies = [
     "gallery-dl>=1.27",
     "pyyaml>=6.0",
     "mutagen>=1.47",
+    "transliterate>=1.10",
 ]
 
 [project.scripts]

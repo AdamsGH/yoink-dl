@@ -39,10 +39,24 @@ class MusicDownloadResult:
     duration: float | None
 
 
+_CYR_RE = __import__('re').compile(r'[\u0430-\u044f\u0451\u0410-\u042f\u0401]')
+
+
+def _to_latin(s: str) -> str:
+    if not _CYR_RE.search(s):
+        return s
+    try:
+        from transliterate import translit
+        return translit(s, 'ru', reversed=True)
+    except Exception:
+        return s
+
+
 def make_music_cache_key(artist: str, title: str) -> str:
-    """Stable cache key for a track independent of source platform."""
-    normalized = f"{artist.lower().strip()}:{title.lower().strip()}"
-    return "music:" + hashlib.sha256(normalized.encode()).hexdigest()[:48]
+    """Stable cache key for a track independent of source platform or script."""
+    a = _to_latin(artist).lower().strip()
+    t = _to_latin(title).lower().strip()
+    return "music:" + hashlib.sha256(f"{a}:{t}".encode()).hexdigest()[:48]
 
 
 async def download_track(
