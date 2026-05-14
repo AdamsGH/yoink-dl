@@ -278,6 +278,8 @@ class DownloaderPlugin:
 
         bd["settings"] = self._config
 
-        from yoink.core.activity import register_activity_provider  # noqa: PLC0415
+        from yoink.core.activity import register_activity_provider, register_list_users_provider  # noqa: PLC0415
         from yoink_dl.activity import dl_activity_provider  # noqa: PLC0415
+        from yoink_dl.list_provider import dl_list_users_provider  # noqa: PLC0415
         register_activity_provider("dl", dl_activity_provider)
+        register_list_users_provider("dl", dl_list_users_provider)
