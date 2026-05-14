@@ -30,15 +30,18 @@ _AUDIO_DOMAINS = frozenset({
     "last.fm", "audiomack.com", "mixcloud.com",
 })
 
-_DL_ADMIN_DEFAULTS: dict[str, str] = {
-    "dl.download_retries":      "3",
-    "dl.download_timeout":      "1200",
-    "dl.max_file_size_gb":      "2.0",
-    "dl.rate_limit_per_minute": "5",
-    "dl.rate_limit_per_hour":   "30",
-    "dl.rate_limit_per_day":    "100",
-    "dl.max_playlist_count":    "50",
-}
+def _dl_admin_defaults() -> dict[str, str]:
+    from yoink_dl.config import DownloaderConfig  # noqa: PLC0415
+    c = DownloaderConfig()
+    return {
+        "dl.download_retries":      str(c.download_retries),
+        "dl.download_timeout":      str(c.download_timeout),
+        "dl.max_file_size_gb":      str(c.max_file_size_gb),
+        "dl.rate_limit_per_minute": str(c.rate_limit_per_minute),
+        "dl.rate_limit_per_hour":   str(c.rate_limit_per_hour),
+        "dl.rate_limit_per_day":    str(c.rate_limit_per_day),
+        "dl.max_playlist_count":    str(c.max_playlist_count),
+    }
 
 
 def _media_type(row: DownloadLog) -> str:
@@ -54,7 +57,7 @@ async def _get_dl_admin_settings(request: Request) -> DlAdminSettings:
     from yoink.core.db.repos.bot_settings import BotSettingsRepo  # noqa: PLC0415
     repo: BotSettingsRepo = request.app.state.bot_data["bot_settings_repo"]
     raw: dict[str, str] = {}
-    for key, default in _DL_ADMIN_DEFAULTS.items():
+    for key, default in _dl_admin_defaults().items():
         val = await repo.get(key)
         raw[key] = val if val is not None else default
 

@@ -15,6 +15,8 @@ class DownloaderConfig(BaseSettings):
     max_file_size_gb: float = 2.0
     download_timeout: int = 1200
     max_playlist_count: int = 50
+    # Rate limits: default to CoreSettings values so a single env var controls both.
+    # Override per-plugin via DL_RATE_LIMIT_PER_MINUTE etc. if needed.
     rate_limit_per_minute: int = 5
     rate_limit_per_hour: int = 30
     rate_limit_per_day: int = 100
