@@ -113,7 +113,6 @@ def build_ytdlp_opts(
         "no_warnings": True,
         "geo_bypass": True,
         "check_certificate": False,
-        "live_from_start": True,
         "retries": 5,
         "fragment_retries": 5,
         "file_access_retries": 3,
