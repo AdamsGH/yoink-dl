@@ -15,7 +15,7 @@ from yoink_dl.services.proxy import ProxyConfig
 from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.resolver import ResolvedUrl
 from yoink_dl.url.clip import ClipSpec
-from yoink_dl.utils.errors import AgeRestrictedError, DownloadError, LiveStreamError, FileTooLargeError
+from yoink_dl.utils.errors import AgeRestrictedError, DownloadError, GeoBlockedError, LiveStreamError, FileTooLargeError
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,50 @@ def _domain_from_url(url: str) -> str:
     from urllib.parse import urlparse
     host = urlparse(url).netloc.lower().split(":")[0]
     return host[4:] if host.startswith("www.") else host
+
+
+_GEO_HINTS = (
+    "not available from your location due to geo restriction",
+    "not made this video available in your country",
+    "not available in your country",
+    "not available in your region",
+    "geo restricted",
+    "geo-restricted",
+    "georestricted",
+    "geo_restricted",
+    "available in your country",
+    "blocked in your country",
+    "blocked in your region",
+    "not available in your location",
+    "available only in",
+    "only available in",
+    "not available outside",
+    "region locked",
+    "region-locked",
+)
+
+_AGE_HINTS = (
+    "sign in to confirm your age",
+    "age-restricted",
+    "age restricted",
+)
+
+_LIVE_HINTS = (
+    "is a live stream",
+    "is live",
+    "live event",
+)
+
+
+def _classify_ytdlp_error(err: str) -> None:
+    """Raise a typed BotError subclass if the yt-dlp message matches a known pattern."""
+    lower = err.lower()
+    if any(h in lower for h in _GEO_HINTS):
+        raise GeoBlockedError()
+    if any(h in lower for h in _AGE_HINTS):
+        raise AgeRestrictedError()
+    if any(h in lower for h in _LIVE_HINTS):
+        raise LiveStreamError()
 
 
 def build_format_string(settings: UserSettings) -> str:
@@ -282,11 +326,7 @@ async def extract_info(
         return await loop.run_in_executor(_executor, _run)
     except yt_dlp.utils.DownloadError as e:
         err = str(e)
-        err_lower = err.lower()
-        if "live" in err_lower or "is live" in err_lower:
-            raise LiveStreamError()
-        if "sign in to confirm your age" in err_lower or "age-restricted" in err_lower:
-            raise AgeRestrictedError()
+        _classify_ytdlp_error(err)
         raise DownloadError(error=err) from e
 
 
@@ -310,8 +350,7 @@ async def download(
         await loop.run_in_executor(_executor, _run)
     except yt_dlp.utils.DownloadError as e:
         err = str(e)
-        if "sign in to confirm your age" in err.lower() or "age-restricted" in err.lower():
-            raise AgeRestrictedError()
+        _classify_ytdlp_error(err)
         raise DownloadError(error=err) from e
 
     after = set(download_dir.glob("*"))

@@ -597,16 +597,30 @@ class CookieManager:
         """
         Read a cookie file (written by yt-dlp during download) and sync
         its content back to the DB row. Returns True if content changed.
+
+        Skips the update if the file looks invalid (empty or shorter than
+        the stored content by more than 20%) to avoid overwriting working
+        cookies with a truncated/error file.
         """
         try:
             new_content = path.read_text(encoding="utf-8")
         except OSError:
+            return False
+        if not validate_netscape(new_content):
+            logger.debug("sync_from_file: skipping invalid cookie file: id=%d path=%s", cookie_id, path)
             return False
         async with self._factory() as session:
             row = await session.get(Cookie, cookie_id)
             if row is None:
                 return False
             if new_content == row.content:
+                return False
+            # Guard: don't overwrite a large cookie file with a suspiciously small one
+            if len(new_content) < len(row.content) * 0.8:
+                logger.warning(
+                    "sync_from_file: new content is %.0f%% of original, skipping: id=%d",
+                    100 * len(new_content) / max(len(row.content), 1), cookie_id,
+                )
                 return False
             row.content = new_content
             row.updated_at = datetime.now(timezone.utc)
