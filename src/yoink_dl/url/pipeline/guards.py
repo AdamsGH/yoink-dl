@@ -20,8 +20,6 @@ async def check_user_access(
     use_message: "Message | None",
 ) -> bool:
     """Return False (and optionally reply) if the user should not proceed."""
-    from yoink_dl.storage.repos import UserSettingsRow  # noqa: PLC0415, F401
-
     if user_settings.blocked:  # type: ignore[attr-defined]
         return False
     if user_settings.role == UserRole.restricted:  # type: ignore[attr-defined]
