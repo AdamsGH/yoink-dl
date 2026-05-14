@@ -119,9 +119,6 @@ def build_ytdlp_opts(
         "extractor_args": {
             "generic": {"impersonate": ["chrome"]},
             "youtubetab": {"skip": ["authcheck"]},
-            # tv client provides full DASH format list without requiring a PO token.
-            # The default 'web' client only returns a single 360p stream without one.
-            "youtube": {"player_client": ["tv"]},
         },
         "referer": resolved.url,
         "js_runtimes": {"deno": {}},
@@ -232,7 +229,6 @@ def _add_pot(opts: dict[str, Any], url: str, settings: Settings) -> None:
         return
     ea = opts.setdefault("extractor_args", {})
     ea.setdefault("youtubepot-bgutilhttp", {})["base_url"] = [settings.youtube_pot_url]
-    ea.setdefault("youtube", {})["player_client"] = ["tv", "web", "android"]
 
 
 def _apply_user_args(opts: dict[str, Any], args: dict[str, Any]) -> None:
