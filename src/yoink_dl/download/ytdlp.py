@@ -155,7 +155,9 @@ def build_ytdlp_opts(
     else:
         # Download opts
         opts["outtmpl"] = str(download_dir / "%(title).80s.%(ext)s")
-        opts["format"] = build_format_string(settings)
+        fmt = build_format_string(settings)
+        logger.debug("yt-dlp format: %r (quality=%r codec=%r)", fmt, settings.quality, settings.codec)
+        opts["format"] = fmt
         opts["merge_output_format"] = settings.container
 
         # Apply match_filter for live stream / duration check

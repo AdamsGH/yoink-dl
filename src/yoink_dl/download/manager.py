@@ -161,8 +161,10 @@ class DownloadManager:
             use_browser_cookies=job.use_browser_cookies,
         )
 
+        hooks = [_make_log_hook()]
         if progress_cb:
-            opts["progress_hooks"] = [_make_progress_hook(progress_cb)]
+            hooks.append(_make_progress_hook(progress_cb))
+        opts["progress_hooks"] = hooks
 
         job.files = await ytdlp_mod.download(opts, job.resolved.url)
         logger.info(
@@ -253,6 +255,18 @@ def create_download_dir(base: str = "/tmp") -> Path:
 
 
 ProgressCallback = Callable[[int, int], Coroutine[Any, Any, None]]
+
+
+def _make_log_hook() -> Callable[[dict[str, Any]], None]:
+    def hook(d: dict[str, Any]) -> None:
+        if d.get("status") == "finished":
+            info = d.get("info_dict", {})
+            logger.debug(
+                "yt-dlp finished: format=%s height=%s vcodec=%s filesize=%s",
+                info.get("format_id"), info.get("height"), info.get("vcodec"),
+                d.get("downloaded_bytes"),
+            )
+    return hook
 
 
 def _make_progress_hook(cb: ProgressCallback) -> Callable[[dict[str, Any]], None]:
