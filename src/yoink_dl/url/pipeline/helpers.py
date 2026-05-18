@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,8 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from yoink_dl.storage.repos import CachedFile
+
+logger = logging.getLogger(__name__)
 
 
 async def _chat_action_loop(
@@ -172,6 +175,68 @@ def _is_retryable(exc: Exception) -> bool:
 
 
 _ROLE_ORDER = ["owner", "admin", "moderator", "user", "restricted", "banned"]
+
+
+async def handle_download_error(
+    *,
+    exc: Exception,
+    status_message: Any,
+    lang: str,
+    url: str,
+    user_id: int,
+    resolved: Any | None,
+    cookie_id: int | None,
+    cookie_mgr: Any | None,
+    dl_log: Any | None,
+    group_id: int | None,
+    thread_id: int | None,
+) -> None:
+    """Centralised error handler for run_download. Logs, edits status, writes dl_log, invalidates cookie on auth-hint matches."""
+    import re  # noqa: PLC0415
+    from yoink_dl.utils.errors import BotError  # noqa: PLC0415
+    from yoink.core.i18n import t  # noqa: PLC0415
+    from yoink.core.metrics import metrics  # noqa: PLC0415
+
+    metrics.inc("downloads_error")
+    logger.exception("Download failed for %s: %s", url, exc)
+
+    if isinstance(exc, BotError):
+        err_text = t(exc.message_key, lang, **exc.kwargs)
+    else:
+        raw = re.sub(r'\x1b\[[0-9;]*m', '', str(exc))
+        raw = raw.removeprefix("ERROR: ")
+        err_text = raw[:300] if raw else t("errors.unknown", lang)
+
+    try:
+        await status_message.edit_text(f"\u274c {err_text}", parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
+
+    if dl_log:
+        await dl_log.write(
+            user_id, url=url, status="error", error_msg=str(exc)[:200],
+            group_id=group_id, thread_id=thread_id,
+        )
+
+    if cookie_id is not None and cookie_mgr is not None:
+        err_lower = str(exc).lower()
+        auth_hints = (
+            "http error 403", "http error 401",
+            "sign in", "log in", "login required",
+            "not available", "private video",
+            "cookies", "this video is private",
+            "confirm your age", "age-restricted",
+        )
+        if any(h in err_lower for h in auth_hints):
+            try:
+                await cookie_mgr.mark_invalid(user_id, resolved.domain if resolved else "")
+            except Exception:
+                pass
+            try:
+                await cookie_mgr.mark_pool_invalid(cookie_id)
+            except Exception:
+                pass
+            logger.info("Marked cookie invalid: id=%d err=%s", cookie_id, str(exc)[:80])
 
 
 async def _can_use_browser_cookies(

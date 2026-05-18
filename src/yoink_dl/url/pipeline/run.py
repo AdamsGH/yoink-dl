@@ -28,7 +28,7 @@ from yoink_dl.url.clip import ClipSpec
 from yoink_dl.url.pipeline.cache import try_serve_from_cache, write_to_cache
 from yoink_dl.url.pipeline.download_phase import acquire_cookie, download
 from yoink_dl.url.pipeline.guards import check_rate_limit, check_user_access
-from yoink_dl.url.pipeline.helpers import _can_use_browser_cookies
+from yoink_dl.url.pipeline.helpers import _can_use_browser_cookies, handle_download_error
 from yoink_dl.url.pipeline.upload_phase import (
     build_captions, get_thumbnail, prepare_files, send, send_mediainfo,
 )
@@ -324,47 +324,19 @@ async def run_download(
         metrics.inc("download_bytes_total", file_size)
 
     except Exception as e:
-        from yoink_dl.utils.errors import BotError  # noqa: PLC0415
-        metrics.inc("downloads_error")
-        logger.exception("Download failed for %s: %s", url, e)
-
-        if isinstance(e, BotError):
-            err_text = t(e.message_key, lang, **e.kwargs)
-        else:
-            raw = re.sub(r'\x1b\[[0-9;]*m', '', str(e))
-            raw = raw.removeprefix("ERROR: ")
-            err_text = raw[:300] if raw else t("errors.unknown", lang)
-
-        try:
-            await status.edit_text(f"❌ {err_text}", parse_mode=ParseMode.HTML)
-        except Exception:
-            pass
-
-        if dl_log:
-            await dl_log.write(
-                user_id, url=url, status="error", error_msg=str(e)[:200],
-                group_id=group_id, thread_id=thread_id,
-            )
-
-        if cookie_id is not None and cookie_mgr is not None:
-            err_lower = str(e).lower()
-            auth_hints = (
-                "http error 403", "http error 401",
-                "sign in", "log in", "login required",
-                "not available", "private video",
-                "cookies", "this video is private",
-                "confirm your age", "age-restricted",
-            )
-            if any(h in err_lower for h in auth_hints):
-                try:
-                    await cookie_mgr.mark_invalid(user_id, resolved.domain if resolved else "")
-                except Exception:
-                    pass
-                try:
-                    await cookie_mgr.mark_pool_invalid(cookie_id)
-                except Exception:
-                    pass
-                logger.info("Marked cookie invalid: id=%d err=%s", cookie_id, str(e)[:80])
+        await handle_download_error(
+            exc=e,
+            status_message=status,
+            lang=lang,
+            url=url,
+            user_id=user_id,
+            resolved=resolved,
+            cookie_id=cookie_id,
+            cookie_mgr=cookie_mgr,
+            dl_log=dl_log,
+            group_id=group_id,
+            thread_id=thread_id,
+        )
 
     finally:
         unreg_tracker(tracker)
