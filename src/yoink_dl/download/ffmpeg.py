@@ -10,13 +10,11 @@ import asyncio
 import json
 import logging
 import math
-import os
-import re
 import shutil
 import subprocess
-import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -319,7 +317,3 @@ async def fix_srt_encoding(srt_path: Path) -> Path:
 
 def ffmpeg_available() -> bool:
     return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
-
-
-# fix missing Any import
-from typing import Any
