@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -15,7 +14,7 @@ from yoink_dl.services.proxy import ProxyConfig
 from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.resolver import ResolvedUrl
 from yoink_dl.url.clip import ClipSpec
-from yoink_dl.utils.errors import AgeRestrictedError, DownloadError, GeoBlockedError, LiveStreamError, FileTooLargeError
+from yoink_dl.utils.errors import AgeRestrictedError, DownloadError, GeoBlockedError, LiveStreamError
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +80,6 @@ def build_format_string(settings: UserSettings) -> str:
     """
     quality = settings.quality
     codec = settings.codec
-    container = settings.container
 
     # Always-ask handled upstream (quality menu), here we get resolved quality
     if quality == "ask":

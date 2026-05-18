@@ -40,7 +40,6 @@ class IPv6Pool:
 
     @classmethod
     def from_settings(cls, settings: "DownloaderConfig") -> "IPv6Pool | None":  # type: ignore[name-defined]
-        from yoink_dl.config import DownloaderConfig
         if not settings.ipv6_cidr:
             return None
         return cls(settings.ipv6_cidr)

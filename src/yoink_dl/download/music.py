@@ -105,7 +105,7 @@ async def download_track(
     if path.stat().st_size > MAX_FILE_SIZE:
         path.unlink()
         tmpdir.rmdir()
-        raise TrackTooLargeError(f"Track exceeds 49 MB limit")
+        raise TrackTooLargeError("Track exceeds 49 MB limit")
 
     duration = float(info.get("duration") or 0) or None
     return MusicDownloadResult(path=path, duration=duration)

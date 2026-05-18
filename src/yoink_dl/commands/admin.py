@@ -142,12 +142,10 @@ async def _cmd_usage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # Looking up another user's stats requires admin role
     requested_other = args and args[0].isdigit() and int(args[0]) != calling_user_id
     if requested_other:
-        from yoink.core.bot.access import AccessPolicy
         from yoink.core.db.models import UserRole
-        admin_check = AccessPolicy(min_role=UserRole.admin, silent_deny=True)
+        from yoink.core.auth.rbac import role_gte
         user_repo = get_user_repo(context)
         caller = await user_repo.get_or_create(calling_user_id)
-        from yoink.core.auth.rbac import role_gte
         if not role_gte(caller.role, UserRole.admin):
             return
 

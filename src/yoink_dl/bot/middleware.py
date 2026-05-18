@@ -9,13 +9,25 @@ from __future__ import annotations
 
 from telegram.ext import ContextTypes
 
-from yoink.core.bot.middleware import (  # noqa: F401  re-exported
+from yoink.core.bot.middleware import (
     get_session_factory,
     get_config,
     guard_admin,
 )
 from yoink_dl.config import DownloaderConfig
 from yoink_dl.storage.repos import UserSettingsRepo
+
+__all__ = [
+    "get_session_factory",
+    "get_config",
+    "guard_admin",
+    "get_dl_config",
+    "get_settings",
+    "get_user_repo",
+    "is_blocked",
+    "DownloaderConfig",
+    "UserSettingsRepo",
+]
 
 
 def get_dl_config(context: ContextTypes.DEFAULT_TYPE) -> DownloaderConfig:

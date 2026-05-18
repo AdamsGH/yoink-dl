@@ -111,7 +111,7 @@ class DownloaderPlugin:
                     return entry.get("description") or cmd_en_desc
             return cmd_en_desc
 
-        sections_cfg = en_data.get("help_sections", {})
+        en_data.get("help_sections", {})
 
         cmds: list[CommandSpec] = self.get_commands()
         visible = [c for c in cmds if _ROLE_RANK.get(c.min_role, 0) <= rank]

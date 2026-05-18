@@ -11,7 +11,6 @@ from yoink_dl.storage.repos import RateLimitRepo
 if TYPE_CHECKING:
     from telegram import Message
     from telegram.ext import ContextTypes
-    from yoink_dl.storage.repos import UserSettingsRepo
 
 
 async def check_user_access(

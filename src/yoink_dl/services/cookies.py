@@ -172,7 +172,6 @@ def _merge_set_cookie(original: str, set_cookie_header: str) -> str:
     Returns the updated content. Lines with expired cookies are removed.
     Unrecognised / malformed Set-Cookie values are silently ignored.
     """
-    from http.cookiejar import http2time  # available in stdlib
 
     try:
         from set_cookie_parser import parse as _parse, split_cookie_header as _split  # type: ignore[import]

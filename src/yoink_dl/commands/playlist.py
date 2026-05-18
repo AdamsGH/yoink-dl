@@ -18,7 +18,6 @@ from yoink_dl.bot.middleware import get_settings, get_user_repo, is_blocked
 from yoink.core.i18n import t
 from yoink_dl.url.domains import DomainConfig
 from yoink_dl.url.normalizer import normalize
-from yoink_dl.url.resolver import resolve
 
 logger = logging.getLogger(__name__)
 

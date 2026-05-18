@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse, parse_qs, urlunparse, urlencode, unquote
 
-from .domains import DomainConfig, extract_domain, domain_matches
+from .domains import DomainConfig, domain_matches
 
 # Tracking params stripped from all URLs
 _TRACKING_PARAMS = frozenset({

@@ -12,7 +12,6 @@ Keys are validated against an allowlist to prevent abuse.
 """
 from __future__ import annotations
 
-import json
 import shlex
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update

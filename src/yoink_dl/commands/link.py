@@ -171,10 +171,10 @@ async def _cmd_link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     lines.append(f"🎯 Quality: <b>{quality}</b>")
 
     if video_url:
-        lines.append(f"\n🎬 <b>Video stream:</b>")
+        lines.append("\n🎬 <b>Video stream:</b>")
         lines.append(f"<code>{video_url[:200]}</code>")
     if audio_url:
-        lines.append(f"\n🎵 <b>Audio stream:</b>")
+        lines.append("\n🎵 <b>Audio stream:</b>")
         lines.append(f"<code>{audio_url[:200]}</code>")
 
     # Inline buttons for direct open

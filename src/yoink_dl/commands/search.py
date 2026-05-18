@@ -16,7 +16,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 
 from yoink.core.bot.access import AccessPolicy, require_access
 from yoink.core.db.models import UserRole
-from yoink_dl.bot.middleware import get_settings, get_user_repo
+from yoink_dl.bot.middleware import get_user_repo
 from yoink.core.i18n import t
 
 logger = logging.getLogger(__name__)

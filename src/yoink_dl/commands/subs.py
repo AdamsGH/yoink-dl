@@ -24,7 +24,7 @@ from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, 
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
-from yoink_dl.bot.middleware import get_settings, get_user_repo, is_blocked
+from yoink_dl.bot.middleware import get_user_repo, is_blocked
 from yoink.core.i18n import t
 from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.extractor import extract_url
@@ -47,9 +47,8 @@ _LANGUAGES = [
 
 
 def _status_text(user: UserSettings) -> str:
-    lang = user.language
     lines = []
-    lines.append(f"📝 <b>Subtitles</b>")
+    lines.append("📝 <b>Subtitles</b>")
     lines.append(f"Status: {'<b>ON</b>' if user.subs_enabled else '<b>OFF</b>'}")
     if user.subs_enabled:
         lines.append(f"Language: <code>{user.subs_lang}</code>")
@@ -58,7 +57,6 @@ def _status_text(user: UserSettings) -> str:
 
 
 def _keyboard(user: UserSettings) -> InlineKeyboardMarkup:
-    lang = user.language
     toggle_label = "❌ Disable" if user.subs_enabled else "✅ Enable"
     rows: list[list[InlineKeyboardButton]] = [
         [InlineKeyboardButton(toggle_label, callback_data="subs:toggle")],
@@ -107,7 +105,7 @@ async def _download_subs(update: Update, context: ContextTypes.DEFAULT_TYPE, url
     user = await repo.get_or_create(user_id)
 
     status = await update.message.reply_html(  # type: ignore[union-attr]
-        f"📝 Downloading subtitles…"
+        "📝 Downloading subtitles…"
     )
 
     download_dir = Path(tempfile.mkdtemp(prefix="yoink_subs_"))

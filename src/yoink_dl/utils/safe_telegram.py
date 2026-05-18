@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections import defaultdict
 
 from telegram import Bot, Message
 from telegram.error import RetryAfter, BadRequest, TimedOut

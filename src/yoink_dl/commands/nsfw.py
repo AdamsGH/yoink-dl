@@ -13,7 +13,7 @@ from __future__ import annotations
 from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
-from yoink_dl.bot.middleware import get_settings, get_user_repo
+from yoink_dl.bot.middleware import get_user_repo
 from yoink.core.i18n import t
 
 
@@ -53,7 +53,6 @@ async def _cmd_nsfw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
         if arg == "reload":
-            settings = get_settings(context)
             if update.effective_user.id != context.bot_data["config"].owner_id:
                 await update.message.reply_text("Only the owner can reload NSFW lists.")
                 return

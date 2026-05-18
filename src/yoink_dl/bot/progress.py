@@ -72,7 +72,6 @@ class ProgressTracker:
         try:
             downloaded = d.get("downloaded_bytes") or 0
             total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
-            speed = d.get("speed") or 0
             eta = d.get("eta") or 0
 
             if total > 0:

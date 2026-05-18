@@ -19,7 +19,6 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from yoink_dl.bot.middleware import get_settings, get_user_repo
 from yoink.core.i18n import t
-from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.normalizer import normalize
 from yoink_dl.url.domains import DomainConfig
 

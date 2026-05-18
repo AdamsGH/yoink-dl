@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from telegram import Bot
     from telegram.ext import ContextTypes
     from yoink_dl.download.manager import DownloadJob
-    from yoink_dl.services.nsfw import NsfwChecker
     from yoink_dl.url.clip import ClipSpec
     from yoink_dl.upload.sender import SendResult
 

@@ -36,7 +36,7 @@ from yoink_dl.upload.sender import MediaMeta
 from yoink_dl.utils.safe_telegram import delete_many
 
 if TYPE_CHECKING:
-    from telegram import Update, Message
+    from telegram import Update
 
 logger = logging.getLogger(__name__)
 

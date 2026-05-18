@@ -1,7 +1,6 @@
 """Tests for caption builder."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
 
 from yoink_dl.upload.caption import build_caption, build_group_caption

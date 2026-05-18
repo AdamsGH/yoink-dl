@@ -7,7 +7,7 @@ from sqlalchemy import (
     BigInteger, Boolean, DateTime, Float, Index,
     Integer, String, Text, ForeignKey,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from yoink.core.db.base import Base, _now
 

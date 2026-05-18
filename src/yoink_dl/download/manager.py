@@ -10,8 +10,6 @@ from pathlib import Path
 from collections.abc import Callable, Coroutine
 from typing import Any
 
-from telegram import Message
-
 from yoink_dl.config import DownloaderConfig as Settings
 from yoink_dl.services.proxy import ProxyConfig, ProxyManager
 from yoink_dl.services.ipv6_pool import IPv6Pool, IPv6Binding
@@ -21,7 +19,7 @@ from yoink_dl.url.clip import ClipSpec
 from yoink_dl.utils.errors import DownloadError, FileTooLargeError
 from yoink_dl.utils.formatting import humanbytes
 from . import ytdlp as ytdlp_mod
-from .gallery import download_gallery, fetch_gallery_title, GalleryDlError, is_available as gallery_available
+from .gallery import download_gallery, fetch_gallery_title, is_available as gallery_available
 
 logger = logging.getLogger(__name__)
 

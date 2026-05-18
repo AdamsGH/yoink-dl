@@ -49,7 +49,7 @@ async def _cmd_clean(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not update.message or not update.effective_user:
         return
     repo = get_user_repo(context)
-    user = await repo.get_or_create(update.effective_user.id)
+    await repo.get_or_create(update.effective_user.id)
     await update.message.reply_html(
         "🧹 <b>Clean data</b>\n\nChoose what to reset to defaults:",
         reply_markup=_keyboard(),
