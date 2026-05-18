@@ -162,7 +162,7 @@ async def _cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         await status.delete()
         await update.message.reply_document(
-            document=open(tmp_path, "rb"),
+            document=tmp_path,
             filename=f"formats_{update.effective_user.id}.txt",
             caption=caption,
             parse_mode="HTML",

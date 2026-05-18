@@ -284,20 +284,20 @@ async def send_media_group(
             ext = f.suffix.lower()
 
             if send_as_file or media_type == "document":
-                media.append(InputMediaDocument(media=f.open("rb"), caption=cap, parse_mode=ParseMode.HTML))
+                media.append(InputMediaDocument(media=f, caption=cap, parse_mode=ParseMode.HTML))
             elif media_type == "video" and ext in _VIDEO_EXTS:
                 media.append(InputMediaVideo(
-                    media=f.open("rb"), caption=cap, parse_mode=ParseMode.HTML,
+                    media=f, caption=cap, parse_mode=ParseMode.HTML,
                     supports_streaming=True, has_spoiler=has_spoiler if has_spoiler else None,
                 ))
             elif media_type == "image" and ext in _IMAGE_EXTS:
                 media.append(InputMediaPhoto(
-                    media=f.open("rb"), caption=cap, parse_mode=ParseMode.HTML,
+                    media=f, caption=cap, parse_mode=ParseMode.HTML,
                     has_spoiler=has_spoiler if has_spoiler else None,
                 ))
             else:
                 # Type mismatch within chunk - send as document
-                media.append(InputMediaDocument(media=f.open("rb"), caption=cap, parse_mode=ParseMode.HTML))
+                media.append(InputMediaDocument(media=f, caption=cap, parse_mode=ParseMode.HTML))
 
         kw: dict[str, Any] = {
             "chat_id": chat_id,
@@ -326,14 +326,6 @@ async def send_media_group(
             except Exception as exc:
                 logger.error("send_media_group failed: %s", exc)
                 break
-
-        # Close any open file handles in media items
-        for item in media:
-            try:
-                if hasattr(item.media, "close"):
-                    item.media.close()
-            except Exception:
-                pass
 
     return all_messages
 

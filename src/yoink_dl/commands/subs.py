@@ -131,7 +131,7 @@ async def _download_subs(update: Update, context: ContextTypes.DEFAULT_TYPE, url
     await status.delete()
     for f in sorted(files):
         await update.message.reply_document(  # type: ignore[union-attr]
-            document=f.open("rb"),
+            document=f,
             filename=f.name,
             caption=f"📝 <code>{f.name}</code>",
             parse_mode=ParseMode.HTML,
