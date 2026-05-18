@@ -193,6 +193,7 @@ class DownloadManager:
             try:
                 fetched = await fetch_gallery_title(
                     url=job.resolved.url,
+                    timeout=self._settings.gallery_metadata_timeout,
                     cookie_path=job.cookie_path,
                     proxy=proxy_url,
                 )
@@ -205,6 +206,7 @@ class DownloadManager:
         files = await download_gallery(
             url=job.resolved.url,
             download_dir=job.download_dir,
+            timeout=self._settings.gallery_download_timeout,
             cookie_path=job.cookie_path,
             proxy=proxy_url,
             source_address=ipv6.as_ytdlp() if ipv6 else None,

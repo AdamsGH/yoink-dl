@@ -15,7 +15,8 @@ _UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/124.0.0.0 Safari/537.36"
 )
-_TIMEOUT = 10.0
+# Default fallback. Production callers should pass DownloaderConfig.cookie_account_timeout.
+_DEFAULT_TIMEOUT = 10.0
 
 
 @dataclass
@@ -73,7 +74,7 @@ def _find_first(obj: object, key: str) -> object | None:
     return None
 
 
-async def _fetch_youtube(content: str, *, return_set_cookie: bool = False) -> AccountInfo | None | tuple[AccountInfo | None, dict[str, str]]:
+async def _fetch_youtube(content: str, *, return_set_cookie: bool = False, timeout: float = _DEFAULT_TIMEOUT) -> AccountInfo | None | tuple[AccountInfo | None, dict[str, str]]:
     cookies = _netscape_to_dict(content)
     sapisid = cookies.get("SAPISID") or cookies.get("__Secure-3PAPISID")
     if not sapisid:
@@ -84,7 +85,7 @@ async def _fetch_youtube(content: str, *, return_set_cookie: bool = False) -> Ac
     cookie_header = _netscape_to_header(content)
 
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
                 "https://www.youtube.com/youtubei/v1/account/account_menu",
                 headers={
@@ -145,13 +146,13 @@ async def _fetch_youtube(content: str, *, return_set_cookie: bool = False) -> Ac
         return (None, {}) if return_set_cookie else None
 
 
-async def _fetch_instagram(content: str) -> AccountInfo | None:
+async def _fetch_instagram(content: str, *, timeout: float = _DEFAULT_TIMEOUT) -> AccountInfo | None:
     cookies = _netscape_to_dict(content)
     if "sessionid" not in cookies:
         return None
     cookie_header = _netscape_to_header(content)
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(
                 "https://www.instagram.com/api/v1/accounts/current_user/?edit=true",
                 headers={
@@ -174,14 +175,14 @@ async def _fetch_instagram(content: str) -> AccountInfo | None:
         return None
 
 
-async def _fetch_twitter(content: str) -> AccountInfo | None:
+async def _fetch_twitter(content: str, *, timeout: float = _DEFAULT_TIMEOUT) -> AccountInfo | None:
     cookies = _netscape_to_dict(content)
     if "auth_token" not in cookies:
         return None
     cookie_header = _netscape_to_header(content)
     csrf = cookies.get("ct0", "")
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(
                 "https://api.twitter.com/1.1/account/verify_credentials.json",
                 headers={
@@ -213,7 +214,9 @@ _FETCHERS = {
 }
 
 
-async def fetch_account_info(domain: str, content: str) -> AccountInfo | None:
+async def fetch_account_info(
+    domain: str, content: str, *, timeout: float = _DEFAULT_TIMEOUT,
+) -> AccountInfo | None:
     """
     Attempt to fetch real account name + avatar for a cookie file.
     Returns None if domain not supported or request fails.
@@ -221,5 +224,5 @@ async def fetch_account_info(domain: str, content: str) -> AccountInfo | None:
     bare = domain.removeprefix("www.")
     for d, fetcher in _FETCHERS.items():
         if bare == d or bare.endswith("." + d):
-            return await fetcher(content)
+            return await fetcher(content, timeout=timeout)
     return None

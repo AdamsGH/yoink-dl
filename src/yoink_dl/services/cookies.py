@@ -239,8 +239,14 @@ class _CookieCycle:
 
 
 class CookieManager:
-    def __init__(self, session_factory: async_sessionmaker) -> None:
+    def __init__(
+        self,
+        session_factory: async_sessionmaker,
+        *,
+        account_info_timeout: float = 10.0,
+    ) -> None:
         self._factory = session_factory
+        self._account_info_timeout = account_info_timeout
         # In-memory round-robin counters keyed by domain: pool cookie ids cycle
         self._pool_iters: dict[str, _CookieCycle] = {}
         self._pool_lock = threading.Lock()
@@ -376,7 +382,7 @@ class CookieManager:
 
         info = None
         try:
-            info = await fetch_account_info(domain, content)
+            info = await fetch_account_info(domain, content, timeout=self._account_info_timeout)
         except Exception:
             logger.debug("fetch_account_info failed for %s", domain, exc_info=True)
 
@@ -464,7 +470,7 @@ class CookieManager:
             )).scalars().all())
             for row in rows:
                 try:
-                    info = await fetch_account_info(row.domain, row.content)
+                    info = await fetch_account_info(row.domain, row.content, timeout=self._account_info_timeout)
                 except Exception:
                     info = None
                 label = (info.name if info else None) or extract_account_label(row.domain, row.content)
@@ -562,11 +568,11 @@ class CookieManager:
 
         try:
             if bare in ("youtube.com", "google.com") or bare.endswith((".youtube.com", ".google.com")):
-                result = await _fetch_youtube(content, return_set_cookie=True)
+                result = await _fetch_youtube(content, return_set_cookie=True, timeout=self._account_info_timeout)
                 info, new_cookies = result  # type: ignore[misc]
                 is_valid = info is not None
             else:
-                info = await fetch_account_info(domain, content)
+                info = await fetch_account_info(domain, content, timeout=self._account_info_timeout)
                 is_valid = info is not None
         except Exception:
             logger.debug("validate_live: fetch failed for %s", domain, exc_info=True)

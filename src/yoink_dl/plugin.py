@@ -269,7 +269,10 @@ class DownloaderPlugin:
         bd["download_log"] = DownloadLogRepo(sf)
         bd["rate_limit_repo"] = RateLimitRepo(sf)
 
-        cookie_mgr = CookieManager(sf)
+        cookie_mgr = CookieManager(
+            sf,
+            account_info_timeout=self._config.cookie_account_timeout,
+        )
         bd["cookie_manager"] = cookie_mgr
 
         nsfw_checker = NsfwChecker(sf)

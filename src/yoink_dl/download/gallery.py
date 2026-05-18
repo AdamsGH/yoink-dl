@@ -29,6 +29,7 @@ class GalleryDlError(Exception):
 
 def _fetch_gallery_title(
     url: str,
+    timeout: float,
     cookie_path: Path | None = None,
     proxy: str | None = None,
 ) -> str | None:
@@ -52,7 +53,7 @@ def _fetch_gallery_title(
     cmd.append(url)
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         line = result.stdout.strip().split("\n")[0] if result.stdout.strip() else ""
         if not line:
             return None
@@ -70,6 +71,7 @@ def _fetch_gallery_title(
 def _run_gallery_dl(
     url: str,
     download_dir: Path,
+    timeout: float,
     cookie_path: Path | None = None,
     proxy: str | None = None,
     playlist_start: int | None = None,
@@ -103,7 +105,7 @@ def _run_gallery_dl(
     cmd.append(url)
 
     logger.info("gallery-dl cmd: %s", " ".join(cmd))
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
     if result.returncode not in (0, 1):  # 1 = partial success (some items skipped)
         raise GalleryDlError(
@@ -120,6 +122,8 @@ def _run_gallery_dl(
 async def download_gallery(
     url: str,
     download_dir: Path,
+    *,
+    timeout: float,
     cookie_path: Path | None = None,
     proxy: str | None = None,
     playlist_start: int | None = None,
@@ -133,6 +137,7 @@ async def download_gallery(
         _run_gallery_dl,
         url,
         download_dir,
+        timeout,
         cookie_path,
         proxy,
         playlist_start,
@@ -143,6 +148,8 @@ async def download_gallery(
 
 async def fetch_gallery_title(
     url: str,
+    *,
+    timeout: float,
     cookie_path: Path | None = None,
     proxy: str | None = None,
 ) -> str | None:
@@ -152,6 +159,7 @@ async def fetch_gallery_title(
         _executor,
         _fetch_gallery_title,
         url,
+        timeout,
         cookie_path,
         proxy,
     )

@@ -15,6 +15,13 @@ class DownloaderConfig(BaseSettings):
     max_file_size_gb: float = 2.0
     download_timeout: int = 1200
     max_playlist_count: int = 50
+
+    # Operational timeouts (seconds). Override via DL_* env vars when needed.
+    cookie_account_timeout: float = 10.0    # account-info probe per cookie
+    upload_read_timeout: float = 300.0      # Telegram media upload read deadline
+    upload_write_timeout: float = 300.0     # Telegram media upload write deadline
+    gallery_metadata_timeout: float = 30.0  # gallery-dl --json metadata fetch
+    gallery_download_timeout: float = 600.0  # gallery-dl full download
     # Rate limits: default to CoreSettings values so a single env var controls both.
     # Override per-plugin via DL_RATE_LIMIT_PER_MINUTE etc. if needed.
     rate_limit_per_minute: int = 5

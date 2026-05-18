@@ -24,9 +24,12 @@ from telegram import (
 from telegram.error import BadRequest, RetryAfter, TimedOut
 from telegram.constants import ParseMode
 
+from yoink_dl.config import DownloaderConfig
 from yoink_dl.utils.errors import DownloadError
 
 logger = logging.getLogger(__name__)
+
+_CONNECT_TIMEOUT = 30.0
 
 _VIDEO_EXTS = frozenset({".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v", ".ts"})
 _AUDIO_EXTS = frozenset({".mp3", ".m4a", ".ogg", ".opus", ".flac", ".wav", ".aac"})
@@ -68,6 +71,7 @@ async def send_file(
     bot: Bot,
     chat_id: int,
     file: Path,
+    config: DownloaderConfig,
     caption: str = "",
     reply_to: int | None = None,
     thread_id: int | None = None,
@@ -79,6 +83,8 @@ async def send_file(
 ) -> SendResult:
     m = meta or MediaMeta()
     ext = file.suffix.lower()
+    write_timeout = config.upload_write_timeout
+    read_timeout = config.upload_read_timeout
 
     common: dict[str, Any] = {"chat_id": chat_id, "parse_mode": ParseMode.HTML}
     rp = _reply_params(reply_to)
@@ -93,9 +99,9 @@ async def send_file(
             "document": str(file),
             "filename": file.name,
             "caption": cap,
-            "write_timeout": 300,
-            "read_timeout": 300,
-            "connect_timeout": 30,
+            "write_timeout": write_timeout,
+            "read_timeout": read_timeout,
+            "connect_timeout": _CONNECT_TIMEOUT,
         }
         if m.thumb:
             kw["thumbnail"] = str(m.thumb)
@@ -107,9 +113,9 @@ async def send_file(
             "video": str(file),
             "caption": cap,
             "supports_streaming": True,
-            "write_timeout": 300,
-            "read_timeout": 300,
-            "connect_timeout": 30,
+            "write_timeout": write_timeout,
+            "read_timeout": read_timeout,
+            "connect_timeout": _CONNECT_TIMEOUT,
         }
         if m.duration:
             kw["duration"] = m.duration
@@ -127,7 +133,7 @@ async def send_file(
         return await bot.send_video(**kw)
 
     async def _as_audio(cap: str) -> Message:
-        kw = {**common, "audio": str(file), "caption": cap, "write_timeout": 300, "read_timeout": 300}
+        kw = {**common, "audio": str(file), "caption": cap, "write_timeout": write_timeout, "read_timeout": read_timeout}
         if m.duration:
             kw["duration"] = m.duration
         if m.performer:
@@ -257,6 +263,7 @@ async def send_media_group(
     bot: Bot,
     chat_id: int,
     files: list[Path],
+    config: DownloaderConfig,
     caption: str = "",
     reply_to: int | None = None,
     thread_id: int | None = None,
@@ -302,9 +309,9 @@ async def send_media_group(
         kw: dict[str, Any] = {
             "chat_id": chat_id,
             "media": media,
-            "write_timeout": 300,
-            "read_timeout": 300,
-            "connect_timeout": 30,
+            "write_timeout": config.upload_write_timeout,
+            "read_timeout": config.upload_read_timeout,
+            "connect_timeout": _CONNECT_TIMEOUT,
         }
         if reply_to is not None and chunk_start == 0:
             kw["reply_parameters"] = _reply_params(reply_to)
@@ -334,6 +341,7 @@ async def send_files(
     bot: Bot,
     chat_id: int,
     files: list[Path],
+    config: DownloaderConfig,
     caption: str = "",
     reply_to: int | None = None,
     thread_id: int | None = None,
@@ -349,6 +357,7 @@ async def send_files(
             bot=bot,
             chat_id=chat_id,
             file=file,
+            config=config,
             caption=caption if i == 0 else "",
             reply_to=reply_to if i == 0 else None,
             thread_id=thread_id,

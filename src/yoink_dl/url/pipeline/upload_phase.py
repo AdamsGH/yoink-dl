@@ -117,6 +117,8 @@ async def send(
 
     await status_message.edit_text(t("pipeline.uploading", lang, size=humanbytes(sum(f.stat().st_size for f in files))))
 
+    dl_config = context.bot_data["dl_config"]
+
     zip_path: Path | None = None
     try:
         if use_media_group:
@@ -125,6 +127,7 @@ async def send(
                 bot=bot,
                 chat_id=chat_id,
                 files=preview_files,
+                config=dl_config,
                 caption=caption,
                 reply_to=None,
                 thread_id=thread_id,
@@ -141,8 +144,8 @@ async def send(
                     "document": str(zip_path),
                     "filename": zip_path.name,
                     "caption": f"All {len(files)} files",
-                    "write_timeout": 300,
-                    "read_timeout": 300,
+                    "write_timeout": dl_config.upload_write_timeout,
+                    "read_timeout": dl_config.upload_read_timeout,
                 }
                 if thread_id:
                     zip_kw["message_thread_id"] = thread_id
@@ -152,6 +155,7 @@ async def send(
                 bot=bot,
                 chat_id=chat_id,
                 files=files,
+                config=dl_config,
                 caption=caption,
                 reply_to=None,
                 thread_id=thread_id,
