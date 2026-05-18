@@ -130,6 +130,11 @@ Mounted at `/api/v1/dl/`. Auth: JWT Bearer token.
 | `IPV6_CIDR` | - | IPv6 CIDR for source address rotation (ISP must route to host) |
 | `IPV6_DOMAINS` | - | Comma-separated domains to use IPv6 rotation |
 | `LOG_CHANNEL` | - | Channel ID for download log forwarding |
+| `DL_UPLOAD_WRITE_TIMEOUT` | `300` | httpx write timeout for Telegram file uploads (sender.py) |
+| `DL_UPLOAD_READ_TIMEOUT` | `300` | httpx read timeout for Telegram file uploads (sender.py) |
+| `DL_GALLERY_METADATA_TIMEOUT` | `30` | subprocess timeout for gallery-dl metadata fetch |
+| `DL_GALLERY_DOWNLOAD_TIMEOUT` | `600` | subprocess timeout for gallery-dl download |
+| `DL_COOKIE_ACCOUNT_TIMEOUT` | `10` | httpx timeout for cookie account-info probes (YouTube/Instagram/Twitter) |
 
 Note: rate limits, timeout, max file size, retries, and playlist count are stored in BotSetting KV (`dl.*` keys) and editable at runtime via admin bot-settings page. Config values are used as fallback defaults only.
 
@@ -137,8 +142,9 @@ Note: rate limits, timeout, max file size, retries, and playlist count are store
 
 | Service | Description |
 |---|---|
-| `cookie_account.py` | `fetch_account_info()`: fetches real name/avatar from YouTube (`youtubei/v1/account/account_menu` + SAPISID hash), Instagram, Twitter APIs |
-| `cookies.py` | `CookieManager`: personal/pool CRUD, round-robin, `sync_from_file` after download, `mark_pool_invalid` on 403/401, `_rotate_personal_and_pool()` for alternating rotation |
+| `cookie_account.py` | `fetch_account_info(timeout=...)`: fetches real name/avatar from YouTube (`youtubei/v1/account/account_menu` + SAPISID hash), Instagram, Twitter APIs |
+| `cookies.py` | `CookieManager` + `_CookieCycle`: personal/pool CRUD, round-robin, `sync_from_file` after download, `mark_pool_invalid` on 403/401, `_rotate_personal_and_pool()` for alternating rotation |
+| `cookies_netscape.py` | Pure Netscape-format helpers: `validate_netscape`, `extract_account_label`, `_parse_netscape_cookies`, `_merge_netscape_updates`, `_merge_set_cookie`, `_write_tmp`. Split out of `cookies.py` in 2026-05; re-exported there for back-compat |
 | `proxy.py` | Round-robin proxy selector |
 | `nsfw.py` | NSFW blur rules |
 | `ipv6_pool.py` | `IPv6Pool`: source address rotation from a routed /56 prefix |
@@ -162,7 +168,9 @@ src/yoink_dl/
   download/            # yt-dlp / gallery-dl manager, ffmpeg, music download
   upload/              # Telegram upload, caption builder, media group sender
   url/
-    pipeline/          # run.py (run_download), helpers.py (utilities)
+    pipeline/          # run.py (run_download orchestrator)
+                       # helpers.py (utilities + handle_download_error)
+                       # download_phase.py, upload_phase.py, cache.py, guards.py
     resolver.py        # URL resolution
     domains.py         # domain lists
   storage/
@@ -171,6 +179,7 @@ src/yoink_dl/
   services/
     proxy.py           # round-robin proxy selector
     cookies.py         # CookieManager: personal/pool CRUD, round-robin, sync_from_file
+    cookies_netscape.py # pure netscape parse/validate/merge helpers (split from cookies.py)
     cookie_account.py  # account info fetcher (YouTube/Instagram/Twitter)
     nsfw.py            # NSFW blur rules
     ipv6_pool.py       # IPv6 source address rotation (IPv6Pool)
