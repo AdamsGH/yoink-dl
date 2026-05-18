@@ -52,15 +52,15 @@ class TestFileCacheRepo:
             file_size=1_000_000, duration=120.0,
         )
         cached = await cache.get(key)
-        assert cached is not None
-        assert cached.file_id == "AgACAgIAAxkBAAI"
-        assert cached.file_type == "video"
-        assert cached.title == "Test Video"
+        assert len(cached) == 1
+        assert cached[0].file_id == "AgACAgIAAxkBAAI"
+        assert cached[0].file_type == "video"
+        assert cached[0].title == "Test Video"
 
     async def test_cache_miss(self, session_factory):
         cache = FileCacheRepo(session_factory)
         key = make_cache_key("https://example.com/nonexistent")
-        assert await cache.get(key) is None
+        assert await cache.get(key) == []
 
     async def test_delete(self, session_factory):
         cache = FileCacheRepo(session_factory)
@@ -71,7 +71,7 @@ class TestFileCacheRepo:
         )
         deleted = await cache.delete(key)
         assert deleted is True
-        assert await cache.get(key) is None
+        assert await cache.get(key) == []
 
     async def test_delete_nonexistent(self, session_factory):
         cache = FileCacheRepo(session_factory)
@@ -84,6 +84,6 @@ class TestFileCacheRepo:
         await cache.put(key, file_id="old_id", file_type="video")
         await cache.put(key, file_id="new_id", file_type="audio")
         cached = await cache.get(key)
-        assert cached is not None
-        assert cached.file_id == "new_id"
-        assert cached.file_type == "audio"
+        assert len(cached) == 1
+        assert cached[0].file_id == "new_id"
+        assert cached[0].file_type == "audio"
