@@ -95,6 +95,10 @@ async def download_track(
     try:
         info = await loop.run_in_executor(_executor, _run)
     except yt_dlp.utils.DownloadError as exc:
+        # Promote known yt-dlp error patterns (geo/age/live) to typed BotError
+        # subclasses; only generic / unknown errors fall through to MusicDownloadError.
+        from yoink_dl.download.ytdlp import _classify_ytdlp_error  # noqa: PLC0415
+        _classify_ytdlp_error(str(exc))
         raise MusicDownloadError(str(exc)) from exc
 
     mp3_files = list(tmpdir.glob("*.mp3"))
