@@ -341,11 +341,13 @@ export default function AdminCookiesPage() {
         <Card>
           <CardHeader className="px-4 py-3">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Database className="h-4 w-4 text-muted-foreground" />
-                {poolLoading
-                  ? t('cookies.pool_title', { defaultValue: 'Cookie Pool' })
-                  : t('cookies.pool_count', { count: poolItems.length, defaultValue: `Cookie Pool (${poolItems.length})` })}
+              <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                <Database className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">
+                  {poolLoading
+                    ? t('cookies.pool_title', { defaultValue: 'Cookie Pool' })
+                    : t('cookies.pool_count', { count: poolItems.length, defaultValue: `Cookie Pool (${poolItems.length})` })}
+                </span>
               </CardTitle>
               <div className="flex gap-1.5">
                 <Tooltip>
@@ -456,7 +458,7 @@ export default function AdminCookiesPage() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
-                                      variant="ghost" size="icon"
+                                      variant="ghost" size="sm" className="h-7 w-7 p-0"
                                       disabled={validating === c.id}
                                       onClick={(e) => { e.stopPropagation(); validate(c.id) }}
                                     >
@@ -470,8 +472,7 @@ export default function AdminCookiesPage() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
-                                      variant="ghost" size="icon"
-                                      className="text-destructive hover:text-destructive"
+                                      variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                                       disabled={deleting === c.id}
                                       onClick={(e) => { e.stopPropagation(); removePool(c.id, c.domain) }}
                                     >
@@ -496,13 +497,15 @@ export default function AdminCookiesPage() {
         <Card>
           <CardHeader className="px-4 py-3">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <CookieIcon className="h-4 w-4 text-muted-foreground" />
-                {personalLoading
-                  ? t('cookies.title', { defaultValue: 'Cookies' })
-                  : t('cookies.count_other', { count: personalItems.length })}
+              <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                <CookieIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">
+                  {personalLoading
+                    ? t('cookies.title', { defaultValue: 'Cookies' })
+                    : t('cookies.count_other', { count: personalItems.length })}
+                </span>
               </CardTitle>
-              <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => setUploadOpen(true)}>
+              <Button size="sm" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => setUploadOpen(true)}>
                 <Upload className="mr-1.5 h-3 w-3" />
                 {t('cookies.upload')}
               </Button>
@@ -564,7 +567,7 @@ export default function AdminCookiesPage() {
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm" className="h-7 w-7 p-0"
                               disabled={validating === cookie.id}
                               onClick={() => validate(cookie.id)}
                             >
@@ -579,8 +582,7 @@ export default function AdminCookiesPage() {
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
+                              size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                               disabled={deleting === cookie.id}
                               onClick={() => removePersonal(cookie.id, cookie.domain)}
                             >
