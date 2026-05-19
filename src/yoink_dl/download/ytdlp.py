@@ -71,6 +71,22 @@ def _classify_ytdlp_error(err: str) -> None:
         raise LiveStreamError()
 
 
+def build_audio_format_string(settings: UserSettings) -> str:
+    """Build yt-dlp format string for audio-only downloads.
+
+    audio_codec: best | opus | mp4a | mp3
+    Falls back to bestaudio/best when preferred codec is unavailable.
+    """
+    codec = getattr(settings, "audio_codec", "best")
+    if codec == "opus":
+        return "bestaudio[acodec^=opus]/bestaudio/best"
+    if codec == "mp4a":
+        return "bestaudio[acodec^=mp4a]/bestaudio/best"
+    if codec == "mp3":
+        return "bestaudio[acodec=mp3]/bestaudio/best"
+    return "bestaudio/best"
+
+
 def build_format_string(settings: UserSettings) -> str:
     """
     Build yt-dlp format string from user settings.

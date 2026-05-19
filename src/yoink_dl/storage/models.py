@@ -33,6 +33,7 @@ class UserSettings(Base):
     nsfw_blur: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     mediainfo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     send_as_file: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    audio_codec: Mapped[str] = mapped_column(String(16), default="best", nullable=False)
     gallery_zip: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     use_pool_cookies: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     youtube_auth_mode: Mapped[str] = mapped_column(String(16), default="cookies", nullable=False)

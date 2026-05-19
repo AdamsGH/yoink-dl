@@ -137,12 +137,8 @@ class DownloadManager:
         if ipv6:
             extra["source_address"] = ipv6.as_ytdlp()
         if job.audio_only:
-            extra["format"] = "bestaudio/best"
-            extra["postprocessors"] = [{
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            }]
+            from yoink_dl.download.ytdlp import build_audio_format_string  # noqa: PLC0415
+            extra["format"] = build_audio_format_string(job.settings)
         # Multi-segment clips passed via extra_opts["_clips"]
         if job.clips:
             extra["_clips"] = job.clips

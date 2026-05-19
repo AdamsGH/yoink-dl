@@ -19,6 +19,7 @@ from yoink_dl.storage.repos import UserSettings
 _QUALITIES = ["2160", "1440", "1080", "720", "480", "360", "best", "ask"]
 _CODECS = ["avc1", "av01", "vp09"]
 _CONTAINERS = ["mp4", "mkv"]
+_AUDIO_CODECS = ["best", "opus", "mp4a", "mp3"]
 
 
 def _quality_label(q: str, lang: str) -> str:
@@ -46,8 +47,19 @@ def _container_label(c: str, lang: str) -> str:
     return mapping.get(c, c.upper())
 
 
+def _audio_codec_label(c: str, lang: str) -> str:
+    mapping = {
+        "best": t("format.buttons.audio_best", lang),
+        "opus": t("format.buttons.audio_opus", lang),
+        "mp4a": t("format.buttons.audio_mp4a", lang),
+        "mp3":  t("format.buttons.audio_mp3", lang),
+    }
+    return mapping.get(c, c)
+
+
 def _main_menu(user: UserSettings) -> InlineKeyboardMarkup:
     lang = user.language
+    audio_codec = getattr(user, "audio_codec", "best")
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -63,6 +75,12 @@ def _main_menu(user: UserSettings) -> InlineKeyboardMarkup:
             InlineKeyboardButton(
                 f"📦 Container: {_container_label(user.container, lang)}",
                 callback_data="fmt:cont:_menu",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                f"🎵 Audio: {_audio_codec_label(audio_codec, lang)}",
+                callback_data="fmt:acodec:_menu",
             ),
         ],
     ])
@@ -108,13 +126,29 @@ def _container_menu(current: str, lang: str) -> InlineKeyboardMarkup:
     ])
 
 
+def _audio_codec_menu(current: str, lang: str) -> InlineKeyboardMarkup:
+    buttons = [
+        InlineKeyboardButton(
+            f"{_audio_codec_label(c, lang)}{' ✓' if c == current else ''}",
+            callback_data=f"fmt:acodec:{c}",
+        )
+        for c in _AUDIO_CODECS
+    ]
+    return InlineKeyboardMarkup([
+        buttons,
+        [InlineKeyboardButton(f"‹ {t('common.back', lang)}", callback_data="fmt:menu")],
+    ])
+
+
 def _status_text(user: UserSettings) -> str:
+    audio_codec = getattr(user, "audio_codec", "best")
     return t(
         "format.current",
         user.language,
         quality=_quality_label(user.quality, user.language),
         codec=_codec_label(user.codec, user.language),
         container=_container_label(user.container, user.language),
+        audio_codec=_audio_codec_label(audio_codec, user.language),
     )
 
 
@@ -149,6 +183,9 @@ async def _cb_format(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
             await query.edit_message_reply_markup(_codec_menu(user.codec, user.language))
         elif value == "_menu" and kind == "cont":
             await query.edit_message_reply_markup(_container_menu(user.container, user.language))
+        elif value == "_menu" and kind == "acodec":
+            audio_codec = getattr(user, "audio_codec", "best")
+            await query.edit_message_reply_markup(_audio_codec_menu(audio_codec, user.language))
         else:
             await query.edit_message_text(_status_text(user), reply_markup=_main_menu(user), parse_mode="HTML")
         return
@@ -173,6 +210,14 @@ async def _cb_format(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         user = await repo.update(uid, container=value)
         await query.edit_message_text(
             t("format.set_container", user.language, container=_container_label(value, user.language)),
+            reply_markup=_main_menu(user),
+            parse_mode="HTML",
+        )
+
+    elif kind == "acodec" and value in _AUDIO_CODECS:
+        user = await repo.update(uid, audio_codec=value)
+        await query.edit_message_text(
+            t("format.set_audio_codec", user.language, codec=_audio_codec_label(value, user.language)),
             reply_markup=_main_menu(user),
             parse_mode="HTML",
         )

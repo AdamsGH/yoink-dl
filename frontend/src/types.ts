@@ -16,6 +16,7 @@ export interface UserSettings {
   nsfw_blur: boolean
   mediainfo: boolean
   send_as_file: boolean
+  audio_codec: string
   gallery_zip: boolean
   use_pool_cookies: boolean
   youtube_auth_mode: string

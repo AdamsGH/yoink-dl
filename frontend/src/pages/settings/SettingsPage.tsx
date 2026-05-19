@@ -49,6 +49,13 @@ const CONTAINER_OPTIONS = [
   { value: 'webm', label: 'WebM' },
 ]
 
+const AUDIO_CODEC_OPTIONS = [
+  { value: 'best', label: 'Best available' },
+  { value: 'opus', label: 'Opus' },
+  { value: 'mp4a', label: 'AAC (mp4a)' },
+  { value: 'mp3',  label: 'MP3' },
+]
+
 const SPLIT_OPTIONS = [
   { value: String(500 * 1024 * 1024),  label: '500 MB' },
   { value: String(1000 * 1024 * 1024), label: '1 GB' },
@@ -225,6 +232,18 @@ export default function SettingsPage() {
           </SettingRow>
           <SettingRow label={t('settings.container_label')}>
             <ControlledSelect name="container" options={CONTAINER_OPTIONS} control={control} />
+          </SettingRow>
+        </CardContent>
+      </Card>
+
+      {/* Audio */}
+      <Card>
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-base">{t('settings.audio', { defaultValue: 'Audio' })}</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-1">
+          <SettingRow label={t('settings.audio_codec_label', { defaultValue: 'Preferred codec' })} hint={t('settings.audio_codec_hint', { defaultValue: 'Used when downloading audio-only. Falls back to best available if not found.' })}>
+            <ControlledSelect name="audio_codec" options={AUDIO_CODEC_OPTIONS} control={control} />
           </SettingRow>
         </CardContent>
       </Card>

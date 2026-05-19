@@ -17,7 +17,7 @@ download:
   part: "Часть {n}/{total}"
 
 format:
-  current: "Текущее качество: <b>{quality}</b>\nКодек: <b>{codec}</b>\nКонтейнер: <b>{container}</b>"
+  current: "Текущее качество: <b>{quality}</b>\nКодек: <b>{codec}</b>\nКонтейнер: <b>{container}</b>\nАудио кодек: <b>{audio_codec}</b>"
   set_quality: "Качество установлено: <b>{quality}</b> ✅"
   ask_mode: "Качество: <b>Спрашивать каждый раз</b> ✅"
   set_codec: "Кодек установлен: <b>{codec}</b> ✅"
@@ -32,6 +32,12 @@ format:
     codec_vp9: "VP9"
     container_mp4: "MP4"
     container_mkv: "MKV"
+    audio_best: "🏆 Лучший доступный"
+    audio_opus: "Opus"
+    audio_mp4a: "AAC (mp4a)"
+    audio_mp3: "MP3"
+  set_audio_codec: "Аудио кодек установлен: <b>{codec}</b> ✅"
+  choose_audio_codec: "Выберите аудио кодек:"
 
 cookie:
   prompt: "Отправьте файл cookie для <b>{domain}</b> (формат Netscape .txt):"
