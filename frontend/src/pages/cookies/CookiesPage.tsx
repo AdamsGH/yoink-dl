@@ -274,9 +274,7 @@ export default function CookiesPage() {
               <CardTitle className="flex min-w-0 items-center gap-2 text-base">
                 <CookieIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">
-                  {loading
-                    ? t('cookies.stored', { defaultValue: 'Cookies' })
-                    : t('cookies.count_other', { count: own.length, defaultValue: `${own.length} cookies` })}
+                  {loading ? t('cookies.stored', { defaultValue: 'Cookies' }) : own.length}
                 </span>
               </CardTitle>
               <div className="flex shrink-0 items-center gap-1.5">
