@@ -232,23 +232,19 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t('settings.video_quality')}</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-2">
-          <div className="divide-y divide-border">
-            <SettingRow label={t('settings.resolution_label')}>
-              <ControlledSelect name="quality" options={QUALITY_OPTIONS} control={control} />
-            </SettingRow>
-            <SettingRow label={t('settings.codec_label')}>
-              <ControlledSelect name="codec" options={CODEC_OPTIONS} control={control} />
-            </SettingRow>
-            <SettingRow label={t('settings.container_label')}>
-              <ControlledSelect name="container" options={CONTAINER_OPTIONS} control={control} />
-            </SettingRow>
-          </div>
+          <SettingRow label={t('settings.resolution_label')}>
+            <ControlledSelect name="quality" options={QUALITY_OPTIONS} control={control} />
+          </SettingRow>
+          <SettingRow label={t('settings.codec_label')}>
+            <ControlledSelect name="codec" options={CODEC_OPTIONS} control={control} />
+          </SettingRow>
+          <SettingRow label={t('settings.container_label')}>
+            <ControlledSelect name="container" options={CONTAINER_OPTIONS} control={control} />
+          </SettingRow>
           <SectionLabel>{t('settings.audio', { defaultValue: 'Audio' })}</SectionLabel>
-          <div className="divide-y divide-border">
-            <SettingRow label={t('settings.audio_codec_label', { defaultValue: 'Codec' })} hint={t('settings.audio_codec_hint', { defaultValue: 'Used for audio-only downloads.' })}>
-              <ControlledSelect name="audio_codec" options={AUDIO_CODEC_OPTIONS} control={control} />
-            </SettingRow>
-          </div>
+          <SettingRow label={t('settings.audio_codec_label', { defaultValue: 'Codec' })} hint={t('settings.audio_codec_hint', { defaultValue: 'Used for audio-only downloads.' })}>
+            <ControlledSelect name="audio_codec" options={AUDIO_CODEC_OPTIONS} control={control} />
+          </SettingRow>
         </CardContent>
       </Card>
 
@@ -258,14 +254,12 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t('settings.delivery')}</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-2">
-          <div className="divide-y divide-border">
-            <SettingRow label={t('settings.split_label')} hint={t('settings.split_hint')}>
-              <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} />
-            </SettingRow>
-            <SettingRow label={t('settings.keyboard_label')} hint={t('settings.keyboard_hint')}>
-              <ControlledSelect name="keyboard" options={KEYBOARD_OPTIONS} control={control} />
-            </SettingRow>
-          </div>
+          <SettingRow label={t('settings.split_label')} hint={t('settings.split_hint')}>
+            <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} />
+          </SettingRow>
+          <SettingRow label={t('settings.keyboard_label')} hint={t('settings.keyboard_hint')}>
+            <ControlledSelect name="keyboard" options={KEYBOARD_OPTIONS} control={control} />
+          </SettingRow>
           <SectionLabel>{t('settings.options', { defaultValue: 'Options' })}</SectionLabel>
           <div className="divide-y divide-border">
             <ControlledSwitch name="send_as_file" label={t('settings.send_as_file')} hint={t('settings.send_as_file_hint')} control={control} />
