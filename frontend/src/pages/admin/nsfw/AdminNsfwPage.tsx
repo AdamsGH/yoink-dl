@@ -7,6 +7,7 @@ import { nsfwApi, type NsfwDomain, type NsfwKeyword, type NsfwCheckResponse } fr
 import { formatDate } from '@core/lib/utils'
 
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, JsonEditor, Label, Separator, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
+import { EmptyState } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
 
@@ -283,11 +284,7 @@ function ItemList<T extends ListItem>({
   }
 
   if (items.length === 0) {
-    return (
-      <div className="flex justify-center py-6 text-sm text-muted-foreground">
-        {t(emptyKey as Parameters<typeof t>[0])}
-      </div>
-    )
+    return <EmptyState message={t(emptyKey as Parameters<typeof t>[0])} className="py-6" />
   }
 
   return (

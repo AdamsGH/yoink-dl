@@ -7,7 +7,7 @@ import type { CookieTokenResponse, YttvOAuthStartResponse } from '@dl/api/cookie
 import { dlSettingsApi } from '@dl/api/settings'
 import { formatDate } from '@core/lib/utils'
 import { Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
-import { CookieStatusBadge } from '@app'
+import { CookieStatusBadge, EmptyState } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { CookieFavicon } from '@dl/components/CookieFavicon'
 import { parseDomainFromNetscape } from '@dl/lib/cookie-utils'
@@ -333,9 +333,7 @@ export default function CookiesPage() {
                 ))}
               </div>
             ) : own.length === 0 && inherited.length === 0 ? (
-              <div className="flex justify-center py-10 text-muted-foreground text-sm">
-                {t('cookies.empty', { defaultValue: 'No cookies stored yet' })}
-              </div>
+              <EmptyState message={t('cookies.empty', { defaultValue: 'No cookies stored yet' })} />
             ) : (
               <div className="divide-y divide-border px-3 py-1">
                 {own.map((c) => (

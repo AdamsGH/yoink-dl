@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cookiesApi } from '@dl/api/cookies'
 import { formatDate } from '@core/lib/utils'
 import type { User } from '@core/types/api'
-import { CookieStatusBadge, RoleBadge } from '@app'
+import { CookieStatusBadge, EmptyState, RoleBadge } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useAdminCookies } from './useAdminCookies'
 
@@ -57,23 +57,25 @@ function UserCombobox({
   )
 }
 
-function UploadDialog({
+function CookieUploadDialog({
   open,
   onClose,
   onDone,
+  mode,
   identity,
   users,
 }: {
   open: boolean
   onClose: () => void
   onDone: () => void
-  identity: Identity | undefined
-  users: User[]
+  mode: 'personal' | 'pool'
+  identity?: Identity
+  users?: User[]
 }) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const defaultUserId = () => identity?.id ? String(identity.id) : ''
+  const defaultUserId = () => (mode === 'personal' && identity?.id) ? String(identity.id) : ''
 
   const [file, setFile] = useState<File | null>(null)
   const [content, setContent] = useState('')
@@ -106,15 +108,21 @@ function UploadDialog({
     reader.readAsText(f)
   }
 
-  const handleUpload = async () => {
+  const handleSubmit = async () => {
     if (!content) { toast.error(t('cookies.err_no_file', { defaultValue: 'Select a file first' })); return }
     if (!domain)  { toast.error(t('cookies.err_no_domain', { defaultValue: 'Domain is required' })); return }
-    const uid = parseInt(userId, 10)
-    if (!uid)     { toast.error(t('cookies.err_no_uid', { defaultValue: 'User ID is required' })); return }
+    if (mode === 'personal') {
+      const uid = parseInt(userId, 10)
+      if (!uid) { toast.error(t('cookies.err_no_uid', { defaultValue: 'User ID is required' })); return }
+    }
 
     setUploading(true)
     try {
-      await cookiesApi.upload({ user_id: uid, domain, content })
+      if (mode === 'personal') {
+        await cookiesApi.upload({ user_id: parseInt(userId, 10), domain, content })
+      } else {
+        await cookiesApi.addPool({ domain, content })
+      }
       toast.success(t('cookies.uploaded_ok', { domain, defaultValue: `Cookie uploaded for ${domain}` }))
       onClose()
       reset()
@@ -127,13 +135,16 @@ function UploadDialog({
     }
   }
 
-  const canUpload = !!file && !!domain && !!userId && !uploading
+  const canSubmit = !!file && !!domain && (mode === 'pool' || !!userId) && !uploading
+  const title = mode === 'pool'
+    ? t('cookies.pool_add_title', { defaultValue: 'Add Pool Cookie' })
+    : t('cookies.upload_title')
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose() } }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('cookies.upload_title')}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {t('cookies.upload_hint', { defaultValue: 'Upload a Netscape-format cookie file (.txt).' })}
           </DialogDescription>
@@ -159,9 +170,9 @@ function UploadDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cookie-domain">{t('cookies.domain')}</Label>
+            <Label htmlFor="cookie-upload-domain">{t('cookies.domain')}</Label>
             <Input
-              id="cookie-domain"
+              id="cookie-upload-domain"
               placeholder="youtube.com"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
@@ -169,130 +180,20 @@ function UploadDialog({
             <p className="text-xs text-muted-foreground">{t('cookies.domain_hint')}</p>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>{t('cookies.user_id_label')}</Label>
-            <UserCombobox value={userId} onChange={setUserId} users={users} />
-            <p className="text-xs text-muted-foreground">{t('cookies.user_id_hint')}</p>
-          </div>
-        </div>
-
-        <DialogFooter className="flex-row gap-2 sm:space-x-0">
-          <Button variant="outline" className="flex-1" onClick={() => { reset(); onClose() }}>
-            {t('common.cancel')}
-          </Button>
-          <Button className="flex-1" onClick={handleUpload} disabled={!canUpload}>
-            {uploading ? t('cookies.uploading') : t('cookies.upload')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function AddPoolDialog({
-  open,
-  onClose,
-  onDone,
-}: {
-  open: boolean
-  onClose: () => void
-  onDone: () => void
-}) {
-  const { t } = useTranslation()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const [file, setFile] = useState<File | null>(null)
-  const [content, setContent] = useState('')
-  const [domain, setDomain] = useState('')
-  const [uploading, setUploading] = useState(false)
-
-  const reset = () => {
-    setFile(null)
-    setContent('')
-    setDomain('')
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleFile = (f: File | undefined) => {
-    if (!f) return
-    setFile(f)
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string
-      setContent(text)
-      const d = parseDomainFromNetscape(text)
-      if (d) setDomain(d)
-    }
-    reader.readAsText(f)
-  }
-
-  const handleAdd = async () => {
-    if (!content) { toast.error(t('cookies.err_no_file', { defaultValue: 'Select a file first' })); return }
-    if (!domain)  { toast.error(t('cookies.err_no_domain', { defaultValue: 'Domain is required' })); return }
-
-    setUploading(true)
-    try {
-      await cookiesApi.addPool({ domain, content })
-      toast.success(t('cookies.uploaded_ok', { domain, defaultValue: `Cookie uploaded for ${domain}` }))
-      onClose()
-      reset()
-      onDone()
-    } catch (err) {
-      const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail
-      toast.error(detail ?? t('cookies.err_upload', { defaultValue: 'Upload failed' }))
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const canAdd = !!file && !!domain && !uploading
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose() } }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('cookies.pool_add_title', { defaultValue: 'Add Pool Cookie' })}</DialogTitle>
-          <DialogDescription>
-            {t('cookies.upload_hint', { defaultValue: 'Upload a Netscape-format cookie file (.txt).' })}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>{t('cookies.file_label')}</Label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".txt,text/plain"
-              className="hidden"
-              onChange={(e) => handleFile(e.target.files?.[0])}
-            />
-            <div
-              className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4 shrink-0" />
-              {file ? file.name : t('cookies.file_select')}
+          {mode === 'personal' && users && (
+            <div className="space-y-1.5">
+              <Label>{t('cookies.user_id_label')}</Label>
+              <UserCombobox value={userId} onChange={setUserId} users={users} />
+              <p className="text-xs text-muted-foreground">{t('cookies.user_id_hint')}</p>
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="pool-cookie-domain">{t('cookies.domain')}</Label>
-            <Input
-              id="pool-cookie-domain"
-              placeholder="youtube.com"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">{t('cookies.domain_hint')}</p>
-          </div>
+          )}
         </div>
 
         <DialogFooter className="flex-row gap-2 sm:space-x-0">
           <Button variant="outline" className="flex-1" onClick={() => { reset(); onClose() }}>
             {t('common.cancel')}
           </Button>
-          <Button className="flex-1" onClick={handleAdd} disabled={!canAdd}>
+          <Button className="flex-1" onClick={handleSubmit} disabled={!canSubmit}>
             {uploading ? t('cookies.uploading') : t('cookies.upload')}
           </Button>
         </DialogFooter>
@@ -381,9 +282,7 @@ export default function AdminCookiesPage() {
                 ))}
               </div>
             ) : poolDomains.length === 0 ? (
-              <div className="flex justify-center py-12 text-muted-foreground text-sm">
-                {t('cookies.pool_empty', { defaultValue: 'No pool cookies' })}
-              </div>
+              <EmptyState message={t('cookies.pool_empty', { defaultValue: 'No pool cookies' })} />
             ) : (
               <div
                 className="divide-y divide-border px-3 py-1 transition-opacity duration-150"
@@ -527,9 +426,7 @@ export default function AdminCookiesPage() {
                 ))}
               </div>
             ) : personalItems.length === 0 ? (
-              <div className="flex justify-center py-12 text-muted-foreground text-sm">
-                {t('cookies.empty')}
-              </div>
+              <EmptyState message={t('cookies.empty')} />
             ) : (
               <div
                 className="divide-y divide-border px-3 py-1 transition-opacity duration-150"
@@ -600,13 +497,15 @@ export default function AdminCookiesPage() {
           </CardContent>
         </Card>
 
-        <AddPoolDialog
+        <CookieUploadDialog
+          mode="pool"
           open={addPoolOpen}
           onClose={() => setAddPoolOpen(false)}
           onDone={() => loadPool()}
         />
 
-        <UploadDialog
+        <CookieUploadDialog
+          mode="personal"
           open={uploadOpen}
           onClose={() => setUploadOpen(false)}
           onDone={() => loadPersonal()}

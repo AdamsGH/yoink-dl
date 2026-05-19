@@ -20,7 +20,7 @@ import { downloadsApi } from '@dl/api/downloads'
 import { cn, formatBytes, formatDateCompact } from '@core/lib/utils'
 import type { DownloadLog } from '@dl/types'
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, TooltipProvider } from '@ui'
-import { SuccessBadge } from '@app'
+import { SuccessBadge, EmptyState } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useFavicon } from '@dl/hooks/useFavicon'
 
@@ -374,9 +374,7 @@ export default function HistoryPage() {
                 {Array.from({ length: 8 }).map((_, i) => <HistoryItemSkeleton key={i} />)}
               </div>
             ) : items.length === 0 ? (
-              <div className="flex justify-center py-12 text-muted-foreground text-sm">
-                {hasActive ? t('history.no_results') : t('history.empty')}
-              </div>
+              <EmptyState message={hasActive ? t('history.no_results') : t('history.empty')} />
             ) : (
               <div className="divide-y divide-border px-3">
                 {items.map(item => {
