@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import {
   AlertCircle,
   ChevronDown,
-  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Clapperboard,
   ExternalLink,
   Film,
@@ -10,6 +11,8 @@ import {
   Music,
   RotateCcw,
   Search,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -19,13 +22,12 @@ import type { DownloadLog } from '@dl/types'
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, TooltipProvider } from '@ui'
 import { SuccessBadge } from '@app'
 import { toast } from '@core/components/ui/toast'
+import { useFavicon } from '@dl/hooks/useFavicon'
 
 type StatusFilter = 'all' | 'ok' | 'cached' | 'error'
 type PeriodFilter = '7' | '30' | '90' | 'all'
 
 const PAGE_SIZE = 25
-
-import { useFavicon } from '@dl/hooks/useFavicon'
 
 function fmtSecs(secs: number): string {
   const h = Math.floor(secs / 3600)
@@ -37,19 +39,32 @@ function fmtSecs(secs: number): string {
 }
 
 function tgMessageUrl(groupId: number, messageId: number, threadId?: number | null): string {
-  // supergroup/channel: id starts with -100
   const idStr = String(Math.abs(groupId))
   if (idStr.startsWith('100')) {
-    const channelId = idStr.slice(3) // strip the '100' prefix
+    const channelId = idStr.slice(3)
     if (threadId) return `https://t.me/c/${channelId}/${threadId}/${messageId}`
     return `https://t.me/c/${channelId}/${messageId}`
   }
-  // regular group - can't deep-link by message id
   return ''
 }
 
+function stripWww(domain: string): string {
+  return domain.replace(/^www\./, '')
+}
+
+// Shorten a raw URL to hostname + path stub for display
+function shortenUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    const path = u.pathname.length > 20 ? u.pathname.slice(0, 20) + '...' : u.pathname
+    return u.hostname + path
+  } catch {
+    return url.length > 40 ? url.slice(0, 40) + '...' : url
+  }
+}
+
 function StatusBadge({ status }: { status: string }) {
-  const cls = 'px-1.5 py-0 text-[10px] font-medium rounded-full h-auto'
+  const cls = 'px-1.5 py-0 text-[10px] font-medium rounded-full h-auto shrink-0'
   if (status === 'ok') return <SuccessBadge className={cls}>{status}</SuccessBadge>
   const variant = status === 'cached' ? 'secondary' : status === 'error' ? 'destructive' : 'outline'
   return <Badge variant={variant} className={cls}>{status}</Badge>
@@ -109,12 +124,10 @@ function ExpandedDetails({ item }: { item: DownloadLog }) {
     : null
 
   const type = item.media_type
-
-  // Meta chips: key-value pairs relevant to this type
   const chips: { label: string; value: string; highlight?: boolean }[] = []
 
   if (type === 'clip') {
-    chips.push({ label: t('history.clip'), value: `${fmtSecs(item.clip_start!)} → ${fmtSecs(item.clip_end!)}`, highlight: true })
+    chips.push({ label: t('history.clip'), value: `${fmtSecs(item.clip_start!)} - ${fmtSecs(item.clip_end!)}`, highlight: true })
     if (item.quality) chips.push({ label: t('history.quality'), value: item.quality })
     if (item.duration != null && item.duration > 0) chips.push({ label: t('history.duration'), value: fmtSecs(Math.round(item.duration)) })
     if (item.file_size != null) chips.push({ label: t('history.size'), value: formatBytes(item.file_size) })
@@ -131,16 +144,13 @@ function ExpandedDetails({ item }: { item: DownloadLog }) {
   }
 
   if (item.group_title) chips.push({ label: t('history.group'), value: item.group_title })
-  else if (item.group_id) chips.push({ label: t('history.group'), value: String(item.group_id) })
 
   return (
-    <div className="pt-2 pb-1 space-y-2.5 text-xs" onClick={(e) => e.stopPropagation()}>
-      {/* Error message */}
+    <div className="pt-1.5 pb-2 space-y-2 text-xs" onClick={(e) => e.stopPropagation()}>
       {item.error_msg && (
-        <p className="text-destructive break-all">{item.error_msg}</p>
+        <p className="text-destructive break-words">{item.error_msg}</p>
       )}
 
-      {/* Meta chips */}
       {chips.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {chips.map(c => (
@@ -160,13 +170,12 @@ function ExpandedDetails({ item }: { item: DownloadLog }) {
         </div>
       )}
 
-      {/* URL */}
-      <div className="font-mono break-all text-muted-foreground bg-muted/50 rounded px-2 py-1.5 select-all">
+      {/* URL - truncated, tap to select all */}
+      <div className="font-mono text-[11px] break-all text-muted-foreground bg-muted/50 rounded px-2 py-1.5 select-all leading-relaxed">
         {item.url}
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 pt-0.5">
         {item.status !== 'error' && (
           <Button
             size="sm" variant="outline"
@@ -204,11 +213,6 @@ function HistoryItemSkeleton() {
   )
 }
 
-function stripWww(domain: string): string {
-  return domain.replace(/^www\./, '')
-}
-
-
 export default function HistoryPage() {
   const { t } = useTranslation()
 
@@ -219,6 +223,7 @@ export default function HistoryPage() {
   const [fetching, setFetching] = useState(false)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [domains, setDomains] = useState<string[]>([])
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -227,25 +232,22 @@ export default function HistoryPage() {
   const [period, setPeriod] = useState<PeriodFilter>('all')
 
   const hasActive = debouncedSearch !== '' || domain !== '_all' || status !== 'all' || period !== 'all'
+  const hasFilterActive = domain !== '_all' || status !== 'all' || period !== 'all'
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  // 300ms debounce on search
   useEffect(() => {
     const id = setTimeout(() => { setDebouncedSearch(search); setPage(1) }, 300)
     return () => clearTimeout(id)
   }, [search])
 
-  // Reset page when filters change
   useEffect(() => { setPage(1) }, [domain, status, period])
 
-  // Load domains once
   useEffect(() => {
     downloadsApi.getDomains()
       .then(r => setDomains(r.data.domains))
       .catch(() => {})
   }, [])
 
-  // Main load
   useEffect(() => {
     setFetching(true)
     const params: Record<string, string | number> = {
@@ -276,68 +278,90 @@ export default function HistoryPage() {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-3">
-        {/* Search always on top */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder={t('history.search_placeholder')}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
 
-        {/* Filters row */}
+        {/* Search + filter toggle */}
         <div className="flex gap-2">
-          <Select value={domain} onValueChange={v => { setDomain(v); setPage(1) }}>
-            <SelectTrigger className="h-8 flex-1 text-xs">
-              <SelectValue placeholder={t('history.domain_label')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">{t('history.domain_label', { defaultValue: 'All domains' })}</SelectItem>
-              {domains.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
-          <Select value={status} onValueChange={v => { setStatus(v as StatusFilter); setPage(1) }}>
-            <SelectTrigger className="h-8 w-24 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('history.status_all')}</SelectItem>
-              <SelectItem value="ok">ok</SelectItem>
-              <SelectItem value="cached">cached</SelectItem>
-              <SelectItem value="error">error</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={period} onValueChange={v => { setPeriod(v as PeriodFilter); setPage(1) }}>
-            <SelectTrigger className="h-8 w-20 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('history.period_all')}</SelectItem>
-              <SelectItem value="7">7d</SelectItem>
-              <SelectItem value="30">30d</SelectItem>
-              <SelectItem value="90">90d</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder={t('history.search_placeholder')}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+            {search && (
+              <button
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => { setSearch(''); setDebouncedSearch('') }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <Button
+            variant={hasFilterActive ? 'default' : 'outline'}
+            size="sm"
+            className="h-9 w-9 p-0 shrink-0"
+            onClick={() => setFiltersOpen(o => !o)}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </Button>
         </div>
+
+        {/* Filters panel - shown when toggled */}
+        {filtersOpen && (
+          <div className="grid grid-cols-3 gap-2">
+            <Select value={domain} onValueChange={v => { setDomain(v); setPage(1) }}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Domain" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">{t('history.domain_label', { defaultValue: 'All domains' })}</SelectItem>
+                {domains.map(d => <SelectItem key={d} value={d}>{stripWww(d)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={status} onValueChange={v => { setStatus(v as StatusFilter); setPage(1) }}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('history.status_all', { defaultValue: 'All' })}</SelectItem>
+                <SelectItem value="ok">ok</SelectItem>
+                <SelectItem value="cached">cached</SelectItem>
+                <SelectItem value="error">error</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={period} onValueChange={v => { setPeriod(v as PeriodFilter); setPage(1) }}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('history.period_all', { defaultValue: 'All time' })}</SelectItem>
+                <SelectItem value="7">7d</SelectItem>
+                <SelectItem value="30">30d</SelectItem>
+                <SelectItem value="90">90d</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* List */}
         <Card>
-          <CardHeader className="px-4 py-3">
+          <CardHeader className="px-4 py-2.5">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-sm font-medium tabular-nums">
-                {initialLoading ? t('history.total_downloads') : (
+              <CardTitle className="text-sm font-medium tabular-nums text-muted-foreground">
+                {initialLoading ? '...' : (
                   <>
                     {total.toLocaleString()} {t('history.total_downloads').toLowerCase()}
-                    {hasActive && <span className="ml-1.5 text-muted-foreground font-normal text-xs">{t('history.filtered')}</span>}
+                    {hasActive && <span className="ml-1.5 font-normal text-xs">{t('history.filtered')}</span>}
                   </>
                 )}
               </CardTitle>
               {hasActive && (
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={resetFilters}>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={resetFilters}>
+                  <X className="h-3 w-3 mr-1" />
                   {t('history.clear_all')}
                 </Button>
               )}
@@ -357,30 +381,31 @@ export default function HistoryPage() {
               <div className="divide-y divide-border px-3">
                 {items.map(item => {
                   const isOpen = expanded === item.id
+                  const displayTitle = item.title
+                    ? item.title
+                    : shortenUrl(item.url)
 
                   return (
                     <div key={item.id}>
                       <Item
                         size="sm"
-                        className="py-2 rounded-none border-0 cursor-pointer"
+                        className="py-2 rounded-none border-0 cursor-pointer select-none"
                         onClick={() => setExpanded(p => p === item.id ? null : item.id)}
                       >
                         <MediaIcon item={item} />
-                        <ItemContent className="gap-0.5">
-                          <ItemTitle className="line-clamp-1">
-                            {item.title ?? item.url}
+                        <ItemContent className="gap-0.5 min-w-0">
+                          <ItemTitle className="line-clamp-1 text-sm">
+                            {displayTitle}
                           </ItemTitle>
-                          <ItemDescription>
-                            {[item.domain ? stripWww(item.domain) : null, formatDateCompact(item.created_at)].filter(Boolean).join(' · ')}
+                          <ItemDescription className="flex items-center gap-1.5 text-xs">
+                            {item.domain && <span>{stripWww(item.domain)}</span>}
+                            <span className="text-muted-foreground/50">·</span>
+                            <span>{formatDateCompact(item.created_at)}</span>
                           </ItemDescription>
                         </ItemContent>
-                        <ItemActions>
+                        <ItemActions className="gap-1.5">
                           <StatusBadge status={item.status} />
-                          <button className="text-muted-foreground" onClick={e => { e.stopPropagation(); setExpanded(p => p === item.id ? null : item.id) }}>
-                            {isOpen
-                              ? <ChevronUp className="h-3.5 w-3.5" />
-                              : <ChevronDown className="h-3.5 w-3.5" />}
-                          </button>
+                          <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0', isOpen && 'rotate-180')} />
                         </ItemActions>
                       </Item>
                       {isOpen && (
@@ -402,16 +427,17 @@ export default function HistoryPage() {
             <span className="text-xs text-muted-foreground">
               {t('history.page_of', { page, total: totalPages })}
             </span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-                {t('history.prev')}
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
-                {t('history.next')}
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         )}
+
       </div>
     </TooltipProvider>
   )
