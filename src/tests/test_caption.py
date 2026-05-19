@@ -18,9 +18,9 @@ class TestBuildCaption:
         caption = build_caption(
             title="My Video", url="https://example.com/vid", settings=_settings()
         )
-        assert "<b>My Video</b>" in caption
-        assert 'href="https://example.com/vid"' in caption
-        assert "source" in caption
+        # Title is wrapped in the source link, not a separate "source" line.
+        assert '<a href="https://example.com/vid"><b>My Video</b></a>' in caption
+        assert "source" not in caption
 
     def test_html_escaping(self):
         caption = build_caption(
@@ -48,7 +48,8 @@ class TestBuildCaption:
         caption = build_caption(
             title="", url="https://example.com", settings=_settings(),
         )
-        assert "source" in caption
+        # Without a title we fall back to a plain "source" link.
+        assert '<a href="https://example.com">source</a>' in caption
 
 
 class TestBuildGroupCaption:

@@ -43,9 +43,11 @@ def build_caption(
 
     if title:
         safe_title = _escape_html(title)
-        parts.append(f"<b>{safe_title}</b>")
-
-    if url:
+        if url:
+            parts.append(f'<a href="{url}"><b>{safe_title}</b></a>')
+        else:
+            parts.append(f"<b>{safe_title}</b>")
+    elif url:
         parts.append(f'<a href="{url}">source</a>')
 
     if tags:
