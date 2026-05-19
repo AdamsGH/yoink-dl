@@ -232,20 +232,23 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t('settings.video_quality')}</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-2">
-          <SettingRow label={t('settings.resolution_label')}>
-            <ControlledSelect name="quality" options={QUALITY_OPTIONS} control={control} />
-          </SettingRow>
-          <SettingRow label={t('settings.codec_label')}>
-            <ControlledSelect name="codec" options={CODEC_OPTIONS} control={control} />
-          </SettingRow>
-          <SettingRow label={t('settings.container_label')}>
-            <ControlledSelect name="container" options={CONTAINER_OPTIONS} control={control} />
-          </SettingRow>
-
+          <div className="divide-y divide-border">
+            <SettingRow label={t('settings.resolution_label')}>
+              <ControlledSelect name="quality" options={QUALITY_OPTIONS} control={control} />
+            </SettingRow>
+            <SettingRow label={t('settings.codec_label')}>
+              <ControlledSelect name="codec" options={CODEC_OPTIONS} control={control} />
+            </SettingRow>
+            <SettingRow label={t('settings.container_label')}>
+              <ControlledSelect name="container" options={CONTAINER_OPTIONS} control={control} />
+            </SettingRow>
+          </div>
           <SectionLabel>{t('settings.audio', { defaultValue: 'Audio' })}</SectionLabel>
-          <SettingRow label={t('settings.audio_codec_label', { defaultValue: 'Codec' })}>
-            <ControlledSelect name="audio_codec" options={AUDIO_CODEC_OPTIONS} control={control} />
-          </SettingRow>
+          <div className="divide-y divide-border">
+            <SettingRow label={t('settings.audio_codec_label', { defaultValue: 'Codec' })} hint={t('settings.audio_codec_hint', { defaultValue: 'Used for audio-only downloads.' })}>
+              <ControlledSelect name="audio_codec" options={AUDIO_CODEC_OPTIONS} control={control} />
+            </SettingRow>
+          </div>
         </CardContent>
       </Card>
 
@@ -255,18 +258,21 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t('settings.delivery')}</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-2">
-          <SettingRow label={t('settings.split_label')}>
-            <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} />
-          </SettingRow>
-          <SettingRow label={t('settings.keyboard_label')}>
-            <ControlledSelect name="keyboard" options={KEYBOARD_OPTIONS} control={control} />
-          </SettingRow>
-
+          <div className="divide-y divide-border">
+            <SettingRow label={t('settings.split_label')} hint={t('settings.split_hint')}>
+              <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} />
+            </SettingRow>
+            <SettingRow label={t('settings.keyboard_label')} hint={t('settings.keyboard_hint')}>
+              <ControlledSelect name="keyboard" options={KEYBOARD_OPTIONS} control={control} />
+            </SettingRow>
+          </div>
           <SectionLabel>{t('settings.options', { defaultValue: 'Options' })}</SectionLabel>
-          <ControlledSwitch name="send_as_file" label={t('settings.send_as_file')} control={control} />
-          <ControlledSwitch name="nsfw_blur" label={t('settings.nsfw_blur')} control={control} />
-          <ControlledSwitch name="mediainfo" label={t('settings.mediainfo')} control={control} />
-          <ControlledSwitch name="gallery_zip" label={t('settings.gallery_zip')} control={control} />
+          <div className="divide-y divide-border">
+            <ControlledSwitch name="send_as_file" label={t('settings.send_as_file')} hint={t('settings.send_as_file_hint')} control={control} />
+            <ControlledSwitch name="nsfw_blur" label={t('settings.nsfw_blur')} hint={t('settings.nsfw_blur_hint')} control={control} />
+            <ControlledSwitch name="mediainfo" label={t('settings.mediainfo')} hint={t('settings.mediainfo_hint')} control={control} />
+            <ControlledSwitch name="gallery_zip" label={t('settings.gallery_zip')} hint={t('settings.gallery_zip_hint')} control={control} />
+          </div>
         </CardContent>
       </Card>
 
@@ -280,32 +286,38 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-2">
-            {hasPoolAccess && (
-              <ControlledSwitch
-                name="use_pool_cookies"
-                label={t('settings.use_pool_cookies', { defaultValue: 'Use shared cookie pool' })}
-                control={control}
-              />
-            )}
-            {hasOAuthCookie && (
-              <Controller
-                name="youtube_auth_mode"
-                control={control}
-                render={({ field }) => (
-                  <SettingRow label={t('settings.youtube_auth_mode', { defaultValue: 'YouTube auth' })}>
-                    <Select value={field.value ?? 'cookies'} onValueChange={field.onChange}>
-                      <SelectTrigger className="h-8 text-xs w-36">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cookies" className="text-xs">Netscape cookies</SelectItem>
-                        <SelectItem value="oauth" className="text-xs">YouTube TV OAuth</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </SettingRow>
-                )}
-              />
-            )}
+            <div className="divide-y divide-border">
+              {hasPoolAccess && (
+                <ControlledSwitch
+                  name="use_pool_cookies"
+                  label={t('settings.use_pool_cookies', { defaultValue: 'Use shared cookie pool' })}
+                  hint={t('settings.use_pool_cookies_hint', { defaultValue: 'Include shared accounts in rotation alongside your personal cookies' })}
+                  control={control}
+                />
+              )}
+              {hasOAuthCookie && (
+                <Controller
+                  name="youtube_auth_mode"
+                  control={control}
+                  render={({ field }) => (
+                    <SettingRow
+                      label={t('settings.youtube_auth_mode', { defaultValue: 'YouTube auth' })}
+                      hint={t('settings.youtube_auth_mode_hint', { defaultValue: 'OAuth uses your Google account via YouTube TV flow.' })}
+                    >
+                      <Select value={field.value ?? 'cookies'} onValueChange={field.onChange}>
+                        <SelectTrigger className="h-8 text-xs w-36">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cookies" className="text-xs">Netscape cookies</SelectItem>
+                          <SelectItem value="oauth" className="text-xs">YouTube TV OAuth</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </SettingRow>
+                  )}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -316,21 +328,23 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t('settings.subtitles')}</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-2">
-          <ControlledSwitch name="subs_enabled" label={t('settings.subs_enabled')} control={control} />
-          {subsEnabled && (
-            <>
-              <SettingRow label={t('settings.subs_lang_label')}>
-                <ControlledSelect
-                  name="subs_lang"
-                  options={SUBS_LANG_OPTIONS.map((c) => ({ value: c, label: c }))}
-                  control={control}
-                  className="w-20"
-                />
-              </SettingRow>
-              <ControlledSwitch name="subs_auto" label={t('settings.subs_auto')} control={control} />
-              <ControlledSwitch name="subs_always_ask" label={t('settings.subs_ask')} control={control} />
-            </>
-          )}
+          <div className="divide-y divide-border">
+            <ControlledSwitch name="subs_enabled" label={t('settings.subs_enabled')} hint={t('settings.subs_enabled_hint')} control={control} />
+            {subsEnabled && (
+              <>
+                <SettingRow label={t('settings.subs_lang_label')}>
+                  <ControlledSelect
+                    name="subs_lang"
+                    options={SUBS_LANG_OPTIONS.map((c) => ({ value: c, label: c }))}
+                    control={control}
+                    className="w-20"
+                  />
+                </SettingRow>
+                <ControlledSwitch name="subs_auto" label={t('settings.subs_auto')} hint={t('settings.subs_auto_hint')} control={control} />
+                <ControlledSwitch name="subs_always_ask" label={t('settings.subs_ask')} control={control} />
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -340,9 +354,11 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t('settings.network')}</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-2">
-          <ControlledSwitch name="proxy_enabled" label={t('settings.use_proxy')} control={control} />
+          <div className="divide-y divide-border">
+            <ControlledSwitch name="proxy_enabled" label={t('settings.use_proxy')} hint={t('settings.use_proxy_hint')} control={control} />
+          </div>
           {proxyEnabled && (
-            <div className="pt-1 pb-2 space-y-1.5">
+            <div className="pt-2 pb-2 space-y-1.5">
               <Label htmlFor="proxy_url" className="text-xs text-muted-foreground">Proxy URL</Label>
               <Controller
                 name="proxy_url"
@@ -368,24 +384,26 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t('settings.interface')}</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-3">
-          <SettingRow label={t('settings.language_label')}>
-            <Select
-              value={currentLang}
-              onValueChange={(v) => handleLangChange(v as SupportedLanguage)}
-              disabled={langSaving}
-            >
-              <SelectTrigger className="h-8 text-xs w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <SelectItem key={lang} value={lang} className="text-xs">
-                    {lang === 'en' ? 'English' : 'Русский'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingRow>
+          <div className="divide-y divide-border">
+            <SettingRow label={t('settings.language_label')}>
+              <Select
+                value={currentLang}
+                onValueChange={(v) => handleLangChange(v as SupportedLanguage)}
+                disabled={langSaving}
+              >
+                <SelectTrigger className="h-8 text-xs w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <SelectItem key={lang} value={lang} className="text-xs">
+                      {lang === 'en' ? 'English' : 'Русский'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingRow>
+          </div>
 
           <SectionLabel>{t('settings.theme_label')}</SectionLabel>
           <div className="grid grid-cols-4 gap-1.5 pb-1">
