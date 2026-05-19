@@ -124,6 +124,7 @@ class DlUserSettingsResponse(BaseModel):
     gallery_zip: bool
     use_pool_cookies: bool
     youtube_auth_mode: str = "cookies"
+    audio_codec: str = "best"
     updated_at: datetime
     # Computed: true when user may see/use the shared cookie pool
     has_pool_access: bool = False

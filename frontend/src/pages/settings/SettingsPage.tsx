@@ -150,7 +150,9 @@ export default function SettingsPage() {
   const { t } = useTranslation()
   const { flavor, setFlavor } = useTelegram()
   const { data: identity } = useGetIdentity<User>()
-  const { handleSubmit, reset, watch, control, formState: { isSubmitting, isDirty } } = useForm<FormValues>()
+  const { handleSubmit, reset, watch, control, formState: { isSubmitting, isDirty } } = useForm<FormValues>({
+    defaultValues: { quality: 'best', codec: 'avc1', container: 'mp4', audio_codec: 'best' },
+  })
 
   const subsEnabled = watch('subs_enabled')
   const proxyEnabled = watch('proxy_enabled')
