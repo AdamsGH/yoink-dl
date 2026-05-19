@@ -10,9 +10,10 @@ import { userSettingsApi } from '@core/lib/api/user-settings'
 import { cn } from '@core/lib/utils'
 import { setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@core/lib/i18n'
 import { SettingRow } from '@app'
+import { ControlledSelect, ControlledSwitch } from '@core/components/form'
 import type { UserSettings } from '@dl/types'
 import type { User } from '@core/types/api'
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Switch } from '@ui'
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton } from '@ui'
 import { toast } from '@core/components/ui/toast'
 import { useTelegram, type CatppuccinFlavor } from '@core/layout/TelegramProvider'
 
@@ -72,55 +73,7 @@ const KEYBOARD_OPTIONS = [
 
 const SUBS_LANG_OPTIONS = ['en', 'ru', 'de', 'fr', 'es', 'it', 'pt', 'ja', 'zh', 'ko']
 
-function ControlledSelect({
-  name, options, control, className,
-}: {
-  name: keyof FormValues
-  options: { value: string; label: string }[]
-  control: ReturnType<typeof useForm<FormValues>>['control']
-  className?: string
-}) {
-  return (
-    <Controller
-      name={name}
-      control={control}
-      render={({ field }) => (
-        <Select
-          value={String(field.value ?? '')}
-          onValueChange={(v) => field.onChange(name === 'split_size' ? Number(v) : v)}
-        >
-          <SelectTrigger className={cn('h-8 text-xs', className ?? 'w-28')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((o) => (
-              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-    />
-  )
-}
 
-function ControlledSwitch({ name, label, hint, control }: {
-  name: keyof FormValues
-  label: string
-  hint?: string
-  control: ReturnType<typeof useForm<FormValues>>['control']
-}) {
-  return (
-    <Controller
-      name={name}
-      control={control}
-      render={({ field }) => (
-        <SettingRow label={label} hint={hint}>
-          <Switch checked={!!field.value} onCheckedChange={field.onChange} />
-        </SettingRow>
-      )}
-    />
-  )
-}
 
 // Compact section divider inside a card
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -255,7 +208,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="px-4 pb-2">
           <SettingRow label={t('settings.split_label')} hint={t('settings.split_hint')}>
-            <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} />
+            <ControlledSelect name="split_size" options={SPLIT_OPTIONS} control={control} onChangeTransform={(v) => Number(v)} />
           </SettingRow>
           <SettingRow label={t('settings.keyboard_label')} hint={t('settings.keyboard_hint')}>
             <ControlledSelect name="keyboard" options={KEYBOARD_OPTIONS} control={control} />

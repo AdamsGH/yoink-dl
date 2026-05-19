@@ -6,7 +6,7 @@ import { cookiesApi } from '@dl/api/cookies'
 import type { CookieTokenResponse, YttvOAuthStartResponse } from '@dl/api/cookies'
 import { dlSettingsApi } from '@dl/api/settings'
 import { formatDate } from '@core/lib/utils'
-import { Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
+import { Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, DividedList, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, SkeletonList, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
 import { CookieStatusBadge, EmptyState } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { CookieFavicon } from '@dl/components/CookieFavicon'
@@ -320,8 +320,8 @@ export default function CookiesPage() {
 
           <CardContent className="p-0">
             {loading ? (
-              <div className="divide-y divide-border px-3 py-1">
-                {Array.from({ length: 2 }).map((_, i) => (
+              <DividedList>
+                <SkeletonList count={2}>{(i) => (
                   <div key={i} className="flex items-center gap-3 py-2.5">
                     <Skeleton className="size-8 rounded-md shrink-0" />
                     <div className="flex-1 space-y-1.5">
@@ -330,12 +330,12 @@ export default function CookiesPage() {
                     </div>
                     <Skeleton className="h-5 w-14" />
                   </div>
-                ))}
-              </div>
+                )}</SkeletonList>
+              </DividedList>
             ) : own.length === 0 && inherited.length === 0 ? (
               <EmptyState message={t('cookies.empty', { defaultValue: 'No cookies stored yet' })} />
             ) : (
-              <div className="divide-y divide-border px-3 py-1">
+              <DividedList>
                 {own.map((c) => (
                   <Item key={c.id} size="sm" className="py-2.5 rounded-none border-0">
                     <ItemMedia variant="icon" className="size-8 rounded-md bg-muted text-muted-foreground">
@@ -429,7 +429,7 @@ export default function CookiesPage() {
                     ))}
                   </>
                 )}
-              </div>
+              </DividedList>
             )}
           </CardContent>
         </Card>

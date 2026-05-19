@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { downloadsApi } from '@dl/api/downloads'
 import { cn, formatBytes, formatDateCompact } from '@core/lib/utils'
 import type { DownloadLog } from '@dl/types'
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, TooltipProvider } from '@ui'
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, DividedList, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, SkeletonList, TooltipProvider } from '@ui'
 import { SuccessBadge, EmptyState } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useFavicon } from '@dl/hooks/useFavicon'
@@ -370,13 +370,13 @@ export default function HistoryPage() {
 
           <CardContent className={cn('p-0 transition-opacity duration-150', fetching && !initialLoading && 'opacity-60')}>
             {initialLoading ? (
-              <div className="divide-y divide-border px-3 py-1">
-                {Array.from({ length: 8 }).map((_, i) => <HistoryItemSkeleton key={i} />)}
-              </div>
+              <DividedList>
+                <SkeletonList count={8}>{(i) => <HistoryItemSkeleton key={i} />}</SkeletonList>
+              </DividedList>
             ) : items.length === 0 ? (
               <EmptyState message={hasActive ? t('history.no_results') : t('history.empty')} />
             ) : (
-              <div className="divide-y divide-border px-3">
+              <DividedList className="px-3 py-0">
                 {items.map(item => {
                   const isOpen = expanded === item.id
                   const displayTitle = item.title
@@ -414,7 +414,7 @@ export default function HistoryPage() {
                     </div>
                   )
                 })}
-              </div>
+              </DividedList>
             )}
           </CardContent>
         </Card>

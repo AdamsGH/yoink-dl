@@ -6,7 +6,7 @@ import type { AxiosError } from 'axios'
 import { useGetIdentity } from '@refinedev/core'
 import { useTranslation } from 'react-i18next'
 
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, CardHeader, CardTitle, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, CardHeader, CardTitle, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Dialog, DialogActions, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
 import { cookiesApi } from '@dl/api/cookies'
 import { formatDate } from '@core/lib/utils'
 import type { User } from '@core/types/api'
@@ -189,14 +189,14 @@ function CookieUploadDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-row gap-2 sm:space-x-0">
+        <DialogActions>
           <Button variant="outline" className="flex-1" onClick={() => { reset(); onClose() }}>
             {t('common.cancel')}
           </Button>
           <Button className="flex-1" onClick={handleSubmit} disabled={!canSubmit}>
             {uploading ? t('cookies.uploading') : t('cookies.upload')}
           </Button>
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   )

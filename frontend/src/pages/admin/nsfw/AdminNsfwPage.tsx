@@ -6,7 +6,7 @@ import { ChevronDown, Download, ListFilter, Pencil, Plus, ShieldAlert, Trash2, U
 import { nsfwApi, type NsfwDomain, type NsfwKeyword, type NsfwCheckResponse } from '@dl/api/nsfw'
 import { formatDate } from '@core/lib/utils'
 
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, JsonEditor, Label, Separator, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, Dialog, DialogActions, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, JsonEditor, Label, Separator, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
 import { EmptyState } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
@@ -79,12 +79,12 @@ function EntryDialog({
             />
           </div>
         </div>
-        <DialogFooter className="flex-row gap-2 sm:space-x-0">
+        <DialogActions>
           <Button variant="outline" className="flex-1" onClick={onClose}>{t('common.cancel')}</Button>
           <Button className="flex-1" onClick={handleSubmit} disabled={saving || !value.trim()}>
             {saving ? t('common.loading') : submitLabel}
           </Button>
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   )
@@ -201,12 +201,12 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
           </div>
         </div>
 
-        <DialogFooter className="flex-row gap-2 sm:space-x-0">
+        <DialogActions>
           <Button variant="outline" className="flex-1" onClick={onClose}>{t('common.cancel')}</Button>
           <Button className="flex-1" onClick={handleImport} disabled={!canImport}>
             {importing ? t('common.loading') : t('nsfw.import')}
           </Button>
-        </DialogFooter>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   )
