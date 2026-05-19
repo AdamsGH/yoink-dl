@@ -165,6 +165,9 @@ def _is_retryable(exc: Exception) -> bool:
     )
     if any(h in err_lower for h in no_retry_hints):
         return False
+    # yt-dlp extractor bugs (e.g. yandexmusic returning bool instead of str)
+    if isinstance(exc, TypeError):
+        return False
     retry_hints = ("exited with code", "timed out", "timeout", "connection", "reset by peer", "connection reset", "broken pipe", "ssl", "network", "got error")
     if any(h in err_lower for h in retry_hints):
         return True
@@ -202,6 +205,9 @@ async def handle_download_error(
 
     if isinstance(exc, BotError):
         err_text = t(exc.message_key, lang, **exc.kwargs)
+    elif isinstance(exc, TypeError):
+        # yt-dlp extractor bug (e.g. IP-block returns bool instead of str)
+        err_text = t("errors.unavailable", lang, fallback=t("errors.unknown", lang))
     else:
         raw = re.sub(r'\x1b\[[0-9;]*m', '', str(exc))
         raw = raw.removeprefix("ERROR: ")

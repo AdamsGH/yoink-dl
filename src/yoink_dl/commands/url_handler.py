@@ -85,6 +85,16 @@ async def _handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not url:
         return
 
+    # Music platform URLs (Yandex Music, Spotify, Deezer, etc.) are handled
+    # by yoink-music (group=5) which resolves cross-platform + downloads.
+    # Don't pass them to yt-dlp - it can't handle most of them anyway.
+    try:
+        from yoink_music.platforms import MUSIC_URL_RE as _MUSIC_RE
+        if _MUSIC_RE.search(url):
+            return
+    except ImportError:
+        pass
+
     text = update.message.text or ""
 
     lang = "en"
