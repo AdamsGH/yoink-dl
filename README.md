@@ -114,6 +114,104 @@ Mounted at `/api/v1/dl/`. Auth: JWT Bearer token.
 - **Download log** - all download outcomes (ok, cached, error) written to download_log with `user_id`, `group_id`, `thread_id`, `media_type`, `group_title`
 - **_safe_filename()** - Unicode lookalike substitution for `<>:"/\|?*` chars
 
+## YouTube TV OAuth
+
+### Overview
+
+By default all downloads go through yt-dlp (with optional Netscape cookie files). The YouTube TV OAuth path is an opt-in alternative that uses a dedicated Node.js sidecar (`yoink-youtubei`) running [youtubei.js](https://github.com/LuanRT/YouTube.js) with a TV client and real OAuth tokens. It is designed for age-restricted videos and accounts where cookie export is impractical.
+
+yt-dlp remains the default for every user. The OAuth path activates only when both conditions are met:
+
+1. The user has completed the TV device flow authorization.
+2. The user has switched "YouTube auth method" to "YouTube TV OAuth" in Settings.
+
+### Auth flow (TV device flow)
+
+1. User opens the Mini App, goes to the **Cookies** page, and clicks "Start authorization".
+2. Backend calls `POST /cookies/yttv/start` which hits the Google OAuth device endpoint and returns a `verification_url` + `user_code`.
+3. User opens the URL in any browser, enters the code, and approves the Google account.
+4. Frontend polls `GET /cookies/yttv/poll/{session_id}` every 5 seconds. When Google confirms, the backend exchanges the device code for `access_token` + `refresh_token`.
+5. Tokens are stored in the `Cookie` table with the content field prefixed `__oauth2__` (Netscape cookie parsing skips these automatically).
+6. The OAuth badge appears next to the cookie entry in the list.
+
+Token refresh is handled transparently by the sidecar: youtubei.js fires an `update-credentials` event when the access token expires; the sidecar returns the new tokens in the `X-Updated-Tokens` response header; the Python client persists them back to the DB.
+
+### Download routing
+
+`acquire_cookie()` in `url/pipeline/download_phase.py` decides the path:
+
+```
+if youtube_auth_mode == "oauth" and url is youtube.com/youtu.be:
+    tokens = cookie_mgr.get_oauth_tokens_for_url(user_id, url)
+    if tokens:
+        -> youtubei path (download_via_youtubei_job)
+else:
+    -> yt-dlp path (regular CookieManager)
+```
+
+### youtubei sidecar (`docker/youtubei-service/`)
+
+Express HTTP server on port 9173, reachable at `http://yoink-youtubei:9173` within the Docker network.
+
+**POST /download**
+
+```json
+{
+  "url": "https://youtu.be/VIDEO_ID",
+  "tokens": { "access_token": "...", "refresh_token": "...", "expiry_date": 1234567890 },
+  "quality": "best",
+  "audio_only": false,
+  "start_sec": 3306,
+  "end_sec": 3318
+}
+```
+
+Response: binary file stream with headers:
+- `Content-Disposition: attachment; filename="<safe_title>.mp4"`
+- `X-File-Title: <url-encoded title>`
+- `X-Updated-Tokens: <json>` (only when tokens were refreshed)
+
+Flow inside the sidecar:
+1. Create an Innertube session with `client_type: TVHTML5` and sign in with the provided tokens.
+2. Call `getBasicInfo(videoId, 'TV')`. The TV client with OAuth returns a reduced `video_details` (no title). Title is fetched via a second anonymous WEB client `getBasicInfo` call as a fallback.
+3. Download video and audio streams separately (TV client provides only adaptive formats, no progressive). Prefer H.264 (`avc`) to avoid Telegram transcoding; fall back to any MP4.
+4. Merge with ffmpeg. If `start_sec`/`end_sec` are provided, pass `-ss <start>` before inputs and `-t <duration>` after to clip during merge (stream copy, no re-encode).
+5. For `audio_only`: download audio stream, trim with ffmpeg if clip params are present.
+
+**GET /info**
+
+Returns `{ title, duration, author }` without downloading. Used for metadata prefetch (not currently called by the Python side but available).
+
+### Clip support
+
+Clips work the same way as with yt-dlp: `parse_clip_spec()` in `url/clip.py` parses the message text (e.g. `https://youtu.be/X?t=3306 12` → `ClipSpec(start_sec=3306, end_sec=3318)`). The clip is passed through `download_via_youtubei_job` → `download_via_youtubei` → HTTP payload `start_sec`/`end_sec` → ffmpeg trim at merge time. The resulting `DownloadJob` carries the `clip` field so the upload phase shows the `✂️ HH:MM → HH:MM` marker in the caption.
+
+### Concurrency
+
+`run_download` in `url/pipeline/run.py` maintains a per-user `asyncio.Semaphore(3)` in `bot_data["user_dl_semaphores"]`. If all 3 slots are taken, the bot replies immediately with a "too many downloads" message and returns. The semaphore is acquired non-blocking (`locked()` check before `acquire()`) and released in the `finally` block alongside temp dir cleanup.
+
+PTB is started with `concurrent_updates=True` so multiple URL messages from the same user are dispatched in parallel rather than queued sequentially.
+
+### Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `YOUTUBEI_SERVICE_URL` | `http://yoink-youtubei:9173` | Override sidecar URL |
+
+### Files
+
+| File | Description |
+|---|---|
+| `docker/youtubei-service/index.js` | Sidecar Express server |
+| `docker/youtubei-service/package.json` | Node.js deps (`youtubei.js`, `express`) |
+| `docker/Dockerfile.youtubei` | Alpine + Node 22 + ffmpeg image |
+| `src/yoink_dl/download/youtubei.py` | Python client (`download_via_youtubei`, `get_info_via_youtubei`) |
+| `src/yoink_dl/services/yttv_oauth.py` | Device flow initiation, polling, token refresh, in-memory session store |
+| `src/yoink_dl/api/routers/cookies.py` | `POST /cookies/yttv/start`, `GET /cookies/yttv/poll/{session_id}` |
+| `src/yoink_dl/url/pipeline/download_phase.py` | `acquire_cookie()` routing logic, `download_via_youtubei_job()` |
+| `frontend/src/pages/cookies/CookiesPage.tsx` | OAuth device flow UI (start, poll, code display, cancel) |
+| `frontend/src/pages/settings/SettingsPage.tsx` | `youtube_auth_mode` selector (visible only when OAuth cookie exists) |
+
 ## Configuration
 
 | Variable | Default | Description |

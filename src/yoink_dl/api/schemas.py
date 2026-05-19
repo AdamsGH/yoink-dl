@@ -38,12 +38,21 @@ class CookieResponse(BaseModel):
     domain: str
     is_valid: bool
     is_pool: bool = False
+    is_oauth: bool = False
     label: str | None = None
     avatar_url: str | None = None
     validated_at: datetime | None
     created_at: datetime
     updated_at: datetime
     inherited: bool = False
+
+    @classmethod
+    def model_validate(cls, obj, **kwargs):  # type: ignore[override]
+        from yoink_dl.services.yttv_oauth import is_oauth_content  # noqa: PLC0415
+        instance = super().model_validate(obj, **kwargs)
+        if hasattr(obj, 'content') and obj.content:
+            instance.is_oauth = is_oauth_content(obj.content)
+        return instance
 
 
 class NsfwDomainResponse(BaseModel):
@@ -114,6 +123,7 @@ class DlUserSettingsResponse(BaseModel):
     send_as_file: bool
     gallery_zip: bool
     use_pool_cookies: bool
+    youtube_auth_mode: str = "cookies"
     updated_at: datetime
     # Computed: true when user may see/use the shared cookie pool
     has_pool_access: bool = False
@@ -172,6 +182,19 @@ class CookieSubmitRequest(BaseModel):
     cookies: dict[str, list[dict]]
 
 
+class YttvOAuthStartResponse(BaseModel):
+    session_id: str
+    verification_url: str
+    user_code: str
+    expires_in: int
+    interval: int
+
+
+class YttvOAuthPollResponse(BaseModel):
+    status: str  # pending | expired | error | ok
+    detail: str | None = None
+
+
 class DlUserSettingsUpdate(BaseModel):
     quality: str | None = None
     codec: str | None = None
@@ -189,3 +212,4 @@ class DlUserSettingsUpdate(BaseModel):
     send_as_file: bool | None = None
     gallery_zip: bool | None = None
     use_pool_cookies: bool | None = None
+    youtube_auth_mode: str | None = None

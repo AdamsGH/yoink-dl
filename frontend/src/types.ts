@@ -18,6 +18,7 @@ export interface UserSettings {
   send_as_file: boolean
   gallery_zip: boolean
   use_pool_cookies: boolean
+  youtube_auth_mode: string
   has_pool_access: boolean
   theme: string
   keyboard: string
@@ -53,6 +54,7 @@ export interface Cookie {
   domain: string
   is_valid: boolean
   is_pool: boolean
+  is_oauth: boolean
   label: string | null
   avatar_url: string | null
   validated_at: string | null

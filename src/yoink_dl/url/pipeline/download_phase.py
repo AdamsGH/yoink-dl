@@ -28,10 +28,18 @@ async def acquire_cookie(
     user_settings: Any,
     context: "ContextTypes.DEFAULT_TYPE",
     domain_cfg: "DomainConfig",
-) -> "tuple[Path | None, int | None]":
-    """Return (cookie_path, cookie_id) or (None, None)."""
+) -> "tuple[Path | None, int | None, Any]":
+    """Return (cookie_path, cookie_id, oauth_tokens). At most one of cookie_path/oauth_tokens is set."""
     if not cookie_mgr:
-        return None, None
+        return None, None, None
+
+    # OAuth mode: use youtubei-service for YouTube URLs
+    youtube_auth_mode = getattr(user_settings, "youtube_auth_mode", "cookies")
+    if youtube_auth_mode == "oauth" and any(d in url for d in ("youtube.com", "youtu.be")):
+        tokens = await cookie_mgr.get_oauth_tokens_for_url(user_id=user_id, url=url)
+        if tokens:
+            logger.debug("Using OAuth tokens for YouTube via youtubei: user=%d", user_id)
+            return None, None, tokens
 
     _perm_repo = context.bot_data.get("perm_repo")
     _has_pool_access = user_settings.role in (UserRole.admin, UserRole.owner)
@@ -46,8 +54,8 @@ async def acquire_cookie(
         no_cookie_domains=domain_cfg.no_cookie,
     )
     if result is not None:
-        return result
-    return None, None
+        return result[0], result[1], None
+    return None, None, None
 
 
 async def run_with_retries(
@@ -94,6 +102,52 @@ async def run_with_retries(
                 raise
 
     raise RuntimeError("unreachable")
+
+
+async def download_via_youtubei_job(
+    *,
+    url: str,
+    user_id: int,
+    tokens: Any,
+    resolved: Any,
+    user_settings: Any,
+    download_dir: Path,
+    audio_only: bool,
+    cookie_mgr: Any,
+    clip: "ClipSpec | None" = None,
+) -> "DownloadJob":
+    """Download via youtubei-service; returns a DownloadJob with files populated."""
+    from yoink_dl.download.youtubei import download_via_youtubei  # noqa: PLC0415
+    from yoink_dl.services.yttv_oauth import encode_content  # noqa: PLC0415
+
+    files, updated_tokens, title = await download_via_youtubei(
+        url=url,
+        tokens=tokens,
+        download_dir=download_dir,
+        audio_only=audio_only,
+        start_sec=clip.start_sec if clip else None,
+        end_sec=clip.end_sec if clip else None,
+    )
+
+    # Persist refreshed tokens back to DB if they changed
+    if updated_tokens is not tokens and cookie_mgr is not None:
+        from yoink_dl.services.cookies_netscape import _domain_from_url  # noqa: PLC0415
+        domain = _domain_from_url(url)
+        content = encode_content(updated_tokens)
+        await cookie_mgr.store(user_id, domain, content)
+
+    job = DownloadJob(
+        user_id=user_id,
+        resolved=resolved,
+        settings=user_settings,
+        download_dir=download_dir,
+        audio_only=audio_only,
+        clip=clip,
+    )
+    job.files = files
+    job.title = title
+    job.status = "uploading"
+    return job
 
 
 async def download(

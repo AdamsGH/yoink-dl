@@ -280,6 +280,7 @@ class DownloaderPlugin:
         bd["nsfw_checker"] = nsfw_checker
 
         bd["settings"] = self._config
+        bd["user_dl_semaphores"] = {}  # user_id -> asyncio.Semaphore(3)
 
         from yoink.core.activity import register_activity_provider, register_list_users_provider  # noqa: PLC0415
         from yoink_dl.activity import dl_activity_provider  # noqa: PLC0415

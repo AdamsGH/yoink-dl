@@ -208,7 +208,7 @@ async def handle_download_error(
         err_text = raw[:300] if raw else t("errors.unknown", lang)
 
     try:
-        await status_message.edit_text(f"\u274c {err_text}", parse_mode=ParseMode.HTML)
+        await status_message.edit_text(err_text, parse_mode=ParseMode.HTML)
     except Exception:
         pass
 

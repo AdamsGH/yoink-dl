@@ -61,8 +61,14 @@ async def _handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     if context.user_data.get(_AWAITING_CLIP_END):
-        await _handle_clip_end_time(update, context)
-        return
+        # If the user sent a new URL (with optional clip suffix), cancel the pending clip dialog
+        # and fall through to normal URL handling.
+        incoming_url = extract_url(update.message)
+        if incoming_url is None:
+            await _handle_clip_end_time(update, context)
+            return
+        # New URL - discard pending state, process as fresh request below
+        context.user_data.pop(_AWAITING_CLIP_END, None)
 
     from yoink_dl.commands.cut import handle_cut_input as _cut_input
     if await _cut_input(update, context):

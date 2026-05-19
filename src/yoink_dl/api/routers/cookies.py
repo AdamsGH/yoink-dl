@@ -16,8 +16,11 @@ from yoink_dl.api.schemas import (
     CookieResponse,
     CookieSubmitRequest,
     CookieTokenResponse,
+    YttvOAuthPollResponse,
+    YttvOAuthStartResponse,
 )
 from yoink_dl.services import cookie_tokens as ct
+from yoink_dl.services import yttv_oauth as yttv
 from yoink_dl.services.cookies import CookieManager
 from yoink_dl.storage.models import Cookie
 
@@ -231,6 +234,62 @@ async def delete_cookie_by_id(
         raise HTTPException(status_code=403, detail="Not your cookie")
     await session.delete(row)
     await session.commit()
+
+
+@router.post("/cookies/yttv/start", response_model=YttvOAuthStartResponse, summary="Start YouTube TV OAuth2 device flow")
+async def yttv_oauth_start(
+    current_user: User = Depends(get_current_user),
+) -> YttvOAuthStartResponse:
+    """Initiate Google device flow. Returns verification_url and user_code to show the user."""
+    try:
+        data = await yttv.start_device_flow(current_user.id)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Google device flow failed: {exc}") from exc
+    return YttvOAuthStartResponse(**data)
+
+
+@router.get("/cookies/yttv/poll/{session_id}", response_model=YttvOAuthPollResponse, summary="Poll YouTube TV OAuth2 device flow")
+async def yttv_oauth_poll(
+    session_id: str,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> YttvOAuthPollResponse:
+    """Poll for OAuth completion. On success, saves tokens to Cookie row for youtube.com."""
+    try:
+        result = await yttv.poll_device_flow(session_id)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Poll failed: {exc}") from exc
+
+    if result["status"] != "ok":
+        return YttvOAuthPollResponse(status=result["status"], detail=result.get("detail"))
+
+    # Verify this session belongs to the calling user
+    if result["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="Session mismatch")
+
+    tokens = result["tokens"]
+    content = yttv.encode_content(tokens)
+    domain = "youtube.com"
+    now = datetime.now(timezone.utc)
+
+    row = (await session.execute(
+        select(Cookie).where(
+            Cookie.user_id == current_user.id,
+            Cookie.domain == domain,
+            Cookie.is_pool.is_(False),
+        )
+    )).scalar_one_or_none()
+
+    if row is None:
+        row = Cookie(user_id=current_user.id, domain=domain, content=content, is_valid=True, is_pool=False)
+        session.add(row)
+    else:
+        row.content = content
+        row.is_valid = True
+        row.updated_at = now
+
+    await session.commit()
+    return YttvOAuthPollResponse(status="ok")
 
 
 @router.post("/cookies/token", response_model=CookieTokenResponse, summary="Generate one-time sync token for browser extension")

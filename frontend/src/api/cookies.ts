@@ -2,6 +2,19 @@ import { apiClient } from '@core/lib/api-client'
 import type { Cookie } from '@dl/types'
 import type { User, PaginatedResponse } from '@core/types/api'
 
+export interface YttvOAuthStartResponse {
+  session_id: string
+  verification_url: string
+  user_code: string
+  expires_in: number
+  interval: number
+}
+
+export interface YttvOAuthPollResponse {
+  status: 'pending' | 'expired' | 'error' | 'ok'
+  detail?: string
+}
+
 export interface CookieTokenResponse {
   token: string
   expires_in: number
@@ -52,6 +65,12 @@ export const cookiesApi = {
 
   refreshLabels: () =>
     apiClient.post<{ updated: number }>('/dl/cookies/pool/refresh-labels', {}),
+
+  yttvOAuthStart: () =>
+    apiClient.post<YttvOAuthStartResponse>('/dl/cookies/yttv/start', {}),
+
+  yttvOAuthPoll: (sessionId: string) =>
+    apiClient.get<YttvOAuthPollResponse>(`/dl/cookies/yttv/poll/${sessionId}`),
 
   listUsers: () =>
     apiClient.get<PaginatedResponse<User>>('/users', { params: { limit: 200 } }),

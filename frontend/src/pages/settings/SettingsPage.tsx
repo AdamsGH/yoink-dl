@@ -5,6 +5,7 @@ import { useGetIdentity } from '@refinedev/core'
 import { Coffee, Ghost, Moon, ShieldCheck, Sun } from 'lucide-react'
 
 import { dlSettingsApi } from '@dl/api/settings'
+import { cookiesApi } from '@dl/api/cookies'
 import { userSettingsApi } from '@core/lib/api/user-settings'
 import { cn } from '@core/lib/utils'
 import { setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@core/lib/i18n'
@@ -15,7 +16,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select,
 import { toast } from '@core/components/ui/toast'
 import { useTelegram, type CatppuccinFlavor } from '@core/layout/TelegramProvider'
 
-type FormValues = Omit<UserSettings, 'user_id' | 'args_json' | 'theme' | 'language' | 'updated_at'>
+type FormValues = Omit<UserSettings, 'user_id' | 'args_json' | 'theme' | 'language' | 'updated_at' | 'has_pool_access'>
 
 const THEME_OPTIONS: { value: CatppuccinFlavor; label: string; icon: React.ReactNode }[] = [
   { value: 'latte',     label: 'Latte',     icon: <Sun className="h-3.5 w-3.5" /> },
@@ -150,16 +151,23 @@ export default function SettingsPage() {
   // Only show use_pool_cookies if user has pool access (admin/owner or shared_cookies perm)
   // We detect this by checking if the setting comes back from the API
   const [hasPoolAccess, setHasPoolAccess] = useState(false)
+  const [hasOAuthCookie, setHasOAuthCookie] = useState(false)
 
   useEffect(() => {
     const dlPromise = dlSettingsApi
       .getMine()
       .then((res) => {
-        const { user_id: _uid, args_json: _args, theme: _theme, language: _lang, updated_at: _ua, ...rest } = res.data
+        const { user_id: _uid, args_json: _args, theme: _theme, language: _lang, updated_at: _ua, has_pool_access: _hpa, ...rest } = res.data
         reset(rest)
         setHasPoolAccess(res.data.has_pool_access === true)
       })
       .catch(() => toast.error(t('settings.save_error')))
+
+    const oauthPromise = cookiesApi.listMine()
+      .then((res) => {
+        setHasOAuthCookie(res.data.some((c: any) => c.is_oauth && c.domain === 'youtube.com' && c.is_valid))
+      })
+      .catch(() => {})
 
     const corePromise = userSettingsApi
       .get()
@@ -171,7 +179,7 @@ export default function SettingsPage() {
       })
       .catch(() => {})
 
-    Promise.all([dlPromise, corePromise]).finally(() => setLoading(false))
+    Promise.all([dlPromise, corePromise, oauthPromise]).finally(() => setLoading(false))
   }, [reset, t, identity?.role])
 
   const onSubmit = async (values: FormValues) => {
@@ -241,7 +249,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Cookies */}
-      {hasPoolAccess && (
+      {(hasPoolAccess || hasOAuthCookie) && (
         <Card>
           <CardHeader className="px-4 py-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -250,12 +258,40 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-1">
-            <ControlledSwitch
-              name="use_pool_cookies"
-              label={t('settings.use_pool_cookies', { defaultValue: 'Use shared cookie pool' })}
-              hint={t('settings.use_pool_cookies_hint', { defaultValue: 'Include shared accounts in rotation alongside your personal cookies' })}
-              control={control}
-            />
+            {hasPoolAccess && (
+              <ControlledSwitch
+                name="use_pool_cookies"
+                label={t('settings.use_pool_cookies', { defaultValue: 'Use shared cookie pool' })}
+                hint={t('settings.use_pool_cookies_hint', { defaultValue: 'Include shared accounts in rotation alongside your personal cookies' })}
+                control={control}
+              />
+            )}
+            {hasOAuthCookie && (
+              <Controller
+                name="youtube_auth_mode"
+                control={control}
+                render={({ field }) => (
+                  <SettingRow
+                    label={t('settings.youtube_auth_mode', { defaultValue: 'YouTube auth method' })}
+                    hint={t('settings.youtube_auth_mode_hint', { defaultValue: 'OAuth: uses your authorized Google account via the YouTube TV flow (age-restricted content, no cookies needed). Netscape cookies: default for everyone, uses exported cookie file.' })}
+                  >
+                    <Select value={field.value ?? 'cookies'} onValueChange={field.onChange}>
+                      <SelectTrigger className="h-8 text-xs w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cookies" className="text-xs">
+                          Netscape cookies
+                        </SelectItem>
+                        <SelectItem value="oauth" className="text-xs">
+                          YouTube TV OAuth
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </SettingRow>
+                )}
+              />
+            )}
           </CardContent>
         </Card>
       )}

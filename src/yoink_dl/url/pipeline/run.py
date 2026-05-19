@@ -26,7 +26,7 @@ from yoink_dl.url.normalizer import normalize
 from yoink_dl.url.resolver import resolve
 from yoink_dl.url.clip import ClipSpec
 from yoink_dl.url.pipeline.cache import try_serve_from_cache, write_to_cache
-from yoink_dl.url.pipeline.download_phase import acquire_cookie, download
+from yoink_dl.url.pipeline.download_phase import acquire_cookie, download, download_via_youtubei_job
 from yoink_dl.url.pipeline.guards import check_rate_limit, check_user_access
 from yoink_dl.url.pipeline.helpers import _can_use_browser_cookies, handle_download_error
 from yoink_dl.url.pipeline.upload_phase import (
@@ -86,6 +86,20 @@ async def run_download(
     if not await check_user_access(user_settings, ctx_group_id, use_message):
         return
     if not await check_rate_limit(user_id, settings, context, user_settings, use_message):
+        return
+
+    # Per-user concurrency limit: max 3 parallel downloads
+    import asyncio as _asyncio  # noqa: PLC0415
+    _semaphores: dict = context.bot_data.setdefault("user_dl_semaphores", {})
+    if user_id not in _semaphores:
+        _semaphores[user_id] = _asyncio.Semaphore(3)
+    _sem = _semaphores[user_id]
+    if _sem.locked():
+        if use_message:
+            await use_message.reply_text(
+                t("pipeline.too_many_downloads", user_settings.language,
+                  defaultValue="You already have 3 downloads running. Please wait for one to finish."),
+            )
         return
 
     quality_override = context.user_data.pop("_ask_quality_override", None)
@@ -149,6 +163,7 @@ async def run_download(
     cookie_id: int | None = None
     resolved: Any = None
 
+    await _sem.acquire()
     try:
         resolved = resolve(
             url,
@@ -159,7 +174,7 @@ async def run_download(
             playlist_end=playlist_end,
         )
 
-        cookie_path, cookie_id = await acquire_cookie(
+        cookie_path, cookie_id, oauth_token = await acquire_cookie(
             cookie_mgr=cookie_mgr,
             user_id=user_id,
             url=url,
@@ -195,26 +210,47 @@ async def run_download(
 
         download_dir = Path(tempfile.mkdtemp(prefix="yoink_"))
 
-        job = await download(
-            url=url,
-            resolved=resolved,
-            user_id=user_id,
-            user_settings=user_settings,
-            settings=settings,
-            download_dir=download_dir,
-            clip=clip,
-            multi_clips=multi_clips,
-            cookie_path=cookie_path,
-            audio_only=audio_only,
-            engine_override=engine_override,
-            use_browser_cookies=use_browser_cookies,
-            context=context,
-            tracker=tracker,
-            status_message=status,
-            lang=lang,
-            chat_id=chat_id,
-            thread_id=thread_id,
-        )
+        if oauth_token is not None:
+            import asyncio as _asyncio  # noqa: PLC0415
+            _mgr = context.bot_data.get("cookie_manager")
+            try:
+                job = await _asyncio.wait_for(
+                    download_via_youtubei_job(
+                        url=url,
+                        user_id=user_id,
+                        tokens=oauth_token,
+                        resolved=resolved,
+                        user_settings=user_settings,
+                        download_dir=download_dir,
+                        audio_only=audio_only,
+                        cookie_mgr=_mgr,
+                        clip=clip,
+                    ),
+                    timeout=300,
+                )
+            except _asyncio.TimeoutError:
+                raise RuntimeError("YouTube OAuth download timed out after 5 minutes")
+        else:
+            job = await download(
+                url=url,
+                resolved=resolved,
+                user_id=user_id,
+                user_settings=user_settings,
+                settings=settings,
+                download_dir=download_dir,
+                clip=clip,
+                multi_clips=multi_clips,
+                cookie_path=cookie_path,
+                audio_only=audio_only,
+                engine_override=engine_override,
+                use_browser_cookies=use_browser_cookies,
+                context=context,
+                tracker=tracker,
+                status_message=status,
+                lang=lang,
+                chat_id=chat_id,
+                thread_id=thread_id,
+            )
 
         if nsfw_checker and not content_is_nsfw and job.info:
             nsfw_hit, nsfw_reason = nsfw_checker.check(url, info=job.info)
@@ -339,6 +375,7 @@ async def run_download(
         )
 
     finally:
+        _sem.release()
         unreg_tracker(tracker)
         if download_dir is not None and download_dir.exists():
             import shutil  # noqa: PLC0415

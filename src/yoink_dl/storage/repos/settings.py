@@ -38,6 +38,7 @@ class UserSettings:
     send_as_file: bool = False
     gallery_zip: bool = False
     use_pool_cookies: bool = True
+    youtube_auth_mode: str = "cookies"
     args_json: dict[str, Any] = field(default_factory=dict)
     blocked: bool = False
     ban_until: datetime | None = None
@@ -70,6 +71,7 @@ def _user_to_settings(user: User, dl: UserSettingsModel | None = None) -> UserSe
         send_as_file=dl.send_as_file if dl else False,
         gallery_zip=dl.gallery_zip if dl else False,
         use_pool_cookies=dl.use_pool_cookies if dl else True,
+        youtube_auth_mode=dl.youtube_auth_mode if dl else "cookies",
         args_json=dl.args_json if dl else {},
         blocked=blocked,
         ban_until=ban_until,

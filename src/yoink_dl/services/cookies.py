@@ -26,6 +26,7 @@ from yoink_dl.services.cookies_netscape import (  # noqa: E402
     _write_tmp,
     _merge_set_cookie,
 )
+from yoink_dl.services.yttv_oauth import OAuthTokens, decode_content, is_oauth_content  # noqa: E402
 
 
 class _CookieCycle:
@@ -496,10 +497,64 @@ class CookieManager:
         if row is None:
             return None
 
+        # OAuth tokens are not Netscape format - skip passing as cookiefile
+        if is_oauth_content(row.content):
+            logger.debug("Skipping OAuth token as cookiefile: id=%d domain=%s", row.id, domain)
+            return None
+
         if row.is_pool:
             logger.debug("Using pool cookie: id=%d domain=%s user=%d", row.id, domain, user_id)
         tmp = _write_tmp(row.content)
         return tmp, row.id
+
+    async def get_oauth_tokens_for_url(
+        self,
+        user_id: int,
+        url: str,
+    ) -> "OAuthTokens | None":
+        """
+        Return fresh OAuthTokens for the URL's domain if the user has an OAuth entry.
+        Refreshes automatically when expired. Returns None if no OAuth entry exists.
+        """
+        domain = _domain_from_url(url)
+
+        async with self._factory() as session:
+            row = (await session.execute(
+                select(Cookie).where(
+                    Cookie.user_id == user_id,
+                    Cookie.domain == domain,
+                    Cookie.is_pool.is_(False),
+                    Cookie.is_valid.is_(True),
+                )
+            )).scalar_one_or_none()
+
+        if row is None or not is_oauth_content(row.content):
+            return None
+
+        tokens = decode_content(row.content)
+        if tokens is None:
+            return None
+
+        from datetime import datetime, timezone  # noqa: PLC0415
+        expires_at = datetime.fromisoformat(tokens["expires_at"])
+        if expires_at <= datetime.now(timezone.utc):
+            # Token expired - refresh it
+            try:
+                from yoink_dl.services.yttv_oauth import refresh_tokens, encode_content  # noqa: PLC0415
+                tokens = await refresh_tokens(tokens)
+                content = encode_content(tokens)
+                now = datetime.now(timezone.utc)
+                async with self._factory() as session:
+                    row2 = await session.get(Cookie, row.id)
+                    if row2 is not None:
+                        row2.content = content
+                        row2.updated_at = now
+                        await session.commit()
+            except Exception:
+                logger.warning("OAuth token refresh failed: user=%d domain=%s", user_id, domain, exc_info=True)
+                return None
+
+        return tokens
 
     async def _rotate_personal_and_pool(
         self, user_id: int, domain: str, personal: Cookie, pool_cookie: Cookie

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, Copy, CookieIcon, ExternalLink, Key, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
+import { CheckCircle, Copy, CookieIcon, ExternalLink, Key, LogIn, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
 
 import { cookiesApi } from '@dl/api/cookies'
-import type { CookieTokenResponse } from '@dl/api/cookies'
+import type { CookieTokenResponse, YttvOAuthStartResponse } from '@dl/api/cookies'
 import { dlSettingsApi } from '@dl/api/settings'
 import { formatDate } from '@core/lib/utils'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
@@ -15,6 +15,7 @@ interface CookieEntry {
   domain: string
   is_valid: boolean
   is_pool: boolean
+  is_oauth: boolean
   updated_at: string
   validated_at?: string | null
   inherited?: boolean
@@ -48,6 +49,60 @@ export default function CookiesPage() {
   const [syncToken, setSyncToken] = useState<CookieTokenResponse | null>(null)
   const [tokenLoading, setTokenLoading] = useState(false)
   const [tokenCopied, setTokenCopied] = useState(false)
+
+  // YouTube TV OAuth2 device flow
+  const [yttvFlow, setYttvFlow] = useState<YttvOAuthStartResponse | null>(null)
+  const [yttvLoading, setYttvLoading] = useState(false)
+  const [yttvPolling, setYttvPolling] = useState(false)
+  const [yttvCodeCopied, setYttvCodeCopied] = useState(false)
+  const yttvPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopYttvPoll = () => {
+    if (yttvPollRef.current) { clearInterval(yttvPollRef.current); yttvPollRef.current = null }
+  }
+
+  const startYttvFlow = async () => {
+    stopYttvPoll()
+    setYttvFlow(null)
+    setYttvLoading(true)
+    try {
+      const r = await cookiesApi.yttvOAuthStart()
+      setYttvFlow(r.data)
+      setYttvPolling(true)
+      yttvPollRef.current = setInterval(async () => {
+        try {
+          const poll = await cookiesApi.yttvOAuthPoll(r.data.session_id)
+          if (poll.data.status === 'ok') {
+            stopYttvPoll()
+            setYttvPolling(false)
+            setYttvFlow(null)
+            toast.success('YouTube authorized successfully')
+            load()
+          } else if (poll.data.status === 'expired' || poll.data.status === 'error') {
+            stopYttvPoll()
+            setYttvPolling(false)
+            setYttvFlow(null)
+            toast.error(poll.data.status === 'expired' ? 'Authorization expired' : (poll.data.detail ?? 'Authorization failed'))
+          }
+        } catch {
+          stopYttvPoll()
+          setYttvPolling(false)
+        }
+      }, (r.data.interval + 1) * 1000)
+    } catch {
+      toast.error('Failed to start authorization')
+    } finally {
+      setYttvLoading(false)
+    }
+  }
+
+  const cancelYttvFlow = () => {
+    stopYttvPoll()
+    setYttvPolling(false)
+    setYttvFlow(null)
+  }
+
+  useEffect(() => () => stopYttvPoll(), [])
 
   const load = () => {
     setLoading(true)
@@ -270,9 +325,18 @@ export default function CookiesPage() {
                       <CookieFavicon domain={c.domain} />
                     </ItemMedia>
                     <ItemContent>
-                      <ItemTitle>{c.domain}</ItemTitle>
+                      <ItemTitle className="flex items-center gap-1.5">
+                        {c.domain}
+                        {c.is_oauth && (
+                          <span className="rounded text-[10px] font-medium px-1 py-0.5 bg-primary/10 text-primary leading-none">
+                            OAuth
+                          </span>
+                        )}
+                      </ItemTitle>
                       <ItemDescription>
-                        {t('cookies.updated', { defaultValue: 'Updated' })} {formatDate(c.updated_at)}
+                        {c.is_oauth
+                          ? 'YouTube TV authorization'
+                          : `${t('cookies.updated', { defaultValue: 'Updated' })} ${formatDate(c.updated_at)}`}
                       </ItemDescription>
                     </ItemContent>
                     <ItemActions>
@@ -286,16 +350,18 @@ export default function CookiesPage() {
                             : t('cookies.never', { defaultValue: 'Never validated' })}
                         </TooltipContent>
                       </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={validating === c.id} onClick={() => validate(c.id)}>
-                            {validating === c.id
-                              ? <RefreshCw className="h-4 w-4 animate-spin" />
-                              : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('cookies.validate_btn', { defaultValue: 'Re-validate' })}</TooltipContent>
-                      </Tooltip>
+                      {!c.is_oauth && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" disabled={validating === c.id} onClick={() => validate(c.id)}>
+                              {validating === c.id
+                                ? <RefreshCw className="h-4 w-4 animate-spin" />
+                                : <CheckCircle className="h-4 w-4 text-muted-foreground" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('cookies.validate_btn', { defaultValue: 'Re-validate' })}</TooltipContent>
+                        </Tooltip>
+                      )}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -592,6 +658,84 @@ export default function CookiesPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* YouTube TV OAuth2 */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <LogIn className="h-4 w-4 text-muted-foreground" />
+              Authorize via YouTube TV
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm px-4 pb-4">
+            <p className="text-muted-foreground">
+              Sign in with your Google account using the TV device flow. Works on any device without a browser extension.
+            </p>
+            <p className="text-muted-foreground text-xs">
+              After authorization, go to <b>Settings → Cookies → YouTube auth method</b> and switch to <b>YouTube TV OAuth</b> to use this account for downloads. By default yt-dlp is used for everyone.
+            </p>
+
+            {!yttvFlow ? (
+              <Button
+                size="sm"
+                onClick={startYttvFlow}
+                disabled={yttvLoading}
+              >
+                {yttvLoading
+                  ? <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  : <LogIn className="mr-1.5 h-3.5 w-3.5" />}
+                {yttvLoading ? 'Starting...' : 'Start authorization'}
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">1. Open this URL in any browser:</p>
+                  <a
+                    href={yttvFlow.verification_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                    {yttvFlow.verification_url}
+                  </a>
+
+                  <p className="text-xs text-muted-foreground pt-1">2. Enter this code:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="rounded bg-muted px-3 py-1.5 text-lg font-mono font-bold tracking-widest select-all">
+                      {yttvFlow.user_code}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(yttvFlow.user_code)
+                        setYttvCodeCopied(true)
+                        setTimeout(() => setYttvCodeCopied(false), 2000)
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    {yttvCodeCopied && <span className="text-xs text-muted-foreground">Copied!</span>}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {yttvPolling && (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Waiting for authorization...
+                    </span>
+                  )}
+                  <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={cancelYttvFlow}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
