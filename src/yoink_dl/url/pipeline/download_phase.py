@@ -203,6 +203,12 @@ async def download(
     action_task = asyncio.create_task(
         _chat_action_loop(context.bot, chat_id, action, thread_id, action_stop)
     )
+    _bot_repo = context.bot_data.get("bot_settings_repo")
+    if _bot_repo is not None:
+        _size_raw = await _bot_repo.get("dl.max_file_size_gb")
+        if _size_raw is not None:
+            settings = settings.model_copy(update={"max_file_size_gb": float(_size_raw)})
+
     manager = DownloadManager(settings=settings)
     try:
         return await run_with_retries(
