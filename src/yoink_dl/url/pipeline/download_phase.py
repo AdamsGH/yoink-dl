@@ -205,9 +205,13 @@ async def download(
     )
     _bot_repo = context.bot_data.get("bot_settings_repo")
     if _bot_repo is not None:
-        _size_raw = await _bot_repo.get("dl.max_file_size_gb")
+        _size_raw = await _bot_repo.get("dl.max_file_size_mb")
+        if _size_raw is None:
+            _size_raw_gb = await _bot_repo.get("dl.max_file_size_gb")
+            if _size_raw_gb is not None:
+                _size_raw = str(int(float(_size_raw_gb) * 1024))
         if _size_raw is not None:
-            settings = settings.model_copy(update={"max_file_size_gb": float(_size_raw)})
+            settings = settings.model_copy(update={"max_file_size_mb": int(_size_raw)})
 
     manager = DownloadManager(settings=settings)
     try:

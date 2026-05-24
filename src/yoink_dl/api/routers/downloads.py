@@ -30,13 +30,22 @@ _AUDIO_DOMAINS = frozenset({
     "last.fm", "audiomack.com", "mixcloud.com",
 })
 
+def _read_max_file_size_mb(raw: dict[str, str]) -> int:
+    """Read max_file_size_mb, falling back to legacy _gb key converted to MB."""
+    if "dl.max_file_size_mb" in raw:
+        return int(raw["dl.max_file_size_mb"])
+    if "dl.max_file_size_gb" in raw:
+        return int(float(raw["dl.max_file_size_gb"]) * 1024)
+    return 2048
+
+
 def _dl_admin_defaults() -> dict[str, str]:
     from yoink_dl.config import DownloaderConfig  # noqa: PLC0415
     c = DownloaderConfig()
     return {
         "dl.download_retries":      str(c.download_retries),
         "dl.download_timeout":      str(c.download_timeout),
-        "dl.max_file_size_gb":      str(c.max_file_size_gb),
+        "dl.max_file_size_mb":      str(c.max_file_size_mb),
         "dl.rate_limit_per_minute": str(c.rate_limit_per_minute),
         "dl.rate_limit_per_hour":   str(c.rate_limit_per_hour),
         "dl.rate_limit_per_day":    str(c.rate_limit_per_day),
@@ -64,7 +73,7 @@ async def _get_dl_admin_settings(request: Request) -> DlAdminSettings:
     return DlAdminSettings(
         download_retries=int(raw["dl.download_retries"]),
         download_timeout=int(raw["dl.download_timeout"]),
-        max_file_size_gb=float(raw["dl.max_file_size_gb"]),
+        max_file_size_mb=_read_max_file_size_mb(raw),
         rate_limit_per_minute=int(raw["dl.rate_limit_per_minute"]),
         rate_limit_per_hour=int(raw["dl.rate_limit_per_hour"]),
         rate_limit_per_day=int(raw["dl.rate_limit_per_day"]),
@@ -183,7 +192,7 @@ async def update_dl_admin_settings(
     mapping = {
         "download_retries":      "dl.download_retries",
         "download_timeout":      "dl.download_timeout",
-        "max_file_size_gb":      "dl.max_file_size_gb",
+        "max_file_size_mb":      "dl.max_file_size_mb",
         "rate_limit_per_minute": "dl.rate_limit_per_minute",
         "rate_limit_per_hour":   "dl.rate_limit_per_hour",
         "rate_limit_per_day":    "dl.rate_limit_per_day",

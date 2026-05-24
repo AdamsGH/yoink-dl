@@ -12,7 +12,7 @@ class DownloaderConfig(BaseSettings):
     )
 
     # Limits
-    max_file_size_gb: float = 2.0
+    max_file_size_mb: int = 2048
     download_timeout: int = 1200
     max_playlist_count: int = 50
 
@@ -70,7 +70,7 @@ class DownloaderConfig(BaseSettings):
 
     @property
     def max_file_size_bytes(self) -> int:
-        return int(self.max_file_size_gb * 1024 ** 3)
+        return self.max_file_size_mb * 1024 * 1024
 
     def browser_cookies_available(self) -> bool:
         """True when a browser profile path is configured and exists on disk."""

@@ -134,7 +134,7 @@ class DlAdminSettings(BaseModel):
     """Global downloader settings stored in BotSetting KV (prefix dl.*)."""
     download_retries: int = 3
     download_timeout: int = 1200
-    max_file_size_gb: float = 2.0
+    max_file_size_mb: int = 2048
     rate_limit_per_minute: int = 5
     rate_limit_per_hour: int = 30
     rate_limit_per_day: int = 100
@@ -144,7 +144,7 @@ class DlAdminSettings(BaseModel):
 class DlAdminSettingsPatch(BaseModel):
     download_retries: int | None = None
     download_timeout: int | None = None
-    max_file_size_gb: float | None = None
+    max_file_size_mb: int | None = None
     rate_limit_per_minute: int | None = None
     rate_limit_per_hour: int | None = None
     rate_limit_per_day: int | None = None

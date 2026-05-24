@@ -95,14 +95,14 @@ export function DlSettingsSection() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm">Max file size</p>
-            <p className="text-xs text-muted-foreground">Telegram bot limit is 2 GB</p>
+            <p className="text-xs text-muted-foreground">Telegram bot limit is 2048 MB</p>
           </div>
-          <span className="text-sm font-medium tabular-nums">{val('max_file_size_gb')} GB</span>
+          <span className="text-sm font-medium tabular-nums">{val('max_file_size_mb')} MB</span>
         </div>
         <Slider
-          min={0.5} max={2} step={0.5}
-          value={[val('max_file_size_gb')]}
-          onValueChange={([v]) => set('max_file_size_gb', v)}
+          min={100} max={2000} step={100}
+          value={[val('max_file_size_mb')]}
+          onValueChange={([v]) => set('max_file_size_mb', v)}
         />
       </div>
 

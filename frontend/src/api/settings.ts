@@ -6,7 +6,7 @@ export type { DlUserSettings }
 export interface DlAdminSettings {
   download_retries: number
   download_timeout: number
-  max_file_size_gb: number
+  max_file_size_mb: number
   rate_limit_per_minute: number
   rate_limit_per_hour: number
   rate_limit_per_day: number
