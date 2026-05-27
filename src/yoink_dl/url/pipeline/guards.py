@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yoink.core.db.models import User, UserRole
+from yoink.core.db.models import UserRole
 from yoink.core.i18n import t
 from yoink.core.metrics import metrics
 from yoink_dl.storage.repos import RateLimitRepo
@@ -13,15 +13,16 @@ if TYPE_CHECKING:
     from telegram.ext import ContextTypes
 
     from yoink_dl.config import DownloaderConfig
+    from yoink_dl.storage.repos.settings import UserSettings
 
 
 async def check_user_access(
-    user_settings: User,
+    user_settings: UserSettings,
     ctx_group_id: int | None,
     use_message: Message | None,
 ) -> bool:
     """Return False (and optionally reply) if the user should not proceed."""
-    if user_settings.is_blocked:
+    if user_settings.blocked:
         return False
     if user_settings.role == UserRole.restricted:
         if ctx_group_id is None and use_message:
@@ -34,7 +35,7 @@ async def check_rate_limit(
     user_id: int,
     settings: DownloaderConfig,
     context: ContextTypes.DEFAULT_TYPE,
-    user_settings: User,
+    user_settings: UserSettings,
     use_message: Message | None,
 ) -> bool:
     """Return False (and reply) if the user is rate-limited."""

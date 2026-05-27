@@ -86,6 +86,13 @@ async def run_download(
     if not await check_rate_limit(user_id, settings, context, user_settings, use_message):
         return
 
+    # PTB types user_data as Optional, but every active handler binds a dict;
+    # bail loudly if the runtime contract is broken.
+    if context.user_data is None:
+        logger.error("run_download invoked without user_data; skipping")
+        return
+    user_data = context.user_data
+
     # Per-user concurrency limit: max 3 parallel downloads
     import asyncio as _asyncio  # noqa: PLC0415
     _semaphores: dict = context.bot_data.setdefault("user_dl_semaphores", {})
@@ -100,7 +107,7 @@ async def run_download(
             )
         return
 
-    quality_override = context.user_data.pop("_ask_quality_override", None)
+    quality_override = user_data.pop("_ask_quality_override", None)
     if quality_override:
         import dataclasses  # noqa: PLC0415
         user_settings = dataclasses.replace(user_settings, quality=quality_override)
@@ -116,7 +123,7 @@ async def run_download(
     is_private = (chat.type == "private") if chat else True
     group_id = ctx_group_id
 
-    force_mode = context.user_data.pop("force_mode", None)
+    force_mode = user_data.pop("force_mode", None)
     audio_only = force_mode == "audio"
 
     cache_key = make_cache_key(
@@ -181,11 +188,11 @@ async def run_download(
             domain_cfg=domain_cfg,
         )
 
-        multi_clips: list = context.user_data.pop("_clips", [])
+        multi_clips: list = user_data.pop("_clips", [])
         from yoink_dl.url.resolver import Engine  # noqa: PLC0415
         engine_override = Engine.GALLERY_DL if force_mode == "gallery" else None
 
-        user_forced_nsfw: bool = bool(context.user_data.pop("force_nsfw", False))
+        user_forced_nsfw: bool = bool(user_data.pop("force_nsfw", False))
         content_is_nsfw = user_forced_nsfw
 
         if nsfw_checker and not content_is_nsfw:
