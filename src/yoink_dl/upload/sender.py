@@ -25,6 +25,7 @@ from telegram.error import BadRequest, RetryAfter, TimedOut
 from telegram.constants import ParseMode
 
 from yoink_dl.config import DownloaderConfig
+from yoink_dl.upload._common import CommonSendArgs
 from yoink_dl.utils.errors import DownloadError
 
 logger = logging.getLogger(__name__)
@@ -86,71 +87,76 @@ async def send_file(
     write_timeout = config.upload_write_timeout
     read_timeout = config.upload_read_timeout
 
-    common: dict[str, Any] = {"chat_id": chat_id, "parse_mode": ParseMode.HTML}
-    rp = _reply_params(reply_to)
-    if rp:
-        common["reply_parameters"] = rp
-    if thread_id:
-        common["message_thread_id"] = thread_id
+    common = CommonSendArgs(
+        chat_id=chat_id,
+        reply_parameters=_reply_params(reply_to),
+        message_thread_id=thread_id or None,
+    )
 
     async def _as_document(cap: str) -> Message:
-        kw = {
-            **common,
-            "document": str(file),
-            "filename": file.name,
-            "caption": cap,
-            "write_timeout": write_timeout,
-            "read_timeout": read_timeout,
-            "connect_timeout": _CONNECT_TIMEOUT,
-        }
-        if m.thumb:
-            kw["thumbnail"] = str(m.thumb)
-        return await bot.send_document(**kw)
+        return await bot.send_document(
+            chat_id=common.chat_id,
+            parse_mode=common.parse_mode,
+            reply_parameters=common.reply_parameters,
+            message_thread_id=common.message_thread_id,
+            document=str(file),
+            filename=file.name,
+            caption=cap,
+            thumbnail=str(m.thumb) if m.thumb else None,
+            write_timeout=write_timeout,
+            read_timeout=read_timeout,
+            connect_timeout=_CONNECT_TIMEOUT,
+        )
 
     async def _as_video(cap: str) -> Message:
-        kw = {
-            **common,
-            "video": str(file),
-            "caption": cap,
-            "supports_streaming": True,
-            "write_timeout": write_timeout,
-            "read_timeout": read_timeout,
-            "connect_timeout": _CONNECT_TIMEOUT,
-        }
-        if m.duration:
-            kw["duration"] = m.duration
-        if m.width:
-            kw["width"] = m.width
-        if m.height:
-            kw["height"] = m.height
-        if m.thumb:
-            kw["thumbnail"] = str(m.thumb)
-            kw["cover"] = str(m.thumb)
-        if has_spoiler:
-            kw["has_spoiler"] = True
-        if show_caption_above_media and cap:
-            kw["show_caption_above_media"] = True
-        return await bot.send_video(**kw)
+        return await bot.send_video(
+            chat_id=common.chat_id,
+            parse_mode=common.parse_mode,
+            reply_parameters=common.reply_parameters,
+            message_thread_id=common.message_thread_id,
+            video=str(file),
+            caption=cap,
+            supports_streaming=True,
+            duration=m.duration if m.duration else None,
+            width=m.width if m.width else None,
+            height=m.height if m.height else None,
+            thumbnail=str(m.thumb) if m.thumb else None,
+            cover=str(m.thumb) if m.thumb else None,
+            has_spoiler=has_spoiler or None,
+            show_caption_above_media=(show_caption_above_media and bool(cap)) or None,
+            write_timeout=write_timeout,
+            read_timeout=read_timeout,
+            connect_timeout=_CONNECT_TIMEOUT,
+        )
 
     async def _as_audio(cap: str) -> Message:
-        kw = {**common, "audio": str(file), "caption": cap, "write_timeout": write_timeout, "read_timeout": read_timeout}
-        if m.duration:
-            kw["duration"] = m.duration
-        if m.performer:
-            kw["performer"] = m.performer
-        if m.title:
-            kw["title"] = m.title
-        if m.thumb:
-            kw["thumbnail"] = str(m.thumb)
-        return await bot.send_audio(**kw)
+        return await bot.send_audio(
+            chat_id=common.chat_id,
+            parse_mode=common.parse_mode,
+            reply_parameters=common.reply_parameters,
+            message_thread_id=common.message_thread_id,
+            audio=str(file),
+            caption=cap,
+            duration=m.duration if m.duration else None,
+            performer=m.performer if m.performer else None,
+            title=m.title if m.title else None,
+            thumbnail=str(m.thumb) if m.thumb else None,
+            write_timeout=write_timeout,
+            read_timeout=read_timeout,
+            connect_timeout=_CONNECT_TIMEOUT,
+        )
 
     async def _as_photo(cap: str) -> Message:
-        kw = {**common, "photo": str(file), "caption": cap}
-        if has_spoiler:
-            kw["has_spoiler"] = True
-        if show_caption_above_media and cap:
-            kw["show_caption_above_media"] = True
-        return await bot.send_photo(**kw)
+        return await bot.send_photo(
+            chat_id=common.chat_id,
+            parse_mode=common.parse_mode,
+            reply_parameters=common.reply_parameters,
+            message_thread_id=common.message_thread_id,
+            photo=str(file),
+            caption=cap,
+            has_spoiler=has_spoiler or None,
+            show_caption_above_media=(show_caption_above_media and bool(cap)) or None,
+        )
 
     if send_as_file or ext not in (_VIDEO_EXTS | _AUDIO_EXTS | _IMAGE_EXTS):
         primary, is_doc = _as_document, True
@@ -306,22 +312,19 @@ async def send_media_group(
                 # Type mismatch within chunk - send as document
                 media.append(InputMediaDocument(media=f, caption=cap, parse_mode=ParseMode.HTML))
 
-        kw: dict[str, Any] = {
-            "chat_id": chat_id,
-            "media": media,
-            "write_timeout": config.upload_write_timeout,
-            "read_timeout": config.upload_read_timeout,
-            "connect_timeout": _CONNECT_TIMEOUT,
-        }
-        if reply_to is not None and chunk_start == 0:
-            kw["reply_parameters"] = _reply_params(reply_to)
-        if thread_id:
-            kw["message_thread_id"] = thread_id
-
+        rp = _reply_params(reply_to) if (reply_to is not None and chunk_start == 0) else None
         flood_left = 3
         while True:
             try:
-                sent = await bot.send_media_group(**kw)
+                sent = await bot.send_media_group(
+                    chat_id=chat_id,
+                    media=media,
+                    reply_parameters=rp,
+                    message_thread_id=thread_id or None,
+                    write_timeout=config.upload_write_timeout,
+                    read_timeout=config.upload_read_timeout,
+                    connect_timeout=_CONNECT_TIMEOUT,
+                )
                 all_messages.extend(sent)
                 break
             except RetryAfter as e:

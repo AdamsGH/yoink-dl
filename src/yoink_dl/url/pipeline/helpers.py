@@ -11,6 +11,8 @@ from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from yoink_dl.upload._common import CommonSendArgs
+
 from yoink_dl.storage.repos import CachedFile
 
 logger = logging.getLogger(__name__)
@@ -50,12 +52,12 @@ async def send_cached(
 ) -> Any:
     from telegram import InputMediaDocument, InputMediaPhoto, InputMediaVideo, ReplyParameters
 
-    common: dict[str, Any] = {"chat_id": chat_id, "parse_mode": ParseMode.HTML}
     rp = ReplyParameters(message_id=reply_to, allow_sending_without_reply=True) if reply_to else None
-    if rp:
-        common["reply_parameters"] = rp
-    if thread_id:
-        common["message_thread_id"] = thread_id
+    common = CommonSendArgs(
+        chat_id=chat_id,
+        reply_parameters=rp,
+        message_thread_id=thread_id or None,
+    )
 
     if isinstance(cached, list) and len(cached) > 1:
         media: list[Any] = []
@@ -76,19 +78,56 @@ async def send_cached(
                 media.append(InputMediaDocument(
                     media=item.file_id, caption=cap, parse_mode=ParseMode.HTML,
                 ))
-        sent = await bot.send_media_group(media=media, write_timeout=120, read_timeout=120, **common)
+        sent = await bot.send_media_group(
+            chat_id=common.chat_id,
+            parse_mode=common.parse_mode,
+            reply_parameters=common.reply_parameters,
+            message_thread_id=common.message_thread_id,
+            media=media,
+            write_timeout=120,
+            read_timeout=120,
+        )
         return sent[0]
 
     item = cached[0] if isinstance(cached, list) else cached
     file_type = "document" if send_as_file else item.file_type
-    kw = {**common, "caption": caption}
     if file_type == "video":
-        return await bot.send_video(video=item.file_id, has_spoiler=has_spoiler, **kw)
+        return await bot.send_video(
+            chat_id=common.chat_id,
+            parse_mode=common.parse_mode,
+            reply_parameters=common.reply_parameters,
+            message_thread_id=common.message_thread_id,
+            video=item.file_id,
+            caption=caption,
+            has_spoiler=has_spoiler or None,
+        )
     if file_type == "audio":
-        return await bot.send_audio(audio=item.file_id, **kw)
+        return await bot.send_audio(
+            chat_id=common.chat_id,
+            parse_mode=common.parse_mode,
+            reply_parameters=common.reply_parameters,
+            message_thread_id=common.message_thread_id,
+            audio=item.file_id,
+            caption=caption,
+        )
     if file_type == "photo":
-        return await bot.send_photo(photo=item.file_id, has_spoiler=has_spoiler, **kw)
-    return await bot.send_document(document=item.file_id, **kw)
+        return await bot.send_photo(
+            chat_id=common.chat_id,
+            parse_mode=common.parse_mode,
+            reply_parameters=common.reply_parameters,
+            message_thread_id=common.message_thread_id,
+            photo=item.file_id,
+            caption=caption,
+            has_spoiler=has_spoiler or None,
+        )
+    return await bot.send_document(
+        chat_id=common.chat_id,
+        parse_mode=common.parse_mode,
+        reply_parameters=common.reply_parameters,
+        message_thread_id=common.message_thread_id,
+        document=item.file_id,
+        caption=caption,
+    )
 
 
 def _extract_file_id(result: Any) -> tuple[str, str] | None:
