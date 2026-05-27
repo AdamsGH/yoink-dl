@@ -5,6 +5,10 @@ import ipaddress
 import random
 import threading
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from yoink_dl.config import DownloaderConfig
 
 
 @dataclass(frozen=True)
@@ -39,7 +43,7 @@ class IPv6Pool:
         self._last = int(self._network.num_addresses) - 1
 
     @classmethod
-    def from_settings(cls, settings: "DownloaderConfig") -> "IPv6Pool | None":  # type: ignore[name-defined]
+    def from_settings(cls, settings: DownloaderConfig) -> IPv6Pool | None:
         if not settings.ipv6_cidr:
             return None
         return cls(settings.ipv6_cidr)

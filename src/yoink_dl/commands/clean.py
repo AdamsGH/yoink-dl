@@ -76,7 +76,7 @@ async def _cb_clean(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if key in _DEFAULTS:
         user = await repo.update(uid, **_DEFAULTS[key])
-        label = next(l for k, l in _ITEMS if k == key)
+        label = next(lbl for k, lbl in _ITEMS if k == key)
         msg = t("clean.done", user.language, what=label)
         await query.answer(msg, show_alert=False)
         # Keep the menu visible after resetting individual item

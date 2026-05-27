@@ -150,7 +150,7 @@ async def _handle_cookie(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     domain = token.lower().lstrip(".")
     content = await mgr.get_content(user_id, domain)
     if content:
-        lines = [l for l in content.splitlines() if l and not l.startswith("#")]
+        lines = [ln for ln in content.splitlines() if ln and not ln.startswith("#")]
         await msg.reply_text(
             f"Cookie for <code>{domain}</code>: {len(lines)} entries.",
             parse_mode=ParseMode.HTML,
@@ -211,7 +211,7 @@ async def _store_cookie(msg: object, user_id: int, domain: str, content: str, mg
         return
 
     await mgr.store(user_id, domain, content)
-    lines = [l for l in content.splitlines() if l and not l.startswith("#")]
+    lines = [ln for ln in content.splitlines() if ln and not ln.startswith("#")]
     await msg.reply_text(
         f"Saved cookie for <code>{domain}</code> ({len(lines)} entries).",
         parse_mode=ParseMode.HTML,

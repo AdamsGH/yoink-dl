@@ -39,3 +39,18 @@ testpaths = ["src/tests"]
 line-length = 100
 target-version = "py312"
 src = ["src"]
+
+[tool.pyrefly]
+project-includes = ["**/*.py*", "**/*.ipynb"]
+# Plugins live in a monorepo: the real interpreter + deps are at the repo root,
+# and cross-plugin/core imports resolve via explicit search paths.
+python-interpreter-path = "../../.venv/bin/python"
+search-path = [
+    "src",
+    "../../src",
+    "../yoink-insight/src",
+    "../yoink-music/src",
+    "../yoink-stats/src",
+]
+# Heavy CLI deps that ship in the docker image but not in the core monorepo .venv.
+ignore-missing-imports = ["yt_dlp", "gallery_dl", "mutagen"]
