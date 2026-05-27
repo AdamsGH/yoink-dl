@@ -1,9 +1,11 @@
 """DL plugin formatting utilities."""
 from __future__ import annotations
 
-from yoink.core.utils.formatting import format_size, humantime  # noqa: F401  re-exported
+from yoink.core.utils.formatting import format_size, humantime
 
 humanbytes = format_size  # legacy alias used in progress.py
+
+__all__ = ["format_size", "humanbytes", "humantime", "progress_bar"]
 
 
 def progress_bar(current: int, total: int, width: int = 10) -> str:

@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import urllib.parse
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -32,7 +33,7 @@ async def download_via_youtubei(
     Download a YouTube video via youtubei-service.
     Returns (list_of_files, possibly_refreshed_tokens, title).
     """
-    payload = {
+    payload: dict[str, Any] = {
         "url": url,
         "tokens": {
             "access_token": tokens["access_token"],

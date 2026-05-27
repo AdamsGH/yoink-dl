@@ -210,13 +210,14 @@ async def _handle_url_query(
     file_cache: FileCacheRepo | None = context.bot_data.get("file_cache")
     if file_cache:
         cache_key = make_cache_key(url)
-        cached = await file_cache.get(cache_key) if cache_key else None
-        if cached and cached.file_type == "video":
+        cached_list = await file_cache.get(cache_key) if cache_key else []
+        first = cached_list[0] if cached_list else None
+        if first and first.file_type == "video":
             await inline_query.answer(
                 [InlineQueryResultCachedVideo(
                     id=_make_result_id(url),
-                    video_file_id=cached.file_id,
-                    title=cached.title or url,
+                    video_file_id=first.file_id,
+                    title=first.title or url,
                 )],
                 cache_time=300,
             )

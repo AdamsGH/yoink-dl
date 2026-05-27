@@ -13,13 +13,16 @@ _TRACKING_PARAMS = frozenset({
 })
 
 
-def normalize(url: str, domain_cfg: DomainConfig | None = None) -> str:
+def normalize(url: str | None, domain_cfg: DomainConfig | None = None) -> str:
     """
     Full normalization pipeline:
     1. Resolve Google redirect wrappers
     2. Strip tracking params
     3. Strip range tags (*1*5)
     4. Apply domain-specific rules
+
+    Defensive: accepts None (returns empty) so callers don't need a pre-guard
+    when wiring from PTB Optional fields.
     """
     if not url or not isinstance(url, str):
         return ""
