@@ -45,6 +45,8 @@ async def _cmd_nsfw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
         if arg == "mark":
+            if context.user_data is None:
+                return
             context.user_data["force_nsfw"] = True
             await update.message.reply_html(
                 "⚠️ <b>Next URL will be treated as NSFW.</b>\n"
@@ -93,6 +95,8 @@ async def _cb_nsfw(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     if action == "mark":
+        if context.user_data is None:
+            return
         context.user_data["force_nsfw"] = True
         await query.edit_message_text(
             "⚠️ <b>Next URL will be treated as NSFW.</b>\nSend a URL now.",

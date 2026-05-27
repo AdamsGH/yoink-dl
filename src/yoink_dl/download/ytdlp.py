@@ -326,15 +326,17 @@ async def extract_info(
             info = ydl.extract_info(url, download=False)
         if info is None:
             raise DownloadError("yt-dlp returned no info")
+        if not isinstance(info, dict):
+            raise DownloadError(f"yt-dlp returned unexpected type {type(info).__name__}")
         # Flatten playlist: use first entry
-        if isinstance(info, dict) and "entries" in info:
+        if "entries" in info:
             entries = list(info.get("entries") or [])
             if entries:
                 first = entries[0]
                 first["_playlist_entries"] = entries
                 first["_playlist_title"] = info.get("title", "")
                 return first
-        return info  # type: ignore[return-value]
+        return info
 
     try:
         return await loop.run_in_executor(_executor, _run)

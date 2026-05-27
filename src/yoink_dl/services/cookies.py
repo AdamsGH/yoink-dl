@@ -37,7 +37,15 @@ class _CookieCycle:
     """
 
     def __init__(self, items: list) -> None:
-        self.ids: list[int] = [getattr(item, "id", item) for item in items]
+        # Each item is either an ORM row exposing .id, or already an int. Anything
+        # else is a packaging bug in the caller; reject loudly.
+        ids: list[int] = []
+        for item in items:
+            raw = getattr(item, "id", item)
+            if raw is None:
+                continue
+            ids.append(int(raw))
+        self.ids = ids
         self._cycle = itertools.cycle(items)
 
     def __next__(self):
@@ -375,7 +383,12 @@ class CookieManager:
         try:
             if bare in ("youtube.com", "google.com") or bare.endswith((".youtube.com", ".google.com")):
                 result = await _fetch_youtube(content, return_set_cookie=True, timeout=self._account_info_timeout)
-                info, new_cookies = result  # type: ignore[misc]
+                # return_set_cookie=True always returns the (info, cookies) tuple shape;
+                # the narrower 'AccountInfo | None' return only happens with the default flag.
+                if isinstance(result, tuple):
+                    info, new_cookies = result
+                else:
+                    info = result
                 is_valid = info is not None
             else:
                 info = await fetch_account_info(domain, content, timeout=self._account_info_timeout)

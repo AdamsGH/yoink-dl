@@ -163,7 +163,7 @@ def _merge_set_cookie(original: str, set_cookie_header: str) -> str:
     """
 
     try:
-        from set_cookie_parser import parse as _parse, split_cookie_header as _split  # type: ignore[import]
+        from set_cookie_parser import parse as _parse, split_cookie_header as _split
         parsed = _parse(_split(set_cookie_header), decode_values=False)
     except ImportError:
         # Fallback: skip update if library not available

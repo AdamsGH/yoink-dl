@@ -12,7 +12,7 @@ from collections import Counter
 
 from sqlalchemy import select
 
-from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 from yoink_dl.bot.middleware import get_session_factory, get_user_repo
@@ -100,9 +100,13 @@ async def _cb_tags(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not query:
         return
     await query.answer()
-    try:
-        await query.message.delete()  # type: ignore[union-attr]
-    except Exception:
+    qmsg = query.message
+    if isinstance(qmsg, Message):
+        try:
+            await qmsg.delete()
+        except Exception:
+            await query.edit_message_reply_markup(reply_markup=None)
+    else:
         await query.edit_message_reply_markup(reply_markup=None)
 
 

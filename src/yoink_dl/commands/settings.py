@@ -1,7 +1,7 @@
 """/settings - overview of all user preferences with quick-access buttons."""
 from __future__ import annotations
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from yoink.core.bot.access import AccessPolicy, require_access
@@ -82,7 +82,7 @@ async def _cb_settings_goto(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         "cookie":    "cookie",
     }
     cmd = handlers.get(target)
-    if cmd and query.message:
+    if cmd and isinstance(query.message, Message):
         lang = "en"
         if update.effective_user:
             user = await get_user_repo(context).get_or_create(update.effective_user.id)

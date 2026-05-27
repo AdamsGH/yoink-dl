@@ -24,7 +24,7 @@ async def _cmd_proxy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not update.message or not update.effective_user:
         return
     settings = get_settings(context)
-    if not settings.proxy_url:
+    if not settings.proxy_urls:
         repo = get_user_repo(context)
         user = await repo.get_or_create(update.effective_user.id)
         await update.message.reply_html(t("proxy.not_configured", user.language))

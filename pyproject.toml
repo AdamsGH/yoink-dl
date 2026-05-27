@@ -53,4 +53,14 @@ search-path = [
     "../yoink-stats/src",
 ]
 # Heavy CLI deps that ship in the docker image but not in the core monorepo .venv.
-ignore-missing-imports = ["yt_dlp", "gallery_dl", "mutagen"]
+# Tests run only inside the docker image too, so pytest lives in the same bucket.
+ignore-missing-imports = [
+    "yt_dlp",
+    "gallery_dl",
+    "mutagen",
+    "mutagen.id3",
+    "transliterate",
+    "set_cookie_parser",
+    "pytest",
+    "pytest_asyncio",
+]

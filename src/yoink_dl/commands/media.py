@@ -85,6 +85,8 @@ async def _cmd_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not url:
         url = extract_url(update.message)
 
+    if context.user_data is None:
+        return
     if url:
         context.user_data[FORCE_MODE_KEY] = "audio"
         from yoink_dl.url.pipeline import run_download as _run_download
@@ -110,6 +112,8 @@ async def _cmd_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not url:
         url = extract_url(update.message)
 
+    if context.user_data is None:
+        return
     if url:
         context.user_data.pop(FORCE_MODE_KEY, None)
         from yoink_dl.url.pipeline import run_download as _run_download
@@ -132,6 +136,8 @@ async def _cmd_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not url:
         url = extract_url(update.message)
 
+    if context.user_data is None:
+        return
     if url:
         context.user_data[FORCE_MODE_KEY] = "gallery"
         from yoink_dl.url.pipeline import run_download as _run_download

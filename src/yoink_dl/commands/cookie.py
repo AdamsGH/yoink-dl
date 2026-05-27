@@ -19,7 +19,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update, WebAppInfo
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
@@ -159,10 +159,10 @@ async def _handle_cookie(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await msg.reply_text(f"No cookie for <code>{domain}</code>.", parse_mode=ParseMode.HTML)
 
 
-async def _handle_document(msg: object, user_id: int, args: list, mgr: CookieManager) -> None:
-    from telegram import Message
-    msg: Message
+async def _handle_document(msg: Message, user_id: int, args: list, mgr: CookieManager) -> None:
     doc = msg.document
+    if doc is None:
+        return
 
     if doc.file_size and doc.file_size > _MAX_COOKIE_SIZE:
         await msg.reply_text("File too large (max 512 KB).")
@@ -198,10 +198,7 @@ async def _handle_document(msg: object, user_id: int, args: list, mgr: CookieMan
     await _store_cookie(msg, user_id, domain, content, mgr)
 
 
-async def _store_cookie(msg: object, user_id: int, domain: str, content: str, mgr: CookieManager) -> None:
-    from telegram import Message
-    msg: Message
-
+async def _store_cookie(msg: Message, user_id: int, domain: str, content: str, mgr: CookieManager) -> None:
     if not validate_netscape(content):
         await msg.reply_text(
             "Invalid cookie file - must be Netscape format.\n"

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -47,10 +48,28 @@ class CookieResponse(BaseModel):
     inherited: bool = False
 
     @classmethod
-    def model_validate(cls, obj, **kwargs):  # type: ignore[override]
+    def model_validate(
+        cls,
+        obj: Any,
+        *,
+        strict: bool | None = None,
+        extra: Literal["allow", "forbid", "ignore"] | None = None,
+        from_attributes: bool | None = None,
+        context: Any | None = None,
+        by_alias: bool | None = None,
+        by_name: bool | None = None,
+    ) -> CookieResponse:
         from yoink_dl.services.yttv_oauth import is_oauth_content  # noqa: PLC0415
-        instance = super().model_validate(obj, **kwargs)
-        if hasattr(obj, 'content') and obj.content:
+        instance = super().model_validate(
+            obj,
+            strict=strict,
+            extra=extra,
+            from_attributes=from_attributes,
+            context=context,
+            by_alias=by_alias,
+            by_name=by_name,
+        )
+        if hasattr(obj, "content") and obj.content:
             instance.is_oauth = is_oauth_content(obj.content)
         return instance
 

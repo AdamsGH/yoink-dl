@@ -168,6 +168,8 @@ async def _flush_job(context: object) -> None:
 
 def setup_job(app: "Application") -> None:
     """Register the flush job. Call once at startup."""
+    if app.job_queue is None:
+        return
     app.job_queue.run_repeating(_flush_job, interval=1.0, first=1.0, name="progress_flush")
 
 

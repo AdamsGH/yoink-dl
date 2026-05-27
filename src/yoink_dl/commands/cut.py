@@ -152,6 +152,8 @@ async def _cmd_cut(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     origin_id = update.message.message_id
 
     if start is not None:
+        if context.user_data is None:
+            return
         prompt = await update.message.reply_html(
             t("cut.prompt_end", lang, start=_fmt(start))
         )
@@ -173,6 +175,8 @@ async def handle_cut_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     Returns True if consumed, False to fall through to url_handler.
     """
     if not update.message or not update.effective_user:
+        return False
+    if context.user_data is None:
         return False
 
     session: dict | None = context.user_data.get(_SESSION_KEY)
@@ -269,6 +273,9 @@ async def _cb_cut(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(parts) != 3:
         return
     _, action, token = parts
+    if context.user_data is None:
+        await query.edit_message_text("⚠️ Session expired. Send the URL again with /cut.")
+        return
 
     pending: dict = context.user_data.get(_PENDING_KEY, {})
     entry = pending.pop(token, None)

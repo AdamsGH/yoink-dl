@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import time
 
-from telegram import Update
+from telegram import MessageEntity, Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
@@ -60,6 +60,8 @@ async def _handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         logger.debug("Dropping stale message (age=%.0fs) from user %d", msg_age, user_id)
         return
 
+    if context.user_data is None:
+        return
     if context.user_data.get(_AWAITING_CLIP_END):
         # If the user sent a new URL (with optional clip suffix), cancel the pending clip dialog
         # and fall through to normal URL handling.
@@ -128,10 +130,12 @@ async def _handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def _handle_clip_end_time(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if context.user_data is None or update.message is None:
+        return
     data = context.user_data.pop(_AWAITING_CLIP_END)
     url: str = data["url"]
     start_sec: int = data["start_sec"]
-    text = (update.message.text or "").strip()  # type: ignore[union-attr]
+    text = (update.message.text or "").strip()
 
     lang = "en"
     if update.effective_user:
@@ -142,11 +146,11 @@ async def _handle_clip_end_time(update: Update, context: ContextTypes.DEFAULT_TY
         from yoink_dl.url.clip import parse_time
         end_sec = parse_time(text) if ":" in text else start_sec + int(text)
     except (ValueError, TypeError):
-        await update.message.reply_text(t("url_handler.clip_invalid_time", lang))  # type: ignore[union-attr]
+        await update.message.reply_text(t("url_handler.clip_invalid_time", lang))
         return
 
     if end_sec <= start_sec:
-        await update.message.reply_text(t("url_handler.clip_end_before_start", lang))  # type: ignore[union-attr]
+        await update.message.reply_text(t("url_handler.clip_end_before_start", lang))
         return
 
     await run_download(update, context, url, ClipSpec(start_sec=start_sec, end_sec=end_sec))
@@ -164,7 +168,7 @@ def _has_bare_url(msg: object) -> bool:
     if not isinstance(msg, TGMessage):
         return False
     return any(
-        e.type.name == "URL"
+        e.type == MessageEntity.URL
         for e in (msg.entities or [])
     )
 
@@ -200,7 +204,7 @@ async def _handle_group_reply(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     chat_id = update.message.chat_id
     ids_to_delete: list[int] = [update.message.message_id]
-    prompt_info: dict | None = context.user_data.pop("_group_prompt", None)
+    prompt_info: dict | None = context.user_data.pop("_group_prompt", None) if context.user_data is not None else None
     if prompt_info and prompt_info.get("chat_id") == chat_id:
         if prompt_info.get("prompt_id"):
             ids_to_delete.append(prompt_info["prompt_id"])

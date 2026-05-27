@@ -98,6 +98,7 @@ def _fmt_dur(secs: float | None) -> str:
 
 
 def _sessions(ctx: ContextTypes.DEFAULT_TYPE) -> dict:
+    assert ctx.bot_data is not None
     return ctx.bot_data.setdefault(_KEY, {})
 
 
@@ -301,7 +302,7 @@ async def handle_time_input(
             token, sess = tok, s
             break
 
-    if not sess:
+    if not sess or token is None:
         return False
 
     text = (update.message.text or "").strip()
@@ -338,7 +339,7 @@ async def handle_time_input(
 
     # Refresh segment editor
     text_seg = _text_segments(sess["title"], sess["clip_quality"] or "best", segs)
-    kb_seg = _kb_segments(token, segs)  # type: ignore[arg-type]
+    kb_seg = _kb_segments(token, segs)
     await _edit(context, sess, text_seg, kb_seg)
     return True
 
@@ -361,14 +362,15 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("ask_menu cb: action=%s token=%s extra=%s sessions=%s",
                 action, token, extra, list(_sessions(context).keys()))
 
-    sess = _sessions(context).get(token)
-    if sess is None:
+    sess_opt = _sessions(context).get(token)
+    if sess_opt is None:
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
             pass
         await query.answer("Session expired  - send the URL again.", show_alert=True)
         return
+    sess: dict = sess_opt
 
     title   = sess["title"]
     formats = sess["formats"]
@@ -400,7 +402,8 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         quality = extra.rstrip("p") if extra not in ("best",) else "best"
         _sessions(context).pop(token, None)
         _fire_delete()
-        context.user_data["_ask_quality_override"] = quality
+        if context.user_data is not None:
+            context.user_data["_ask_quality_override"] = quality
         await _trigger(update, context, sess["url"], clips=None, chat_id=chat_id)
         return
 
@@ -408,7 +411,8 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if action == "audio":
         _sessions(context).pop(token, None)
         _fire_delete()
-        context.user_data["force_mode"] = "audio"
+        if context.user_data is not None:
+            context.user_data["force_mode"] = "audio"
         await _trigger(update, context, sess["url"], clips=None, chat_id=chat_id)
         return
 
@@ -477,7 +481,8 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         url = sess["url"]
         _sessions(context).pop(token, None)
         _fire_delete()
-        context.user_data["_ask_quality_override"] = quality
+        if context.user_data is not None:
+            context.user_data["_ask_quality_override"] = quality
         await _trigger(update, context, url, clips=valid, chat_id=chat_id)
         return
 
@@ -495,7 +500,8 @@ async def _trigger(
         clip: ClipSpec | None = clips[0]
     elif clips:
         clip = None
-        context.user_data["_clips"] = clips
+        if context.user_data is not None:
+            context.user_data["_clips"] = clips
     else:
         clip = None
 

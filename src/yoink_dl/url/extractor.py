@@ -7,6 +7,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from telegram import MessageEntity
+
 if TYPE_CHECKING:
     from telegram import Message
 
@@ -24,10 +26,10 @@ def extract_url(message: "Message") -> str | None:
     if message.entities:
         for entity in message.entities:
             # TEXT_LINK has url directly on the entity
-            if entity.type.name == "TEXT_LINK" and entity.url:
+            if entity.type == MessageEntity.TEXT_LINK and entity.url:
                 return entity.url
             # URL entity: extract from text
-            if entity.type.name == "URL" and message.text:
+            if entity.type == MessageEntity.URL and message.text:
                 start = entity.offset
                 end = entity.offset + entity.length
                 return message.text[start:end]

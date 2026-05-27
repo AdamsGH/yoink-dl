@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import yt_dlp
 
-from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 from yoink.core.bot.access import AccessPolicy, require_access
@@ -117,19 +117,21 @@ async def _cb_search_pick(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.answer("Invalid URL", show_alert=True)
         return
 
-    chat_id = query.message.chat.id if query.message and query.message.chat else None
-    if not chat_id:
+    qmsg = query.message
+    chat_id = qmsg.chat.id if qmsg and qmsg.chat else None
+    if not chat_id or not isinstance(qmsg, Message):
         return
 
     # Delete the search results message
     try:
-        await query.message.delete()  # type: ignore[union-attr]
+        await qmsg.delete()
     except Exception:
         pass
 
     # Clear any lingering force_mode (e.g. from a previous /audio command)
     # so the search pick always downloads as video.
-    context.user_data.pop("force_mode", None)
+    if context.user_data is not None:
+        context.user_data.pop("force_mode", None)
 
     from yoink_dl.url.pipeline import run_download as _run_download
     await _run_download(update, context, url, clip=None, target_chat_id=chat_id)

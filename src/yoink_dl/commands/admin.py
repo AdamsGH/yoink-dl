@@ -176,7 +176,7 @@ async def _cmd_usage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         today_count = today_result.scalar() or 0
 
     lang = (
-        await get_user_repo(context).get_or_create(update.effective_user.id)  # type: ignore[union-attr]
+        await get_user_repo(context).get_or_create(update.effective_user.id)
     ).language
     lines = [
         t("usage.title", lang),
@@ -184,7 +184,7 @@ async def _cmd_usage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         t("usage.total_size", lang, size=format_size(total_size or 0)),
         t("usage.today", lang, count=today_count),
     ]
-    if target_id != update.effective_user.id:  # type: ignore[union-attr]
+    if target_id != update.effective_user.id:
         lines.insert(1, f"User: <code>{target_id}</code>")
 
     await update.message.reply_html("\n".join(lines))

@@ -100,13 +100,13 @@ def _do_download_subs(url: str, lang: str, auto: bool, download_dir: Path) -> li
 
 async def _download_subs(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str) -> None:
     """Download subtitles for url and send each as a document."""
-    user_id = update.effective_user.id  # type: ignore[union-attr]
+    if update.effective_user is None or update.message is None:
+        return
+    user_id = update.effective_user.id
     repo = get_user_repo(context)
     user = await repo.get_or_create(user_id)
 
-    status = await update.message.reply_html(  # type: ignore[union-attr]
-        "📝 Downloading subtitles…"
-    )
+    status = await update.message.reply_html("📝 Downloading subtitles…")
 
     download_dir = Path(tempfile.mkdtemp(prefix="yoink_subs_"))
     loop = asyncio.get_running_loop()
@@ -130,7 +130,7 @@ async def _download_subs(update: Update, context: ContextTypes.DEFAULT_TYPE, url
 
     await status.delete()
     for f in sorted(files):
-        await update.message.reply_document(  # type: ignore[union-attr]
+        await update.message.reply_document(
             document=f,
             filename=f.name,
             caption=f"📝 <code>{f.name}</code>",
