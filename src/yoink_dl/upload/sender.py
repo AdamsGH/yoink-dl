@@ -39,6 +39,19 @@ _IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".webp", ".gif"})
 _MAX_CAPTION_LEN = 1024
 
 
+def _retry_after_seconds(exc: RetryAfter) -> float:
+    """Normalise RetryAfter.retry_after to float seconds.
+
+    PTB 21 returns int on older Bot API versions and timedelta on newer ones;
+    asyncio.sleep wants a plain float either way.
+    """
+    from datetime import timedelta
+    value = exc.retry_after
+    if isinstance(value, timedelta):
+        return value.total_seconds()
+    return float(value)
+
+
 @dataclass
 class SendResult:
     message: Message
@@ -203,12 +216,13 @@ async def _retry(
             return await sender(caption)
 
         except RetryAfter as e:
+            wait = _retry_after_seconds(e)
             flood_left -= 1
             if flood_left <= 0:
-                logger.error("RetryAfter exhausted (%ds), giving up", e.retry_after)
+                logger.error("RetryAfter exhausted (%.1fs), giving up", wait)
                 return None
-            logger.warning("RetryAfter %ds (%d retries left)", e.retry_after, flood_left)
-            await asyncio.sleep(e.retry_after)
+            logger.warning("RetryAfter %.1fs (%d retries left)", wait, flood_left)
+            await asyncio.sleep(wait)
 
         except (TimedOut, TimeoutError):
             timeout_left -= 1
@@ -332,7 +346,7 @@ async def send_media_group(
                 if flood_left <= 0:
                     logger.error("RetryAfter exhausted sending media group")
                     break
-                await asyncio.sleep(e.retry_after)
+                await asyncio.sleep(_retry_after_seconds(e))
             except Exception as exc:
                 logger.error("send_media_group failed: %s", exc)
                 break
