@@ -5,6 +5,7 @@ import hashlib
 import logging
 import time
 from dataclasses import dataclass
+from typing import Literal, overload
 
 import httpx
 
@@ -72,6 +73,18 @@ def _find_first(obj: object, key: str) -> object | None:
             if result is not None:
                 return result
     return None
+
+
+@overload
+async def _fetch_youtube(
+    content: str, *, return_set_cookie: Literal[False] = False, timeout: float = _DEFAULT_TIMEOUT,
+) -> AccountInfo | None: ...
+
+
+@overload
+async def _fetch_youtube(
+    content: str, *, return_set_cookie: Literal[True], timeout: float = _DEFAULT_TIMEOUT,
+) -> tuple[AccountInfo | None, dict[str, str]]: ...
 
 
 async def _fetch_youtube(content: str, *, return_set_cookie: bool = False, timeout: float = _DEFAULT_TIMEOUT) -> AccountInfo | None | tuple[AccountInfo | None, dict[str, str]]:

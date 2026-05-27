@@ -382,13 +382,9 @@ class CookieManager:
 
         try:
             if bare in ("youtube.com", "google.com") or bare.endswith((".youtube.com", ".google.com")):
-                result = await _fetch_youtube(content, return_set_cookie=True, timeout=self._account_info_timeout)
-                # return_set_cookie=True always returns the (info, cookies) tuple shape;
-                # the narrower 'AccountInfo | None' return only happens with the default flag.
-                if isinstance(result, tuple):
-                    info, new_cookies = result
-                else:
-                    info = result
+                info, new_cookies = await _fetch_youtube(
+                    content, return_set_cookie=True, timeout=self._account_info_timeout,
+                )
                 is_valid = info is not None
             else:
                 info = await fetch_account_info(domain, content, timeout=self._account_info_timeout)

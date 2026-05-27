@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from collections.abc import Callable, Coroutine
-from typing import Any
+from typing import Any, cast
 
 from yoink_dl.config import DownloaderConfig as Settings
 from yoink_dl.services.proxy import ProxyConfig, ProxyManager
@@ -56,7 +57,7 @@ class DownloadManager:
     async def run(
         self,
         job: DownloadJob,
-        progress_cb: ProgressCallback | None = None,
+        progress_cb: ProgressCallback | YtdlpHook | None = None,
     ) -> DownloadJob:
         """
         Execute the full pipeline: extract info -> download -> return job with files.
@@ -130,7 +131,7 @@ class DownloadManager:
             job.user_id, job.resolved.url, job.title, job.duration,
         )
 
-    async def _download(self, job: DownloadJob, progress_cb: ProgressCallback | None) -> None:
+    async def _download(self, job: DownloadJob, progress_cb: ProgressCallback | YtdlpHook | None) -> None:
         proxy = self._pick_proxy(job)
         ipv6 = self._pick_ipv6(job)
         extra: dict[str, Any] = {}
@@ -155,9 +156,15 @@ class DownloadManager:
             use_browser_cookies=job.use_browser_cookies,
         )
 
-        hooks = [_make_log_hook()]
-        if progress_cb:
-            hooks.append(_make_progress_hook(progress_cb))
+        hooks: list[YtdlpHook] = [_make_log_hook()]
+        if progress_cb is not None:
+            # Accept either the raw yt-dlp (dict -> None) hook shape used by
+            # ProgressTracker.ytdlp_hook, or the wrapped async (downloaded,
+            # total) ProgressCallback - pick the right plumbing.
+            if inspect.iscoroutinefunction(progress_cb):
+                hooks.append(_make_progress_hook(cast(ProgressCallback, progress_cb)))
+            else:
+                hooks.append(cast(YtdlpHook, progress_cb))  # already a yt-dlp dict hook
         opts["progress_hooks"] = hooks
 
         job.files = await ytdlp_mod.download(opts, job.resolved.url)
@@ -251,6 +258,7 @@ def create_download_dir(base: str = "/tmp") -> Path:
 
 
 ProgressCallback = Callable[[int, int], Coroutine[Any, Any, None]]
+YtdlpHook = Callable[[dict[str, Any]], None]
 
 
 def _make_log_hook() -> Callable[[dict[str, Any]], None]:

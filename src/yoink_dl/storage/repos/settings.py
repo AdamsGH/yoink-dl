@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from yoink.core.db.models import BotSetting, User, UserRole
@@ -143,7 +144,7 @@ class UserSettingsRepo:
                 if ban_until > datetime.now(timezone.utc):
                     return True
                 await s.execute(
-                    User.__table__.update().where(User.id == user_id).values(ban_until=None)
+                    update(User).where(User.id == user_id).values(ban_until=None)
                 )
                 await s.commit()
             return False

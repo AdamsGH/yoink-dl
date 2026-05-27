@@ -127,7 +127,7 @@ async def make_thumbnail(video_path: Path, out_path: Path | None = None) -> Path
     if out_path is None:
         out_path = video_path.with_suffix(".__thumb.jpg")
     loop = asyncio.get_running_loop()
-    ok = await loop.run_in_executor(_executor, _make_thumb_sync, video_path, out_path)
+    ok = await loop.run_in_executor(_executor, _make_thumb_sync, video_path, out_path, 2.0)
     return out_path if ok else None
 
 

@@ -40,7 +40,7 @@ class IPv6Pool:
         self._lock = threading.Lock()
         # Exclude network address (::0) and commonly used static addresses (::1)
         self._first = 2
-        self._last = int(self._network.num_addresses) - 1
+        self._last = self._network.num_addresses - 1
 
     @classmethod
     def from_settings(cls, settings: DownloaderConfig) -> IPv6Pool | None:
