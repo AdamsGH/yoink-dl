@@ -14,7 +14,14 @@ from yoink_dl.services.proxy import ProxyConfig
 from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.resolver import ResolvedUrl
 from yoink_dl.url.clip import ClipSpec
-from yoink_dl.utils.errors import AgeRestrictedError, DownloadError, GeoBlockedError, LiveStreamError
+from yoink_dl.utils.errors import (
+    AgeRestrictedError,
+    ConnectionFailedError,
+    DownloadError,
+    GeoBlockedError,
+    LiveStreamError,
+    NoVideoError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +66,30 @@ _LIVE_HINTS = (
     "live event",
 )
 
+_NO_VIDEO_HINTS = (
+    "no video could be found",
+    "no video formats found",
+    "no media found",
+    "there's no video",
+    "unable to extract media",
+)
+
+# Network / proxy reachability failures. yt-dlp surfaces these as raw urllib
+# traces (HTTPSConnectionPool, read timed out) which are useless to the user.
+_CONNECTION_HINTS = (
+    "read timed out",
+    "connection timed out",
+    "connection refused",
+    "connection reset",
+    "connection aborted",
+    "failed to establish a new connection",
+    "max retries exceeded",
+    "httpsconnectionpool",
+    "httpconnectionpool",
+    "proxyerror",
+    "unable to connect to proxy",
+)
+
 
 def _classify_ytdlp_error(err: str) -> None:
     """Raise a typed BotError subclass if the yt-dlp message matches a known pattern."""
@@ -69,6 +100,10 @@ def _classify_ytdlp_error(err: str) -> None:
         raise AgeRestrictedError()
     if any(h in lower for h in _LIVE_HINTS):
         raise LiveStreamError()
+    if any(h in lower for h in _NO_VIDEO_HINTS):
+        raise NoVideoError()
+    if any(h in lower for h in _CONNECTION_HINTS):
+        raise ConnectionFailedError()
 
 
 def build_audio_format_string(settings: UserSettings) -> str:

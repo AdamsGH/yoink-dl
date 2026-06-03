@@ -188,12 +188,12 @@ def _is_retryable(exc: Exception) -> bool:
     from yoink_dl.utils.errors import (  # noqa: PLC0415
         BotError, GeoBlockedError, PrivateContentError, FileTooLargeError,
         LiveStreamError, UnsupportedUrlError, BlacklistedDomainError,
-        RateLimitError, NsfwError, CookieError,
+        RateLimitError, NsfwError, CookieError, NoVideoError,
     )
     if isinstance(exc, (
         GeoBlockedError, PrivateContentError, FileTooLargeError,
         LiveStreamError, UnsupportedUrlError, BlacklistedDomainError,
-        RateLimitError, NsfwError, CookieError,
+        RateLimitError, NsfwError, CookieError, NoVideoError,
     )):
         return False
     err_lower = str(exc).lower()

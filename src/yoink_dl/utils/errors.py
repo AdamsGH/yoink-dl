@@ -24,6 +24,23 @@ class CookieError(BotError):
         super().__init__("errors.cookie_required", **kwargs)
 
 
+class NoVideoError(BotError):
+    """The page parsed fine but contained no downloadable media."""
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__("errors.no_video", **kwargs)
+
+
+class ConnectionFailedError(DownloadError):
+    """Network/proxy reachability failure. Subclasses DownloadError so the
+    retry layer (which retries plain DownloadError) still gives it another go,
+    while the user-facing text stays readable instead of a raw urllib trace."""
+    def __init__(self, **kwargs: object) -> None:
+        # message_key drives the user-facing text; the raw error is kept on
+        # .error for logs via the DownloadError base.
+        super().__init__(error="connection timeout", **kwargs)
+        self.message_key = "errors.connection_failed"
+
+
 class AgeRestrictedError(BotError):
     def __init__(self, **kwargs: object) -> None:
         super().__init__("errors.age_restricted", **kwargs)
