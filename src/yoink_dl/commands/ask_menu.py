@@ -362,7 +362,14 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("ask_menu cb: action=%s token=%s extra=%s sessions=%s",
                 action, token, extra, list(_sessions(context).keys()))
 
-    sess_opt = _sessions(context).get(token)
+    # Terminal actions (dl/audio/go/cancel) claim the session by popping it.
+    # With concurrent_updates=True a duplicate callback (double tap, client
+    # retry) races on the same token; the second comer sees None and exits.
+    _TERMINAL = {"dl", "audio", "go", "cancel"}
+    if action in _TERMINAL:
+        sess_opt = _sessions(context).pop(token, None)
+    else:
+        sess_opt = _sessions(context).get(token)
     if sess_opt is None:
         try:
             await query.edit_message_reply_markup(reply_markup=None)
@@ -385,9 +392,8 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if ids:
             asyncio.ensure_future(delete_many(context.bot, chat_id, ids))
 
-    # cancel
+    # cancel  (session already popped above)
     if action == "cancel":
-        _sessions(context).pop(token, None)
         _fire_delete()
         return
 
@@ -397,19 +403,17 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await _edit(context, sess, _text_action(title, sess["duration"], formats), _kb_action(token, formats))
         return
 
-    # download at quality
+    # download at quality  (session already popped above)
     if action == "dl":
         quality = extra.rstrip("p") if extra not in ("best",) else "best"
-        _sessions(context).pop(token, None)
         _fire_delete()
         if context.user_data is not None:
             context.user_data["_ask_quality_override"] = quality
         await _trigger(update, context, sess["url"], clips=None, chat_id=chat_id)
         return
 
-    # audio
+    # audio  (session already popped above)
     if action == "audio":
-        _sessions(context).pop(token, None)
         _fire_delete()
         if context.user_data is not None:
             context.user_data["force_mode"] = "audio"
@@ -466,7 +470,7 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await _edit(context, sess, _text_segments(title, sess["clip_quality"] or "best", segs), _kb_segments(token, segs))
         return
 
-    # go: run download
+    # go: run download  (session already popped above)
     if action == "go":
         valid = [
             ClipSpec(start_sec=sg["s"], end_sec=sg["e"])
@@ -474,12 +478,13 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             if sg.get("s") is not None and sg.get("e") is not None and sg["e"] > sg["s"]
         ]
         if not valid:
+            # Bad input: put the session back so the user can fix it.
+            _sessions(context)[token] = sess
             await query.answer("Set valid start and end for at least one segment.", show_alert=True)
             return
 
         quality = (sess.get("clip_quality") or "best").rstrip("p")
         url = sess["url"]
-        _sessions(context).pop(token, None)
         _fire_delete()
         if context.user_data is not None:
             context.user_data["_ask_quality_override"] = quality
