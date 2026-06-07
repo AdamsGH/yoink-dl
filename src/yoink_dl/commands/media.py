@@ -21,11 +21,26 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from yoink.core.bot.access import AccessPolicy, require_access
 from yoink.core.db.models import UserRole
+from yoink.core.i18n import t
+from yoink_dl.bot.middleware import get_user_repo
+from yoink_dl.url.clip import ClipSpec, parse_clip_spec
 from yoink_dl.url.extractor import extract_url
 
 FORCE_MODE_KEY = "force_mode"
 
 _RANGE_RE = re.compile(r"^(-?\d+)(?:-(-?\d+))?$")
+
+
+def _looks_like_clip(url: str, tokens: list[str]) -> bool:
+    """Heuristic: clip wins over playlist range when URL has a start marker or a
+    HH:MM token is present. Prevents `/video 5 URL` from being misread as
+    `clip=5s` and `/video URL?t=301 5:10` from being misread as playlist range.
+    """
+    from yoink_dl.url.clip import extract_t_param
+
+    if extract_t_param(url) is not None:
+        return True
+    return any(":" in tok for tok in tokens)
 
 
 def _parse_args(context_args: list[str]) -> tuple[str | None, int | None, int | None]:
@@ -38,6 +53,9 @@ def _parse_args(context_args: list[str]) -> tuple[str | None, int | None, int | 
       <url> <range>    -> (url, start, end)
 
     Range formats: 1-5, -5 (last 5), 3 (item 3 only).
+
+    Playlist range is suppressed when the args look like a clip spec (URL has
+    ?t= or any token contains ':'); clip parsing then runs in the caller.
     """
     if not context_args:
         return None, None, None
@@ -54,6 +72,10 @@ def _parse_args(context_args: list[str]) -> tuple[str | None, int | None, int | 
     if url is None:
         return None, None, None
 
+    non_url = [tok for tok in context_args if tok is not url]
+    if _looks_like_clip(url, non_url):
+        return url, None, None
+
     if range_token is None:
         return url, None, None
 
@@ -66,6 +88,30 @@ def _parse_args(context_args: list[str]) -> tuple[str | None, int | None, int | 
         end = start  # single item
 
     return url, start, end
+
+
+async def _parse_clip(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    url: str,
+) -> tuple[ClipSpec | None, bool]:
+    """Parse a clip spec from the original message text.
+
+    Returns (clip, ok). `ok` is False when the user typed an invalid spec and
+    an error reply was sent; the caller should bail out.
+    """
+    msg = update.message
+    if msg is None or not msg.text:
+        return None, True
+    try:
+        return parse_clip_spec(url, msg.text), True
+    except ValueError as e:
+        lang = "en"
+        if update.effective_user:
+            u = await get_user_repo(context).get_or_create(update.effective_user.id)
+            lang = u.language
+        await msg.reply_text(t("url_handler.invalid_time", lang, error=e))
+        return None, False
 
 
 def _is_group(update: Update) -> bool:
@@ -88,9 +134,12 @@ async def _cmd_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if context.user_data is None:
         return
     if url:
+        clip, ok = await _parse_clip(update, context, url)
+        if not ok:
+            return
         context.user_data[FORCE_MODE_KEY] = "audio"
         from yoink_dl.url.pipeline import run_download as _run_download
-        await _run_download(update, context, url, clip=None, playlist_start=start, playlist_end=end)
+        await _run_download(update, context, url, clip=clip, playlist_start=start, playlist_end=end)
         context.user_data.pop(FORCE_MODE_KEY, None)
     elif _is_group(update):
         await update.message.reply_html("Usage: <code>/audio &lt;url&gt;</code>")
@@ -115,9 +164,12 @@ async def _cmd_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if context.user_data is None:
         return
     if url:
+        clip, ok = await _parse_clip(update, context, url)
+        if not ok:
+            return
         context.user_data.pop(FORCE_MODE_KEY, None)
         from yoink_dl.url.pipeline import run_download as _run_download
-        await _run_download(update, context, url, clip=None, playlist_start=start, playlist_end=end)
+        await _run_download(update, context, url, clip=clip, playlist_start=start, playlist_end=end)
     elif _is_group(update):
         await update.message.reply_html("Usage: <code>/video &lt;url&gt;</code>")
     else:
