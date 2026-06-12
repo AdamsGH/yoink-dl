@@ -7,7 +7,7 @@ import type { CookieTokenResponse, YttvOAuthStartResponse } from '@dl/api/cookie
 import { dlSettingsApi } from '@dl/api/settings'
 import { formatDate } from '@core/lib/utils'
 import { Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, DividedList, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, SkeletonList, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
-import { CookieStatusBadge, EmptyState } from '@app'
+import { CookieStatusBadge, EmptyState, PageContainer } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { CookieFavicon } from '@dl/components/CookieFavicon'
 import { parseDomainFromNetscape } from '@dl/lib/cookie-utils'
@@ -264,6 +264,7 @@ export default function CookiesPage() {
   const inherited = cookies.filter(c => c.inherited)
 
   return (
+    <PageContainer>
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4">
 
@@ -650,5 +651,6 @@ export default function CookiesPage() {
 
       </div>
     </TooltipProvider>
+    </PageContainer>
   )
 }

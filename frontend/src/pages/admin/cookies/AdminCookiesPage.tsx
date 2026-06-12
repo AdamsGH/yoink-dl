@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cookiesApi } from '@dl/api/cookies'
 import { formatDate } from '@core/lib/utils'
 import type { User } from '@core/types/api'
-import { CookieStatusBadge, EmptyState, RoleBadge } from '@app'
+import { CookieStatusBadge, EmptyState, PageContainer, RoleBadge } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useAdminCookies } from './useAdminCookies'
 
@@ -237,6 +237,7 @@ export default function AdminCookiesPage() {
   } = useAdminCookies()
 
   return (
+    <PageContainer>
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4">
         <Card>
@@ -547,5 +548,6 @@ export default function AdminCookiesPage() {
         </AlertDialog>
       </div>
     </TooltipProvider>
+    </PageContainer>
   )
 }

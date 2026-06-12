@@ -7,7 +7,7 @@ import { nsfwApi, type NsfwDomain, type NsfwKeyword, type NsfwCheckResponse } fr
 import { formatDate } from '@core/lib/utils'
 
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, Dialog, DialogActions, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, JsonEditor, Label, Separator, Skeleton, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
-import { EmptyState } from '@app'
+import { EmptyState, PageContainer } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useTelegramWebApp } from '@core/hooks/useTelegramWebApp'
 
@@ -527,6 +527,7 @@ export default function AdminNsfwPage() {
   const keywordItems: ListItem[] = keywords.map((k) => ({ id: k.id, primary: k.keyword, note: k.note, created_at: k.created_at }))
 
   return (
+    <PageContainer>
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4">
         <CheckPanel />
@@ -674,5 +675,6 @@ export default function AdminNsfwPage() {
         />
       </div>
     </TooltipProvider>
+    </PageContainer>
   )
 }

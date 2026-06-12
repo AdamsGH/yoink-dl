@@ -20,7 +20,7 @@ import { downloadsApi } from '@dl/api/downloads'
 import { cn, formatBytes, formatDateCompact } from '@core/lib/utils'
 import type { DownloadLog } from '@dl/types'
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, DividedList, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, SkeletonList, TooltipProvider } from '@ui'
-import { SuccessBadge, EmptyState } from '@app'
+import { SuccessBadge, EmptyState, PageContainer } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useFavicon } from '@dl/hooks/useFavicon'
 
@@ -276,6 +276,7 @@ export default function HistoryPage() {
   }
 
   return (
+    <PageContainer>
     <TooltipProvider delayDuration={300}>
       <div className="space-y-3">
 
@@ -438,5 +439,6 @@ export default function HistoryPage() {
 
       </div>
     </TooltipProvider>
+    </PageContainer>
   )
 }

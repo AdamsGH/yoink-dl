@@ -9,7 +9,7 @@ import { cookiesApi } from '@dl/api/cookies'
 import { userSettingsApi } from '@core/lib/api/user-settings'
 import { cn } from '@core/lib/utils'
 import { setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@core/lib/i18n'
-import { SettingRow } from '@app'
+import { PageContainer, SettingRow } from '@app'
 import { ControlledSelect, ControlledSwitch } from '@core/components/form'
 import type { UserSettings } from '@dl/types'
 import type { User } from '@core/types/api'
@@ -174,9 +174,10 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) return <SettingsSkeleton />
+  if (loading) return <PageContainer><SettingsSkeleton /></PageContainer>
 
   return (
+    <PageContainer>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
 
       {/* Video + Audio - merged */}
@@ -383,5 +384,6 @@ export default function SettingsPage() {
         </Button>
       </div>
     </form>
+    </PageContainer>
   )
 }

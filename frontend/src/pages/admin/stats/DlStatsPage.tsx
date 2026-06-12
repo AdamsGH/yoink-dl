@@ -8,6 +8,7 @@ import {
 import { dlStatsApi } from '@dl/api/dl-stats'
 import type { StatsOverview } from '@dl/types'
 import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@ui'
+import { PageContainer } from '@app'
 import { chartColors, PeriodToggle, StatCard, StatCardSkeleton } from '@core/components/charts'
 import type { Period } from '@core/components/charts'
 
@@ -52,7 +53,8 @@ export default function AdminStatsPage() {
   }))
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
+      <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <PeriodToggle value={period} onChange={setPeriod} />
       </div>
@@ -197,6 +199,7 @@ export default function AdminStatsPage() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </PageContainer>
   )
 }
