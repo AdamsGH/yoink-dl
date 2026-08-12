@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import {
   AlertCircle,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
   Clapperboard,
+  Download,
   ExternalLink,
   Film,
   Images,
+  MoreVertical,
   Music,
   RotateCcw,
   Search,
@@ -19,8 +21,8 @@ import { useTranslation } from 'react-i18next'
 import { downloadsApi } from '@dl/api/downloads'
 import { cn, formatBytes, formatDateCompact } from '@core/lib/utils'
 import type { DownloadLog } from '@dl/types'
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, DividedList, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, SkeletonList, TooltipProvider } from '@ui'
-import { SuccessBadge, EmptyState, PageContainer } from '@app'
+import { Button, Card, CardContent, CardHeader, CardTitle, DividedList, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, SkeletonList, TooltipProvider } from '@ui'
+import { EmptyState, PageContainer } from '@app'
 import { toast } from '@core/components/ui/toast'
 import { useFavicon } from '@dl/hooks/useFavicon'
 
@@ -52,6 +54,56 @@ function stripWww(domain: string): string {
   return domain.replace(/^www\./, '')
 }
 
+function youtubeVideoId(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    if (!/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(parsed.hostname)) return null
+    if (parsed.hostname === 'youtu.be') return parsed.pathname.slice(1) || null
+    if (parsed.pathname === '/watch') return parsed.searchParams.get('v')
+    const match = parsed.pathname.match(/^\/(?:shorts|embed|live)\/([^/?]+)/)
+    return match?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+function dateKey(iso: string): string {
+  const date = new Date(iso)
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+function dateHeading(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: new Date(iso).getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+  })
+}
+
+function Thumbnail({ item }: { item: DownloadLog }) {
+  const [failed, setFailed] = useState(false)
+  const videoId = youtubeVideoId(item.url)
+  const src = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null
+
+  if (!src || failed) return <MediaIcon item={item} />
+  return (
+    <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-md bg-muted">
+      <img
+        src={src}
+        alt=""
+        className="h-full w-full object-cover"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+      {item.duration != null && item.duration > 0 && (
+        <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-[10px] font-semibold leading-none text-white">
+          {fmtSecs(Math.round(item.duration))}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // Shorten a raw URL to hostname + path stub for display
 function shortenUrl(url: string): string {
   try {
@@ -61,13 +113,6 @@ function shortenUrl(url: string): string {
   } catch {
     return url.length > 40 ? url.slice(0, 40) + '...' : url
   }
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cls = 'px-1.5 py-0 text-[10px] font-medium rounded-full h-auto shrink-0'
-  if (status === 'ok') return <SuccessBadge className={cls}>{status}</SuccessBadge>
-  const variant = status === 'cached' ? 'secondary' : status === 'error' ? 'destructive' : 'outline'
-  return <Badge variant={variant} className={cls}>{status}</Badge>
 }
 
 function MediaIcon({ item }: { item: DownloadLog }) {
@@ -378,33 +423,71 @@ export default function HistoryPage() {
               <EmptyState message={hasActive ? t('history.no_results') : t('history.empty')} />
             ) : (
               <DividedList className="px-3 py-0">
-                {items.map(item => {
+                {items.map((item, index) => {
                   const isOpen = expanded === item.id
+                  const showDate = index === 0 || dateKey(items[index - 1].created_at) !== dateKey(item.created_at)
+                  const msgUrl = item.group_id && item.message_id
+                    ? tgMessageUrl(item.group_id, item.message_id, item.thread_id)
+                    : null
                   const displayTitle = item.title
                     ? item.title
                     : shortenUrl(item.url)
 
                   return (
                     <div key={item.id}>
+                      {showDate && (
+                        <div className="border-b border-border/60 px-1 pb-1.5 pt-3 text-xs font-semibold text-foreground first:pt-2">
+                          {dateHeading(item.created_at)}
+                        </div>
+                      )}
                       <Item
                         size="sm"
                         className="py-2 rounded-none border-0 cursor-pointer select-none"
                         onClick={() => setExpanded(p => p === item.id ? null : item.id)}
                       >
-                        <MediaIcon item={item} />
-                        <ItemContent className="gap-0.5 min-w-0">
-                          <ItemTitle className="line-clamp-1 text-sm">
+                        <Thumbnail item={item} />
+                        <ItemContent className="gap-0.5 min-w-0 self-stretch justify-center">
+                          <ItemTitle className="line-clamp-2 text-sm leading-tight">
                             {displayTitle}
                           </ItemTitle>
                           <ItemDescription className="flex items-center gap-1.5 text-xs">
-                            {item.domain && <span>{stripWww(item.domain)}</span>}
+                            {item.domain && <span className="truncate">{stripWww(item.domain)}</span>}
                             <span className="text-muted-foreground/50">·</span>
-                            <span>{formatDateCompact(item.created_at)}</span>
+                            <span className="shrink-0">{formatDateCompact(item.created_at)}</span>
                           </ItemDescription>
+                          {item.status !== 'error' ? (
+                            <span className="flex items-center gap-1 text-[11px] text-emerald-500">
+                              <CheckCircle2 className="size-3" />
+                              {item.status === 'cached' ? t('history.status_cached') : t('history.downloaded')}
+                              {item.quality && <span className="text-muted-foreground">{item.quality}</span>}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-destructive">{t('history.status_error')}</span>
+                          )}
                         </ItemContent>
-                        <ItemActions className="gap-1.5">
-                          <StatusBadge status={item.status} />
-                          <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0', isOpen && 'rotate-180')} />
+                        <ItemActions className="gap-0.5 self-stretch items-center">
+                          {msgUrl && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 shrink-0"
+                              asChild
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <a href={msgUrl} target="_blank" rel="noopener noreferrer" aria-label={t('history.open_telegram')}>
+                                <Download className="size-4" />
+                              </a>
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 shrink-0"
+                            onClick={(e) => { e.stopPropagation(); setExpanded(p => p === item.id ? null : item.id) }}
+                            aria-label={t('history.more')}
+                          >
+                            <MoreVertical className="size-4" />
+                          </Button>
                         </ItemActions>
                       </Item>
                       {isOpen && (
