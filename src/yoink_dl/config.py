@@ -22,6 +22,10 @@ class DownloaderConfig(BaseSettings):
     upload_write_timeout: float = 300.0     # Telegram media upload write deadline
     gallery_metadata_timeout: float = 30.0  # gallery-dl --json metadata fetch
     gallery_download_timeout: float = 600.0  # gallery-dl full download
+    ffmpeg_read_timeout: float = 60.0       # stalled remote media read before reconnect
+    ffmpeg_reconnect_delay_max: int = 30    # maximum delay between media reconnects
+    ffmpeg_reconnect_delay_total_max: int = 120  # total reconnect delay budget
+    ffmpeg_reconnect_max_retries: int = 5   # reconnect attempts per media input
     # Rate limits: default to CoreSettings values so a single env var controls both.
     # Override per-plugin via DL_RATE_LIMIT_PER_MINUTE etc. if needed.
     rate_limit_per_minute: int = 5

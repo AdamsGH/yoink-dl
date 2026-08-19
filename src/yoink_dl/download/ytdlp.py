@@ -20,6 +20,7 @@ from yoink_dl.utils.errors import (
     DownloadError,
     GeoBlockedError,
     LiveStreamError,
+    MediaDownloadTimeoutError,
     NoVideoError,
 )
 
@@ -94,6 +95,8 @@ _CONNECTION_HINTS = (
 def _classify_ytdlp_error(err: str) -> None:
     """Raise a typed BotError subclass if the yt-dlp message matches a known pattern."""
     lower = err.lower()
+    if "ffmpeg exited with code 146" in lower:
+        raise MediaDownloadTimeoutError()
     if any(h in lower for h in _GEO_HINTS):
         raise GeoBlockedError()
     if any(h in lower for h in _AGE_HINTS):
@@ -299,6 +302,28 @@ def build_ytdlp_opts(
             [], [[c.start_sec, c.end_sec] for c in clips]
         )
         opts["force_keyframes_at_cuts"] = True
+        # Time-range downloads use ffmpeg as the HTTP client. Some YouTube
+        # clients return media URLs that work with yt-dlp's native downloader
+        # but fail with HTTP 403 when opened by ffmpeg. web_embedded yields
+        # URLs that remain usable by ffmpeg for ranged downloads.
+        if resolved.domain == "youtu.be" or resolved.domain.endswith("youtube.com"):
+            opts.setdefault("extractor_args", {}).setdefault("youtube", {})[
+                "player_client"
+            ] = ["web_embedded"]
+        if app_settings:
+            opts["external_downloader_args"] = {
+                "ffmpeg_i": [
+                    "-reconnect", "1",
+                    "-reconnect_streamed", "1",
+                    "-reconnect_on_network_error", "1",
+                    "-reconnect_on_http_error", "5xx",
+                    "-reconnect_delay_max", str(app_settings.ffmpeg_reconnect_delay_max),
+                    "-reconnect_delay_total_max",
+                    str(app_settings.ffmpeg_reconnect_delay_total_max),
+                    "-reconnect_max_retries", str(app_settings.ffmpeg_reconnect_max_retries),
+                    "-rw_timeout", str(round(app_settings.ffmpeg_read_timeout * 1_000_000)),
+                ],
+            }
         # Do NOT set external_downloader="native" here: the native downloader
         # cannot merge DASH streams (separate video+audio), which causes
         # "Requested format is not available" for most YouTube videos.

@@ -10,6 +10,7 @@ from yoink_dl.utils.errors import (
     ConnectionFailedError,
     GeoBlockedError,
     LiveStreamError,
+    MediaDownloadTimeoutError,
     NoVideoError,
 )
 
@@ -44,6 +45,10 @@ class TestClassifyYtdlpError:
                 "HTTPSConnectionPool(host='api.x.com', port=443): Read timed out."
             )
 
+    def test_ffmpeg_media_timeout(self) -> None:
+        with pytest.raises(MediaDownloadTimeoutError):
+            _classify_ytdlp_error("ERROR: ffmpeg exited with code 146")
+
 
 class TestRetrySemantics:
     def test_connection_failure_is_retryable(self) -> None:
@@ -53,3 +58,7 @@ class TestRetrySemantics:
     def test_no_video_is_not_retryable(self) -> None:
         # Terminal: parsing succeeded, retrying changes nothing.
         assert _is_retryable(NoVideoError()) is False
+
+    def test_ffmpeg_media_timeout_is_not_retried_twice(self) -> None:
+        # FFmpeg has already exhausted its own bounded reconnect attempts.
+        assert _is_retryable(MediaDownloadTimeoutError()) is False

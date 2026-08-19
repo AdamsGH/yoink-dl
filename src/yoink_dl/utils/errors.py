@@ -41,6 +41,12 @@ class ConnectionFailedError(DownloadError):
         self.message_key = "errors.connection_failed"
 
 
+class MediaDownloadTimeoutError(BotError):
+    """FFmpeg exhausted its own reconnect budget for a remote media stream."""
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__("errors.media_download_timeout", **kwargs)
+
+
 class AgeRestrictedError(BotError):
     def __init__(self, **kwargs: object) -> None:
         super().__init__("errors.age_restricted", **kwargs)

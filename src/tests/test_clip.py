@@ -3,7 +3,11 @@ from __future__ import annotations
 
 import pytest
 
+from yoink_dl.config import DownloaderConfig
+from yoink_dl.download.ytdlp import build_ytdlp_opts
+from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.clip import ClipSpec, extract_t_param, parse_clip_spec, parse_time
+from yoink_dl.url.resolver import Engine, ResolvedUrl
 
 
 class TestParseTime:
@@ -73,3 +77,74 @@ class TestParseClipSpec:
     def test_duration_property(self):
         clip = ClipSpec(start_sec=10, end_sec=70)
         assert clip.duration_sec == 60
+
+
+class TestClipDownloaderOptions:
+    def test_ffmpeg_reconnects_timed_out_media_streams(self, tmp_path):
+        resolved = ResolvedUrl(
+            url="https://youtu.be/abc",
+            engine=Engine.YTDLP,
+            domain="youtu.be",
+            use_proxy=False,
+        )
+        config = DownloaderConfig(
+            ffmpeg_read_timeout=45,
+            ffmpeg_reconnect_delay_max=12,
+            ffmpeg_reconnect_delay_total_max=34,
+            ffmpeg_reconnect_max_retries=3,
+        )
+
+        opts = build_ytdlp_opts(
+            resolved,
+            UserSettings(user_id=1),
+            tmp_path,
+            app_settings=config,
+            clip=ClipSpec(start_sec=60, end_sec=90),
+        )
+
+        assert opts["external_downloader_args"]["ffmpeg_i"] == [
+            "-reconnect", "1",
+            "-reconnect_streamed", "1",
+            "-reconnect_on_network_error", "1",
+            "-reconnect_on_http_error", "5xx",
+            "-reconnect_delay_max", "12",
+            "-reconnect_delay_total_max", "34",
+            "-reconnect_max_retries", "3",
+            "-rw_timeout", "45000000",
+        ]
+        assert opts["extractor_args"]["youtube"]["player_client"] == ["web_embedded"]
+
+    def test_regular_youtube_download_keeps_default_player_clients(self, tmp_path):
+        resolved = ResolvedUrl(
+            url="https://youtu.be/abc",
+            engine=Engine.YTDLP,
+            domain="youtu.be",
+            use_proxy=False,
+        )
+
+        opts = build_ytdlp_opts(
+            resolved,
+            UserSettings(user_id=1),
+            tmp_path,
+            app_settings=DownloaderConfig(),
+        )
+
+        assert "youtube" not in opts["extractor_args"]
+
+    def test_non_youtube_clip_keeps_default_player_clients(self, tmp_path):
+        resolved = ResolvedUrl(
+            url="https://example.com/video",
+            engine=Engine.YTDLP,
+            domain="example.com",
+            use_proxy=False,
+        )
+
+        opts = build_ytdlp_opts(
+            resolved,
+            UserSettings(user_id=1),
+            tmp_path,
+            app_settings=DownloaderConfig(),
+            clip=ClipSpec(start_sec=60, end_sec=90),
+        )
+
+        assert "youtube" not in opts["extractor_args"]
