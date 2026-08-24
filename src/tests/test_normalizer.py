@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import pytest
-
+from yoink_dl.url.domains import DomainConfig
 from yoink_dl.url.normalizer import (
     extract_range,
     is_playlist_url,
     normalize,
     normalize_for_cache,
 )
-from yoink_dl.url.domains import DomainConfig
 
 
 @pytest.fixture

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 
 @dataclass
@@ -75,10 +75,7 @@ def parse_clip_spec(url: str, message_text: str) -> ClipSpec | None:
     text = message_text.strip()
     # Remove the URL portion
     url_end = text.find(url)
-    if url_end != -1:
-        remainder = text[url_end + len(url):].strip()
-    else:
-        remainder = text.strip()
+    remainder = text[url_end + len(url):].strip() if url_end != -1 else text.strip()
 
     t_param = extract_t_param(url)
 
@@ -95,20 +92,14 @@ def parse_clip_spec(url: str, message_text: str) -> ClipSpec | None:
         if t_param is None:
             raise ValueError("Start time missing")
         start = t_param
-        if ":" in token:
-            end = parse_time(token)
-        else:
-            end = start + parse_time(token)
+        end = parse_time(token) if ":" in token else start + parse_time(token)
         return ClipSpec(start_sec=start, end_sec=end)
 
     if len(tokens) >= 2:
         # Two tokens: start end_or_duration  (URL has no ?t= or it's ignored)
         start = parse_time(tokens[0])
         token2 = tokens[1]
-        if ":" in token2:
-            end = parse_time(token2)
-        else:
-            end = start + parse_time(token2)
+        end = parse_time(token2) if ":" in token2 else start + parse_time(token2)
         return ClipSpec(start_sec=start, end_sec=end)
 
     return None

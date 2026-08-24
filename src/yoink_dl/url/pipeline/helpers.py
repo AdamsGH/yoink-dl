@@ -2,18 +2,22 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import zipfile
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from telegram import Bot
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
 
 from yoink_dl.upload._common import CommonSendArgs
 
-from yoink_dl.storage.repos import CachedFile
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from telegram import Bot
+    from telegram.ext import ContextTypes
+
+    from yoink_dl.storage.repos import CachedFile
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +35,8 @@ async def _chat_action_loop(
         kw["message_thread_id"] = thread_id
     try:
         while not stop.is_set():
-            try:
+            with contextlib.suppress(Exception):
                 await bot.send_chat_action(**kw)
-            except Exception:
-                pass
             await asyncio.sleep(4)
     except asyncio.CancelledError:
         pass
@@ -186,9 +188,18 @@ def _fmt_sec(secs: int) -> str:
 def _is_retryable(exc: Exception) -> bool:
     """True for transient errors worth retrying. False for auth/geo/unsupported."""
     from yoink_dl.utils.errors import (  # noqa: PLC0415
-        BotError, GeoBlockedError, PrivateContentError, FileTooLargeError,
-        LiveStreamError, UnsupportedUrlError, BlacklistedDomainError,
-        RateLimitError, NsfwError, CookieError, MediaDownloadTimeoutError, NoVideoError,
+        BlacklistedDomainError,
+        BotError,
+        CookieError,
+        FileTooLargeError,
+        GeoBlockedError,
+        LiveStreamError,
+        MediaDownloadTimeoutError,
+        NoVideoError,
+        NsfwError,
+        PrivateContentError,
+        RateLimitError,
+        UnsupportedUrlError,
     )
     if isinstance(exc, (
         GeoBlockedError, PrivateContentError, FileTooLargeError,
@@ -235,9 +246,10 @@ async def handle_download_error(
 ) -> None:
     """Centralised error handler for run_download. Logs, edits status, writes dl_log, invalidates cookie on auth-hint matches."""
     import re  # noqa: PLC0415
-    from yoink_dl.utils.errors import BotError  # noqa: PLC0415
+
     from yoink.core.i18n import t  # noqa: PLC0415
     from yoink.core.metrics import metrics  # noqa: PLC0415
+    from yoink_dl.utils.errors import BotError  # noqa: PLC0415
 
     metrics.inc("downloads_error")
     logger.exception("Download failed for %s: %s", url, exc)
@@ -252,10 +264,8 @@ async def handle_download_error(
         raw = raw.removeprefix("ERROR: ")
         err_text = raw[:300] if raw else t("errors.unknown", lang)
 
-    try:
+    with contextlib.suppress(Exception):
         await status_message.edit_text(err_text, parse_mode=ParseMode.HTML)
-    except Exception:
-        pass
 
     if dl_log:
         await dl_log.write(
@@ -273,14 +283,10 @@ async def handle_download_error(
             "confirm your age", "age-restricted",
         )
         if any(h in err_lower for h in auth_hints):
-            try:
+            with contextlib.suppress(Exception):
                 await cookie_mgr.mark_invalid(user_id, resolved.domain if resolved else "")
-            except Exception:
-                pass
-            try:
+            with contextlib.suppress(Exception):
                 await cookie_mgr.mark_pool_invalid(cookie_id)
-            except Exception:
-                pass
             logger.info("Marked cookie invalid: id=%d err=%s", cookie_id, str(exc)[:80])
 
 

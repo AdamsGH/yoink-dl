@@ -17,8 +17,8 @@ import shlex
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-from yoink_dl.bot.middleware import get_user_repo
 from yoink.core.i18n import t
+from yoink_dl.bot.middleware import get_user_repo
 
 # Allowlisted yt-dlp options safe to expose to users
 _ALLOWED_KEYS = {

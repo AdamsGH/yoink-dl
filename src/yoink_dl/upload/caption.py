@@ -1,8 +1,12 @@
 """Caption builder for uploaded media."""
 from __future__ import annotations
 
-from yoink_dl.config import DownloaderConfig as Settings
+from typing import TYPE_CHECKING
+
 from yoink.core.i18n import t
+
+if TYPE_CHECKING:
+    from yoink_dl.config import DownloaderConfig as Settings
 
 # Telegram caption limit
 _MAX_CAPTION = 1024

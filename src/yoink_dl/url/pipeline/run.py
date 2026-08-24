@@ -14,33 +14,37 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from telegram.ext import ContextTypes
-
 from yoink.core.i18n import t
 from yoink.core.metrics import metrics
 from yoink_dl.storage.repos import make_cache_key
+from yoink_dl.upload.sender import MediaMeta
 from yoink_dl.url.domains import DomainConfig
 from yoink_dl.url.normalizer import normalize
-from yoink_dl.url.resolver import resolve
-from yoink_dl.url.clip import ClipSpec
 from yoink_dl.url.pipeline.cache import try_serve_from_cache, write_to_cache
 from yoink_dl.url.pipeline.download_phase import acquire_cookie, download, download_via_youtubei_job
 from yoink_dl.url.pipeline.guards import check_rate_limit, check_user_access
 from yoink_dl.url.pipeline.helpers import _can_use_browser_cookies, handle_download_error
 from yoink_dl.url.pipeline.upload_phase import (
-    build_captions, get_thumbnail, prepare_files, send, send_mediainfo,
+    build_captions,
+    get_thumbnail,
+    prepare_files,
+    send,
+    send_mediainfo,
 )
-from yoink_dl.upload.sender import MediaMeta
+from yoink_dl.url.resolver import resolve
 from yoink_dl.utils.safe_telegram import delete_many
 
 if TYPE_CHECKING:
     from telegram import Update
+    from telegram.ext import ContextTypes
+
+    from yoink_dl.url.clip import ClipSpec
 
 logger = logging.getLogger(__name__)
 
 
 async def run_download(
-    update: "Update",
+    update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     url: str,
     clip: ClipSpec | None,
@@ -55,7 +59,9 @@ async def run_download(
     send to the right chat without trying to reply to a deleted message.
     """
     from yoink_dl.bot.middleware import get_settings, get_user_repo  # noqa: PLC0415
-    from yoink_dl.bot.progress import ProgressTracker, register as reg_tracker, unregister as unreg_tracker  # noqa: PLC0415
+    from yoink_dl.bot.progress import ProgressTracker  # noqa: PLC0415
+    from yoink_dl.bot.progress import register as reg_tracker
+    from yoink_dl.bot.progress import unregister as unreg_tracker
 
     assert update.effective_user
     tg_user = update.effective_user
@@ -233,8 +239,8 @@ async def run_download(
                     ),
                     timeout=300,
                 )
-            except _asyncio.TimeoutError:
-                raise RuntimeError("YouTube OAuth download timed out after 5 minutes")
+            except TimeoutError as exc:
+                raise RuntimeError("YouTube OAuth download timed out after 5 minutes") from exc
         else:
             job = await download(
                 url=url,

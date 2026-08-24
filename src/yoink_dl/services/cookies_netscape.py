@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -34,9 +34,8 @@ def validate_netscape(content: str) -> bool:
     """Return True if content looks like a valid Netscape cookie file."""
     for line in content.splitlines():
         line = line.strip()
-        if line and not line.startswith("#"):
-            if len(line.split("\t")) >= 7:
-                return True
+        if line and not line.startswith("#") and len(line.split("\t")) >= 7:
+            return True
     return False
 
 
@@ -163,14 +162,15 @@ def _merge_set_cookie(original: str, set_cookie_header: str) -> str:
     """
 
     try:
-        from set_cookie_parser import parse as _parse, split_cookie_header as _split
+        from set_cookie_parser import parse as _parse
+        from set_cookie_parser import split_cookie_header as _split
         parsed = _parse(_split(set_cookie_header), decode_values=False)
     except ImportError:
         # Fallback: skip update if library not available
         logger.debug("set-cookie-parser not installed, skipping Set-Cookie merge")
         return original
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     updates: dict[str, str] = {}
     removals: set[str] = set()
 

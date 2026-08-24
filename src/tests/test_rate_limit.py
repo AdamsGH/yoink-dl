@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import pytest
-
-from yoink.core.db.models import User
 from yoink_dl.storage.repos import RateLimitRepo
 
+from yoink.core.db.models import User
 
 USER_ID = 200001
 

@@ -18,7 +18,7 @@ _URL_RE = re.compile(
 )
 
 
-def extract_url(message: "Message") -> str | None:
+def extract_url(message: Message) -> str | None:
     """
     Return the first URL found in the message.
     Checks entities first (TEXT_LINK, URL), then falls back to regex on text.

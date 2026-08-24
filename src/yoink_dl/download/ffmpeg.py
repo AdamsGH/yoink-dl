@@ -13,8 +13,10 @@ import math
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -86,13 +88,7 @@ def _make_thumb_sync(video_path: Path, out_path: Path, seek: float = 2.0) -> boo
         w, h = 0, 0
 
     # Scale filter: fit longest side to 640, keep aspect, ensure even dims
-    if w > 0 and h > 0:
-        if w >= h:
-            scale = "scale=640:-2"
-        else:
-            scale = "scale=-2:640"
-    else:
-        scale = "scale=640:-2"
+    scale = ("scale=640:-2" if w >= h else "scale=-2:640") if w > 0 and h > 0 else "scale=640:-2"
 
     cmd = [
         "ffmpeg", "-y",

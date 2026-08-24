@@ -9,12 +9,16 @@ Callback data scheme:
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
-from yoink_dl.bot.middleware import get_user_repo
 from yoink.core.i18n import t
-from yoink_dl.storage.repos import UserSettings
+from yoink_dl.bot.middleware import get_user_repo
+
+if TYPE_CHECKING:
+    from yoink_dl.storage.repos import UserSettings
 
 _QUALITIES = ["2160", "1440", "1080", "720", "480", "360", "best", "ask"]
 _CODECS = ["avc1", "av01", "vp09"]

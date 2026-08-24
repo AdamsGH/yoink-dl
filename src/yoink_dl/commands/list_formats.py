@@ -11,16 +11,18 @@ import logging
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yt_dlp
-
-from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-from yoink_dl.bot.middleware import get_settings, get_user_repo
 from yoink.core.i18n import t
-from yoink_dl.url.normalizer import normalize
+from yoink_dl.bot.middleware import get_settings, get_user_repo
 from yoink_dl.url.domains import DomainConfig
+from yoink_dl.url.normalizer import normalize
+
+if TYPE_CHECKING:
+    from telegram import Update
 
 logger = logging.getLogger(__name__)
 

@@ -1,11 +1,18 @@
 """Downloader plugin ORM models."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime  # noqa: TC003
 
 from sqlalchemy import (
-    BigInteger, Boolean, DateTime, Float, Index,
-    Integer, String, Text, ForeignKey,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 

@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import update
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from yoink.core.db.models import BotSetting, User, UserRole
 from yoink_dl.storage.models import UserSettings as UserSettingsModel
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
 
 @dataclass
@@ -47,10 +49,10 @@ class UserSettings:
 
 def _user_to_settings(user: User, dl: UserSettingsModel | None = None) -> UserSettings:
     """Build a UserSettings dataclass from a core User and optional dl row."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ban_until = user.ban_until
     if ban_until is not None and ban_until.tzinfo is None:
-        ban_until = ban_until.replace(tzinfo=timezone.utc)
+        ban_until = ban_until.replace(tzinfo=UTC)
     blocked = user.role == UserRole.banned or (ban_until is not None and ban_until > now)
     return UserSettings(
         user_id=user.id,
@@ -140,8 +142,8 @@ class UserSettingsRepo:
             if user.ban_until is not None:
                 ban_until = user.ban_until
                 if ban_until.tzinfo is None:
-                    ban_until = ban_until.replace(tzinfo=timezone.utc)
-                if ban_until > datetime.now(timezone.utc):
+                    ban_until = ban_until.replace(tzinfo=UTC)
+                if ban_until > datetime.now(UTC):
                     return True
                 await s.execute(
                     update(User).where(User.id == user_id).values(ban_until=None)
@@ -171,7 +173,7 @@ class UserSettingsRepo:
             for k, v in dl_kwargs.items():
                 setattr(dl, k, v)
             if dl_kwargs:
-                dl.updated_at = datetime.now(timezone.utc)
+                dl.updated_at = datetime.now(UTC)
             await s.commit()
             await s.refresh(user)
             await s.refresh(dl)

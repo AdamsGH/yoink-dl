@@ -6,10 +6,9 @@ import os
 import pytest
 import pytest_asyncio
 import sqlalchemy
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from yoink.core.db.base import Base
-
 
 TEST_DB_URL = os.getenv(
     "TEST_DATABASE_URL",

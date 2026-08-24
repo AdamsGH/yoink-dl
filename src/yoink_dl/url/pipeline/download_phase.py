@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from yoink.core.db.models import UserRole
@@ -11,24 +11,27 @@ from yoink_dl.download.manager import DownloadJob, DownloadManager
 from yoink_dl.url.pipeline.helpers import _is_retryable
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from telegram.ext import ContextTypes
-    from yoink_dl.services.cookies import CookieManager
-    from yoink_dl.url.domains import DomainConfig
-    from yoink_dl.url.clip import ClipSpec
+
     from yoink_dl.bot.progress import ProgressTracker
+    from yoink_dl.services.cookies import CookieManager
+    from yoink_dl.url.clip import ClipSpec
+    from yoink_dl.url.domains import DomainConfig
 
 logger = logging.getLogger(__name__)
 
 
 async def acquire_cookie(
     *,
-    cookie_mgr: "CookieManager | None",
+    cookie_mgr: CookieManager | None,
     user_id: int,
     url: str,
     user_settings: Any,
-    context: "ContextTypes.DEFAULT_TYPE",
-    domain_cfg: "DomainConfig",
-) -> "tuple[Path | None, int | None, Any]":
+    context: ContextTypes.DEFAULT_TYPE,
+    domain_cfg: DomainConfig,
+) -> tuple[Path | None, int | None, Any]:
     """Return (cookie_path, cookie_id, oauth_tokens). At most one of cookie_path/oauth_tokens is set."""
     if not cookie_mgr:
         return None, None, None
@@ -63,8 +66,8 @@ async def run_with_retries(
     job: DownloadJob,
     manager: DownloadManager,
     settings: Any,
-    context: "ContextTypes.DEFAULT_TYPE",
-    tracker: "ProgressTracker",
+    context: ContextTypes.DEFAULT_TYPE,
+    tracker: ProgressTracker,
     status_message: Any,
     lang: str,
 ) -> DownloadJob:
@@ -89,14 +92,12 @@ async def run_with_retries(
                     "Download attempt %d/%d failed (retrying): %s",
                     attempt + 1, max_retries, exc,
                 )
-                try:
+                with contextlib.suppress(Exception):
                     await status_message.edit_text(
                         t("pipeline.retrying", lang,
                           attempt=attempt + 1, max=max_retries,
                           defaultValue=f"Retrying ({attempt + 1}/{max_retries})..."),
                     )
-                except Exception:
-                    pass
                 await asyncio.sleep(2 ** attempt)
             else:
                 raise
@@ -114,8 +115,8 @@ async def download_via_youtubei_job(
     download_dir: Path,
     audio_only: bool,
     cookie_mgr: Any,
-    clip: "ClipSpec | None" = None,
-) -> "DownloadJob":
+    clip: ClipSpec | None = None,
+) -> DownloadJob:
     """Download via youtubei-service; returns a DownloadJob with files populated."""
     from yoink_dl.download.youtubei import download_via_youtubei  # noqa: PLC0415
     from yoink_dl.services.yttv_oauth import encode_content  # noqa: PLC0415
@@ -158,14 +159,14 @@ async def download(
     user_settings: Any,
     settings: Any,
     download_dir: Path,
-    clip: "ClipSpec | None",
+    clip: ClipSpec | None,
     multi_clips: list,
-    cookie_path: "Path | None",
+    cookie_path: Path | None,
     audio_only: bool,
     engine_override: Any,
     use_browser_cookies: bool,
-    context: "ContextTypes.DEFAULT_TYPE",
-    tracker: "ProgressTracker",
+    context: ContextTypes.DEFAULT_TYPE,
+    tracker: ProgressTracker,
     status_message: Any,
     lang: str,
     chat_id: int,
@@ -173,8 +174,9 @@ async def download(
 ) -> DownloadJob:
     """Build DownloadJob and run it with chat action loop."""
     from telegram.constants import ChatAction  # noqa: PLC0415
-    from yoink_dl.url.resolver import Engine  # noqa: PLC0415
+
     from yoink_dl.url.pipeline.helpers import _chat_action_loop  # noqa: PLC0415
+    from yoink_dl.url.resolver import Engine  # noqa: PLC0415
 
     job = DownloadJob(
         user_id=user_id,

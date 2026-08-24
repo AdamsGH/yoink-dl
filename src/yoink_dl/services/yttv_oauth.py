@@ -5,7 +5,7 @@ import json
 import secrets
 import threading
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TypedDict
 
 import httpx
@@ -41,7 +41,7 @@ _lock = threading.Lock()
 
 
 def _evict() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expired = [k for k, v in _store.items() if datetime.fromisoformat(v["expires_at"]) < now]
     for k in expired:
         del _store[k]
@@ -68,7 +68,7 @@ async def start_device_flow(user_id: int) -> dict:
         data = resp.json()
 
     session_id = secrets.token_urlsafe(24)
-    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=SESSION_TTL)).isoformat()
+    expires_at = (datetime.now(UTC) + timedelta(seconds=SESSION_TTL)).isoformat()
 
     with _lock:
         _evict()
@@ -103,7 +103,7 @@ async def poll_device_flow(session_id: str) -> dict:
     if session is None:
         return {"status": "expired"}
 
-    if datetime.fromisoformat(session["expires_at"]) < datetime.now(timezone.utc):
+    if datetime.fromisoformat(session["expires_at"]) < datetime.now(UTC):
         with _lock:
             _store.pop(session_id, None)
         return {"status": "expired"}
@@ -138,7 +138,7 @@ async def poll_device_flow(session_id: str) -> dict:
         "access_token": data["access_token"],
         "refresh_token": data["refresh_token"],
         "expires_at": (
-            datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 3600))
+            datetime.now(UTC) + timedelta(seconds=data.get("expires_in", 3600))
         ).isoformat(),
     }
     user_id = session["user_id"]
@@ -170,7 +170,7 @@ async def refresh_tokens(tokens: OAuthTokens) -> OAuthTokens:
         "access_token": data["access_token"],
         "refresh_token": data.get("refresh_token", tokens["refresh_token"]),
         "expires_at": (
-            datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 3600))
+            datetime.now(UTC) + timedelta(seconds=data.get("expires_in", 3600))
         ).isoformat(),
     }
 

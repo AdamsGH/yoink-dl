@@ -12,11 +12,10 @@ Usage:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
-
-from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from yoink.core.bot.access import AccessPolicy, require_access
@@ -25,6 +24,9 @@ from yoink.core.i18n import t
 from yoink_dl.bot.middleware import get_session_factory, get_settings, get_user_repo
 from yoink_dl.storage.models import DownloadLog
 from yoink_dl.utils.formatting import format_size
+
+if TYPE_CHECKING:
+    from telegram import Update
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +50,12 @@ async def _cmd_uncache(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text("Cache not available.")
         return
 
-    from yoink_dl.storage.repos import make_cache_key
-    from yoink_dl.url.normalizer import normalize
-    from yoink_dl.url.domains import DomainConfig
     from sqlalchemy import delete as sa_delete
+
     from yoink_dl.storage.models import FileCache
+    from yoink_dl.storage.repos import make_cache_key
+    from yoink_dl.url.domains import DomainConfig
+    from yoink_dl.url.normalizer import normalize
 
     settings = get_settings(context)
     domain_cfg = DomainConfig.from_config(settings)
@@ -142,8 +145,8 @@ async def _cmd_usage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # Looking up another user's stats requires admin role
     requested_other = args and args[0].isdigit() and int(args[0]) != calling_user_id
     if requested_other:
-        from yoink.core.db.models import UserRole
         from yoink.core.auth.rbac import role_gte
+        from yoink.core.db.models import UserRole
         user_repo = get_user_repo(context)
         caller = await user_repo.get_or_create(calling_user_id)
         if not role_gte(caller.role, UserRole.admin):
@@ -164,7 +167,7 @@ async def _cmd_usage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         )
         total_count, total_size = total_result.one()
 
-        today_start = datetime.now(timezone.utc).replace(
+        today_start = datetime.now(UTC).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         today_result = await session.execute(

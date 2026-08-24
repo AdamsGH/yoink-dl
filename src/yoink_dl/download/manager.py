@@ -2,25 +2,30 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import logging
 import shutil
 import tempfile
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from pathlib import Path
-from collections.abc import Callable, Coroutine
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from yoink_dl.config import DownloaderConfig as Settings
+from yoink_dl.services.ipv6_pool import IPv6Binding, IPv6Pool
 from yoink_dl.services.proxy import ProxyConfig, ProxyManager
-from yoink_dl.services.ipv6_pool import IPv6Pool, IPv6Binding
-from yoink_dl.storage.repos import UserSettings
-from yoink_dl.url.resolver import ResolvedUrl, Engine
-from yoink_dl.url.clip import ClipSpec
+from yoink_dl.url.resolver import Engine, ResolvedUrl
 from yoink_dl.utils.errors import DownloadError, FileTooLargeError
 from yoink_dl.utils.formatting import humanbytes
+
 from . import ytdlp as ytdlp_mod
-from .gallery import download_gallery, fetch_gallery_title, is_available as gallery_available
+from .gallery import download_gallery, fetch_gallery_title
+from .gallery import is_available as gallery_available
+
+if TYPE_CHECKING:
+    from yoink_dl.config import DownloaderConfig as Settings
+    from yoink_dl.storage.repos import UserSettings
+    from yoink_dl.url.clip import ClipSpec
 
 logger = logging.getLogger(__name__)
 
@@ -162,9 +167,9 @@ class DownloadManager:
             # ProgressTracker.ytdlp_hook, or the wrapped async (downloaded,
             # total) ProgressCallback - pick the right plumbing.
             if inspect.iscoroutinefunction(progress_cb):
-                hooks.append(_make_progress_hook(cast(ProgressCallback, progress_cb)))
+                hooks.append(_make_progress_hook(cast("ProgressCallback", progress_cb)))
             else:
-                hooks.append(cast(YtdlpHook, progress_cb))  # already a yt-dlp dict hook
+                hooks.append(cast("YtdlpHook", progress_cb))  # already a yt-dlp dict hook
         opts["progress_hooks"] = hooks
 
         job.files = await ytdlp_mod.download(opts, job.resolved.url)
@@ -285,8 +290,6 @@ def _make_progress_hook(cb: ProgressCallback) -> Callable[[dict[str, Any]], None
         if d.get("status") == "downloading":
             downloaded = d.get("downloaded_bytes", 0)
             total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
-            try:
+            with contextlib.suppress(Exception):
                 loop.call_soon_threadsafe(asyncio.ensure_future, cb(downloaded, total))
-            except Exception:
-                pass
     return hook

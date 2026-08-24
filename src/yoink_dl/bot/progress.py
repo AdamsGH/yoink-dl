@@ -16,18 +16,18 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import re
 import time
 from dataclasses import dataclass
-from queue import Queue, Empty
+from queue import Empty, Queue
 from typing import TYPE_CHECKING
-
-from telegram import Message
 
 from yoink_dl.utils.formatting import humanbytes
 
 if TYPE_CHECKING:
+    from telegram import Message
     from telegram.ext import Application
 
 logger = logging.getLogger(__name__)
@@ -115,10 +115,8 @@ class ProgressTracker:
     async def uploading_pulse(self, file_size: int = 0) -> None:
         """Fallback: show static upload status if progress cb isn't available."""
         text = f"Uploading {humanbytes(file_size)}…" if file_size else "Uploading…"
-        try:
+        with contextlib.suppress(Exception):
             await self._message.edit_text(text)
-        except Exception:
-            pass
         await asyncio.sleep(86400)
 
     async def flush(self) -> None:
@@ -166,7 +164,7 @@ async def _flush_job(context: object) -> None:
         await tracker.flush()
 
 
-def setup_job(app: "Application") -> None:
+def setup_job(app: Application) -> None:
     """Register the flush job. Call once at startup."""
     if app.job_queue is None:
         return

@@ -1,7 +1,7 @@
 """Cookie management endpoints - personal, pool, browser-extension submit."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
@@ -152,7 +152,7 @@ async def upload_cookie_file(
     current_user: User = Depends(get_current_user),
 ) -> CookieResponse:
     """Upload a raw Netscape cookie file for the current user."""
-    from yoink_dl.services.cookies import validate_netscape, extract_account_label  # noqa: PLC0415
+    from yoink_dl.services.cookies import extract_account_label, validate_netscape  # noqa: PLC0415
     if not validate_netscape(body.content):
         raise HTTPException(status_code=422, detail="Invalid Netscape cookie format")
     # Reject files that contain no auth tokens for the declared domain.
@@ -270,7 +270,7 @@ async def yttv_oauth_poll(
     tokens = result["tokens"]
     content = yttv.encode_content(tokens)
     domain = "youtube.com"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     row = (await session.execute(
         select(Cookie).where(
@@ -317,7 +317,7 @@ async def submit_cookies(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for domain, cookie_list in body.cookies.items():
         if not cookie_list:

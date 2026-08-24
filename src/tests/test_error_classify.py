@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-
 from yoink_dl.download.ytdlp import _classify_ytdlp_error
 from yoink_dl.url.pipeline.helpers import _is_retryable
 from yoink_dl.utils.errors import (

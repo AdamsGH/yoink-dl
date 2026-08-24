@@ -10,7 +10,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,7 @@ async def get_report(file: Path) -> str | None:
     except FileNotFoundError:
         logger.debug("mediainfo binary not found")
         return None
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("mediainfo timed out for %s", file.name)
         return None
     except Exception as e:

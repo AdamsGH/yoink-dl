@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy import select
 
 from yoink_dl.storage.models import NsfwDomain, NsfwKeyword
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 logger = logging.getLogger(__name__)
 
@@ -134,10 +136,7 @@ class NsfwChecker:
         domain = extract_domain(url)
         if not domain:
             return False
-        for d in self._domains:
-            if domain == d or domain.endswith("." + d):
-                return True
-        return False
+        return any(domain == d or domain.endswith("." + d) for d in self._domains)
 
     def check(
         self,

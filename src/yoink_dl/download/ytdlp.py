@@ -5,15 +5,10 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yt_dlp
 
-from yoink_dl.config import DownloaderConfig as Settings
-from yoink_dl.services.proxy import ProxyConfig
-from yoink_dl.storage.repos import UserSettings
-from yoink_dl.url.resolver import ResolvedUrl
-from yoink_dl.url.clip import ClipSpec
 from yoink_dl.utils.errors import (
     AgeRestrictedError,
     ConnectionFailedError,
@@ -23,6 +18,13 @@ from yoink_dl.utils.errors import (
     MediaDownloadTimeoutError,
     NoVideoError,
 )
+
+if TYPE_CHECKING:
+    from yoink_dl.config import DownloaderConfig as Settings
+    from yoink_dl.services.proxy import ProxyConfig
+    from yoink_dl.storage.repos import UserSettings
+    from yoink_dl.url.clip import ClipSpec
+    from yoink_dl.url.resolver import ResolvedUrl
 
 logger = logging.getLogger(__name__)
 
@@ -199,7 +201,7 @@ def build_ytdlp_opts(
     app_settings: Settings | None = None,
     extra_opts: dict[str, Any] | None = None,
     info_only: bool = False,
-    clip: "ClipSpec | None" = None,
+    clip: ClipSpec | None = None,
     use_browser_cookies: bool = False,
 ) -> dict[str, Any]:
     """Build complete yt-dlp options dict."""

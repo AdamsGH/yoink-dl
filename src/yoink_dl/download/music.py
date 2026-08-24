@@ -127,8 +127,8 @@ def embed_tags(
     Silently skips if mutagen is not installed or tagging fails.
     """
     try:
-        from mutagen.id3 import ID3, TIT2, TPE1, APIC, ID3NoHeaderError
         import httpx
+        from mutagen.id3 import APIC, ID3, TIT2, TPE1, ID3NoHeaderError
 
         try:
             tags = ID3(str(path))

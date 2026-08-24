@@ -25,7 +25,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from yoink_dl.bot.middleware import get_settings
 from yoink_dl.services import cookie_tokens as ct
-from yoink_dl.services.cookies import CookieManager, validate_netscape, _domain_from_url
+from yoink_dl.services.cookies import CookieManager, _domain_from_url, validate_netscape
 
 logger = logging.getLogger(__name__)
 

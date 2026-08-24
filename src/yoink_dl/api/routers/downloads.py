@@ -1,7 +1,7 @@
 """Download history, admin settings, user settings, stats, retry endpoints."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
@@ -138,7 +138,7 @@ async def list_my_downloads(
     if search:
         q = q.where(DownloadLog.url.ilike(f"%{search}%") | DownloadLog.title.ilike(f"%{search}%"))
     if period:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         match period:
             case "7d":
                 q = q.where(DownloadLog.created_at >= now - timedelta(days=7))
@@ -236,7 +236,7 @@ async def stats_overview(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.admin, UserRole.owner)),
 ) -> StatsOverview:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     window_start = now - timedelta(days=days)
 

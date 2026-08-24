@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import secrets
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 TTL = 600  # seconds
 
@@ -13,7 +13,7 @@ _lock = threading.Lock()
 
 def generate(user_id: int) -> str:
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=TTL)
+    expires_at = datetime.now(UTC) + timedelta(seconds=TTL)
     with _lock:
         _evict()
         _store[token] = {"user_id": user_id, "expires_at": expires_at}
@@ -26,13 +26,13 @@ def consume(token: str) -> int | None:
         entry = _store.pop(token, None)
     if not entry:
         return None
-    if entry["expires_at"] < datetime.now(timezone.utc):
+    if entry["expires_at"] < datetime.now(UTC):
         return None
     return entry["user_id"]
 
 
 def _evict() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expired = [t for t, v in _store.items() if v["expires_at"] < now]
     for t in expired:
         del _store[t]

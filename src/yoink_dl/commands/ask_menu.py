@@ -59,12 +59,12 @@ Session in context.bot_data["am"][token]:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import yt_dlp
-
 from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackQueryHandler, ContextTypes
@@ -371,10 +371,8 @@ async def _cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         sess_opt = _sessions(context).get(token)
     if sess_opt is None:
-        try:
+        with contextlib.suppress(Exception):
             await query.edit_message_reply_markup(reply_markup=None)
-        except Exception:
-            pass
         await query.answer("Session expired  - send the URL again.", show_alert=True)
         return
     sess: dict = sess_opt

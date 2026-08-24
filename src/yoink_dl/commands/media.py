@@ -14,8 +14,8 @@ Group chat:
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
-from telegram import Update
 from telegram.constants import ChatType
 from telegram.ext import Application, CommandHandler, ContextTypes
 
@@ -25,6 +25,9 @@ from yoink.core.i18n import t
 from yoink_dl.bot.middleware import get_user_repo
 from yoink_dl.url.clip import ClipSpec, parse_clip_spec
 from yoink_dl.url.extractor import extract_url
+
+if TYPE_CHECKING:
+    from telegram import Update
 
 FORCE_MODE_KEY = "force_mode"
 

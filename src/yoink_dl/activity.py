@@ -1,12 +1,15 @@
 """Activity provider for the dl plugin - plugs into core activity registry."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from yoink.core.activity import PluginActivity
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 _MUSIC_DOMAINS = frozenset({
     "open.spotify.com", "spotify.com",
@@ -36,7 +39,7 @@ def _categorize(domain: str | None) -> str:
 async def dl_activity_provider(session: AsyncSession, user_id: int) -> PluginActivity:
     from yoink_dl.storage.models import DownloadLog  # noqa: PLC0415
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=7)
     base = DownloadLog.user_id == user_id

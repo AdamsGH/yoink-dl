@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-
 from yoink_dl.url.domains import DomainConfig, domain_matches, extract_domain
 from yoink_dl.url.resolver import Engine, resolve
 

@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from yoink_dl.storage.models import FileCache
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
 _FILE_CACHE_TTL_DAYS = 30
 
@@ -72,13 +75,13 @@ class FileCacheRepo:
         For a media group the keys are '{base_key}:0', '{base_key}:1', ...
         Returns them ordered by index so the caller can send them in order.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._sf() as s:
             row = await s.get(FileCache, base_key)
             if row is not None:
                 expires = row.expires_at
                 if expires.tzinfo is None:
-                    expires = expires.replace(tzinfo=timezone.utc)
+                    expires = expires.replace(tzinfo=UTC)
                 if expires > now:
                     return [self._row_to_cached(row)]
 
@@ -93,7 +96,7 @@ class FileCacheRepo:
 
     async def get_by_file_id(self, file_id: str) -> CachedFile | None:
         """Reverse lookup: find a cached entry by its Telegram file_id."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._sf() as s:
             result = await s.execute(
                 select(FileCache)
@@ -135,7 +138,7 @@ class FileCacheRepo:
 
         Existing items for this base_key are replaced atomically.
         """
-        expires_at = datetime.now(timezone.utc) + timedelta(days=_FILE_CACHE_TTL_DAYS)
+        expires_at = datetime.now(UTC) + timedelta(days=_FILE_CACHE_TTL_DAYS)
         async with self._sf() as s:
             await s.execute(delete(FileCache).where(FileCache.cache_key.like(f"{base_key}:%")))
             for i, (fid, ftype) in enumerate(items):
@@ -147,7 +150,7 @@ class FileCacheRepo:
             await s.commit()
 
     async def store(self, entry: CachedFile) -> None:
-        expires_at = datetime.now(timezone.utc) + timedelta(days=_FILE_CACHE_TTL_DAYS)
+        expires_at = datetime.now(UTC) + timedelta(days=_FILE_CACHE_TTL_DAYS)
         async with self._sf() as s:
             row = await s.get(FileCache, entry.cache_key)
             if row is None:
@@ -170,7 +173,7 @@ class FileCacheRepo:
             return result.rowcount > 0
 
     async def evict_expired(self) -> int:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._sf() as s:
             result = await s.execute(delete(FileCache).where(FileCache.expires_at <= now))
             await s.commit()

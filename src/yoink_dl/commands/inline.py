@@ -24,9 +24,9 @@ import asyncio
 import hashlib
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING
 
 import yt_dlp
-
 from telegram import (
     InlineQuery,
     InlineQueryResultArticle,
@@ -35,10 +35,12 @@ from telegram import (
     InlineQueryResultVideo,
     InputTextMessageContent,
 )
-from telegram.ext import ContextTypes
 
 from yoink_dl.bot.middleware import is_blocked
 from yoink_dl.storage.repos import FileCacheRepo, make_cache_key
+
+if TYPE_CHECKING:
+    from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
 

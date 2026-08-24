@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urlparse, parse_qs, urlunparse, urlencode, unquote
+from urllib.parse import parse_qs, unquote, urlencode, urlparse, urlunparse
 
 from .domains import DomainConfig, domain_matches
 

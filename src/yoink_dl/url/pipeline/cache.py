@@ -4,14 +4,15 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from yoink.core.metrics import metrics
 from yoink_dl.services.nsfw import NsfwChecker
 from yoink_dl.upload.caption import build_caption, build_group_caption
 from yoink_dl.url.pipeline.helpers import send_cached
-from yoink.core.metrics import metrics
 
 if TYPE_CHECKING:
     from telegram import Bot, Message
-    from yoink_dl.storage.repos import FileCacheRepo, DownloadLogRepo
+
+    from yoink_dl.storage.repos import DownloadLogRepo, FileCacheRepo
     from yoink_dl.upload.sender import SendResult
 
 logger = logging.getLogger(__name__)
@@ -19,20 +20,20 @@ logger = logging.getLogger(__name__)
 
 async def try_serve_from_cache(
     *,
-    bot: "Bot",
+    bot: Bot,
     chat_id: int,
     thread_id: int | None,
     url: str,
     cache_key: str | None,
-    file_cache: "FileCacheRepo | None",
-    dl_log: "DownloadLogRepo | None",
+    file_cache: FileCacheRepo | None,
+    dl_log: DownloadLogRepo | None,
     user_id: int,
     user_settings: Any,
     settings: Any,
-    nsfw_checker: "NsfwChecker | None",
+    nsfw_checker: NsfwChecker | None,
     is_private: bool,
     group_id: int | None,
-    use_message: "Message | None",
+    use_message: Message | None,
     tg_user: Any,
 ) -> bool:
     """Try to serve from cache. Returns True if served (caller should return)."""
@@ -97,9 +98,9 @@ async def try_serve_from_cache(
 
 async def write_to_cache(
     *,
-    results: "list[SendResult]",
+    results: list[SendResult],
     use_media_group: bool,
-    file_cache: "FileCacheRepo | None",
+    file_cache: FileCacheRepo | None,
     cache_key: str | None,
     job: Any,
     file_size: int,

@@ -7,15 +7,18 @@ modules have a single import source.
 """
 from __future__ import annotations
 
-from telegram.ext import ContextTypes
+from typing import TYPE_CHECKING
 
 from yoink.core.bot.middleware import (
-    get_session_factory,
     get_config,
+    get_session_factory,
     guard_admin,
 )
 from yoink_dl.config import DownloaderConfig
 from yoink_dl.storage.repos import UserSettingsRepo
+
+if TYPE_CHECKING:
+    from telegram.ext import ContextTypes
 
 __all__ = [
     "get_session_factory",

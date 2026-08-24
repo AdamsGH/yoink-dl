@@ -34,7 +34,7 @@ async def check_nsfw(
     _: User = Depends(require_role(*_MOD)),
 ) -> NsfwCheckResponse:
     from urllib.parse import urlparse  # noqa: PLC0415
-    domain = urlparse(body.url).netloc.lstrip("www.")
+    domain = urlparse(body.url).netloc.removeprefix("www.")
     domain_hit = (await session.execute(
         select(NsfwDomain).where(NsfwDomain.domain == domain)
     )).scalar_one_or_none()

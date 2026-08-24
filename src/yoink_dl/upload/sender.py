@@ -10,23 +10,30 @@ Patterns ported from reference (all hard-won):
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from telegram import (
-    Bot, InputMediaDocument, InputMediaPhoto, InputMediaVideo,
-    Message, ReplyParameters,
+    Bot,
+    InputMediaDocument,
+    InputMediaPhoto,
+    InputMediaVideo,
+    Message,
+    ReplyParameters,
 )
-from telegram.error import BadRequest, RetryAfter, TimedOut
 from telegram.constants import ParseMode
+from telegram.error import BadRequest, RetryAfter, TimedOut
 
-from yoink_dl.config import DownloaderConfig
 from yoink_dl.upload._common import CommonSendArgs
 from yoink_dl.utils.errors import DownloadError
+
+if TYPE_CHECKING:
+    from yoink_dl.config import DownloaderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -252,10 +259,8 @@ def _caption_fallbacks(caption: str) -> list[str]:
 
 def _cleanup_thumb(thumb: Path | None) -> None:
     if thumb and thumb.exists() and ".__thumb" in thumb.name:
-        try:
+        with contextlib.suppress(Exception):
             thumb.unlink()
-        except Exception:
-            pass
 
 
 _MEDIA_GROUP_MAX = 10  # Telegram limit per media group

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-
 from yoink_dl.services.nsfw import NsfwChecker
 
 

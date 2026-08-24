@@ -40,7 +40,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 from yoink.core.i18n import t
 from yoink_dl.bot.middleware import get_user_repo, is_blocked
 from yoink_dl.commands.media import _is_group
-from yoink_dl.url.clip import ClipSpec, parse_time, extract_t_param
+from yoink_dl.url.clip import ClipSpec, extract_t_param, parse_time
 from yoink_dl.url.extractor import extract_url
 from yoink_dl.utils.safe_telegram import delete_many
 
@@ -96,10 +96,7 @@ def _parse_url_and_times(args: list[str]) -> tuple[str | None, int | None, int |
         start = t_param
         try:
             val = parse_time(time_tokens[0])
-            if ":" not in time_tokens[0]:
-                end = start + val
-            else:
-                end = val
+            end = start + val if ":" not in time_tokens[0] else val
         except (ValueError, IndexError):
             pass
         return url, start, end
@@ -223,10 +220,7 @@ async def handle_cut_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     # step == "end"
     start_sec: int = session["start_sec"]
-    if value <= start_sec and ":" not in text:
-        end_sec = start_sec + value
-    else:
-        end_sec = value
+    end_sec = start_sec + value if value <= start_sec and ":" not in text else value
 
     if end_sec <= start_sec:
         await update.message.reply_html(

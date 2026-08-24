@@ -17,17 +17,19 @@ import logging
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yt_dlp
-
 from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
-from yoink_dl.bot.middleware import get_user_repo, is_blocked
 from yoink.core.i18n import t
-from yoink_dl.storage.repos import UserSettings
+from yoink_dl.bot.middleware import get_user_repo, is_blocked
 from yoink_dl.url.extractor import extract_url
+
+if TYPE_CHECKING:
+    from yoink_dl.storage.repos import UserSettings
 
 logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="subs_dl")

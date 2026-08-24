@@ -6,27 +6,29 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from yoink.core.i18n import t
 from yoink_dl.download.postprocess import postprocess_all
 from yoink_dl.upload.caption import build_caption, build_group_caption
 from yoink_dl.upload.sender import MediaMeta, classify_files, send_files, send_media_group
 from yoink_dl.url.pipeline.helpers import _fmt_sec, _make_zip
 from yoink_dl.utils.formatting import humanbytes
-from yoink.core.i18n import t
 
 if TYPE_CHECKING:
     from pathlib import Path
+
     from telegram import Bot
     from telegram.ext import ContextTypes
+
     from yoink_dl.download.manager import DownloadJob
-    from yoink_dl.url.clip import ClipSpec
     from yoink_dl.upload.sender import SendResult
+    from yoink_dl.url.clip import ClipSpec
 
 logger = logging.getLogger(__name__)
 
 _GALLERY_ZIP_THRESHOLD = 10
 
 
-async def prepare_files(job: "DownloadJob") -> "tuple[list[Path], int, Any, Any]":
+async def prepare_files(job: DownloadJob) -> tuple[list[Path], int, Any, Any]:
     """Postprocess and return (files, file_size, meta_width, meta_height)."""
     files = await postprocess_all(job.files)
     files = [f for f in files if f.exists()]
@@ -43,7 +45,7 @@ async def prepare_files(job: "DownloadJob") -> "tuple[list[Path], int, Any, Any]
     return files, file_size, meta_width, meta_height
 
 
-async def get_thumbnail(job: "DownloadJob", files: list) -> "Path | None":
+async def get_thumbnail(job: DownloadJob, files: list) -> Path | None:
     """Return job thumbnail or generate one from the first video file."""
     if job.thumb is not None:
         return job.thumb
@@ -55,11 +57,11 @@ async def get_thumbnail(job: "DownloadJob", files: list) -> "Path | None":
 
 def build_captions(
     *,
-    job: "DownloadJob",
+    job: DownloadJob,
     resolved: Any,
     is_private: bool,
     settings: Any,
-    clip: "ClipSpec | None",
+    clip: ClipSpec | None,
     tg_user: Any,
     user_id: int,
 ) -> str:
@@ -77,7 +79,7 @@ def build_captions(
 
 async def send(
     *,
-    bot: "Bot",
+    bot: Bot,
     chat_id: int,
     thread_id: int | None,
     files: list,
@@ -88,13 +90,14 @@ async def send(
     is_private: bool,
     audio_only: bool,
     download_dir: Path,
-    job: "DownloadJob",
+    job: DownloadJob,
     lang: str,
     status_message: Any,
-    context: "ContextTypes.DEFAULT_TYPE",
-) -> "tuple[list[SendResult], bool]":
+    context: ContextTypes.DEFAULT_TYPE,
+) -> tuple[list[SendResult], bool]:
     """Send files, return (results, use_media_group)."""
     from telegram.constants import ChatAction  # noqa: PLC0415
+
     from yoink_dl.url.pipeline.helpers import _chat_action_loop  # noqa: PLC0415
 
     file_type = classify_files(files, user_settings.send_as_file)
@@ -175,7 +178,7 @@ async def send(
 
 async def send_mediainfo(
     *,
-    bot: "Bot",
+    bot: Bot,
     chat_id: int,
     thread_id: int | None,
     files: list,
@@ -185,9 +188,10 @@ async def send_mediainfo(
 ) -> None:
     if not (user_settings.mediainfo and len(files) == 1 and is_private):
         return
-    from yoink_dl.utils.mediainfo import get_report  # noqa: PLC0415
     from telegram import ReplyParameters  # noqa: PLC0415
     from telegram.constants import ParseMode  # noqa: PLC0415
+
+    from yoink_dl.utils.mediainfo import get_report  # noqa: PLC0415
 
     report = await get_report(files[0])
     if not report:

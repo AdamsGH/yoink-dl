@@ -6,9 +6,9 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from yoink.core.bot.access import AccessPolicy, require_access
 from yoink.core.db.models import UserRole
+from yoink.core.i18n.loader import t
 from yoink_dl.bot.middleware import get_user_repo
 from yoink_dl.utils.formatting import format_size
-from yoink.core.i18n.loader import t
 
 
 def _yn(value: bool, lang: str) -> str:

@@ -16,7 +16,7 @@ class ProxyConfig:
     url: str  # full URL: http://user:pass@host:port
 
     @classmethod
-    def from_url(cls, url: str) -> "ProxyConfig":
+    def from_url(cls, url: str) -> ProxyConfig:
         return cls(url=url)
 
     @property
@@ -40,7 +40,7 @@ class ProxyManager:
         self._lock = threading.Lock()
 
     @classmethod
-    def from_settings(cls, settings: "Settings") -> "ProxyManager":
+    def from_settings(cls, settings: Settings) -> ProxyManager:
         return cls(proxies=settings.proxy_urls, strategy=settings.proxy_strategy)
 
     @property

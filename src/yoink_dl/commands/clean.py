@@ -9,8 +9,8 @@ from __future__ import annotations
 from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
-from yoink_dl.bot.middleware import get_user_repo
 from yoink.core.i18n import t
+from yoink_dl.bot.middleware import get_user_repo
 
 _ITEMS = [
     ("format",    "🎬 Format & quality"),

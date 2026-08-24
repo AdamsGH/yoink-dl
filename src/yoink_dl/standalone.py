@@ -5,8 +5,8 @@ import logging
 
 from telegram import Update
 
-from yoink.core.config import CoreSettings
 from yoink.app import build_app
+from yoink.core.config import CoreSettings
 from yoink_dl.plugin import DownloaderPlugin
 
 logging.basicConfig(

@@ -4,29 +4,32 @@ from __future__ import annotations
 import itertools
 import logging
 import threading
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy import delete, select
 
 from yoink.core.db.models import User
+from yoink_dl.services.cookies_netscape import (
+    _domain_from_url,
+    _merge_netscape_updates,
+    _merge_set_cookie,
+    _parse_netscape_cookies,
+    _write_tmp,
+    extract_account_label,
+    validate_netscape,
+)
+from yoink_dl.services.yttv_oauth import OAuthTokens, decode_content, is_oauth_content
 from yoink_dl.storage.models import Cookie
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
 logger = logging.getLogger(__name__)
 
 _NETSCAPE_HEADER = "# Netscape HTTP Cookie File"
-
-from yoink_dl.services.cookies_netscape import (  # noqa: E402
-    _domain_from_url,
-    validate_netscape,
-    _parse_netscape_cookies,
-    extract_account_label,
-    _merge_netscape_updates,
-    _write_tmp,
-    _merge_set_cookie,
-)
-from yoink_dl.services.yttv_oauth import OAuthTokens, decode_content, is_oauth_content  # noqa: E402
 
 
 class _CookieCycle:
@@ -93,7 +96,7 @@ class CookieManager:
             else:
                 row.content = content
                 row.is_valid = True
-                row.updated_at = datetime.now(timezone.utc)
+                row.updated_at = datetime.now(UTC)
             await session.commit()
         logger.info("Stored personal cookie: user=%d domain=%s", user_id, domain)
 
@@ -144,7 +147,7 @@ class CookieManager:
             )).scalar_one_or_none()
             if row is not None:
                 row.is_valid = False
-                row.updated_at = datetime.now(timezone.utc)
+                row.updated_at = datetime.now(UTC)
                 await session.commit()
         logger.warning("Marked cookie invalid: user=%d domain=%s", user_id, domain)
 
@@ -188,8 +191,9 @@ class CookieManager:
 
     async def store_pool(self, owner_id: int, domain: str, content: str) -> Cookie:
         """Add or update a pool cookie. Deduplicates by per-account session key (e.g. SAPISID)."""
-        from yoink_dl.services.cookie_account import fetch_account_info  # noqa: PLC0415
         import hashlib  # noqa: PLC0415
+
+        from yoink_dl.services.cookie_account import fetch_account_info  # noqa: PLC0415
 
         content_hash = hashlib.sha256(content.encode()).hexdigest()
         session_key = self._extract_session_key(domain, content)
@@ -202,7 +206,7 @@ class CookieManager:
 
         label = (info.name if info else None) or extract_account_label(domain, content)
         avatar_url = info.avatar_url if info else None
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with self._factory() as session:
             await self._ensure_user(session, owner_id)
@@ -334,7 +338,7 @@ class CookieManager:
             row = await session.get(Cookie, cookie_id)
             if row is not None and row.is_pool:
                 row.is_valid = False
-                row.updated_at = datetime.now(timezone.utc)
+                row.updated_at = datetime.now(UTC)
                 await session.commit()
         with self._pool_lock:
             # Force cycle rebuild on next request
@@ -356,7 +360,7 @@ class CookieManager:
             if updated == row.content:
                 return False
             row.content = updated
-            row.updated_at = datetime.now(timezone.utc)
+            row.updated_at = datetime.now(UTC)
             await session.commit()
         logger.debug("Updated cookie content from Set-Cookie: id=%d", cookie_id)
         return True
@@ -367,7 +371,10 @@ class CookieManager:
         Merges any Set-Cookie tokens returned back into the DB row (rolling refresh).
         Returns True if the cookie is authenticated.
         """
-        from yoink_dl.services.cookie_account import fetch_account_info, _fetch_youtube  # noqa: PLC0415
+        from yoink_dl.services.cookie_account import (  # noqa: PLC0415
+            _fetch_youtube,
+            fetch_account_info,
+        )
 
         async with self._factory() as session:
             row = await session.get(Cookie, cookie_id)
@@ -398,7 +405,7 @@ class CookieManager:
         if new_cookies:
             updated_content = _merge_netscape_updates(content, new_cookies)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._factory() as session:
             row = await session.get(Cookie, cookie_id)
             if row is not None:
@@ -443,7 +450,7 @@ class CookieManager:
                 )
                 return False
             row.content = new_content
-            row.updated_at = datetime.now(timezone.utc)
+            row.updated_at = datetime.now(UTC)
             await session.commit()
         logger.debug("Synced cookie from file: id=%d path=%s", cookie_id, path)
         return True
@@ -520,7 +527,7 @@ class CookieManager:
         self,
         user_id: int,
         url: str,
-    ) -> "OAuthTokens | None":
+    ) -> OAuthTokens | None:
         """
         Return fresh OAuthTokens for the URL's domain if the user has an OAuth entry.
         Refreshes automatically when expired. Returns None if no OAuth entry exists.
@@ -544,15 +551,18 @@ class CookieManager:
         if tokens is None:
             return None
 
-        from datetime import datetime, timezone  # noqa: PLC0415
+        from datetime import datetime  # noqa: PLC0415
         expires_at = datetime.fromisoformat(tokens["expires_at"])
-        if expires_at <= datetime.now(timezone.utc):
+        if expires_at <= datetime.now(UTC):
             # Token expired - refresh it
             try:
-                from yoink_dl.services.yttv_oauth import refresh_tokens, encode_content  # noqa: PLC0415
+                from yoink_dl.services.yttv_oauth import (  # noqa: PLC0415
+                    encode_content,
+                    refresh_tokens,
+                )
                 tokens = await refresh_tokens(tokens)
                 content = encode_content(tokens)
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 async with self._factory() as session:
                     row2 = await session.get(Cookie, row.id)
                     if row2 is not None:

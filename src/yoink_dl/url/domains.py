@@ -68,7 +68,7 @@ class DomainConfig:
     ])
 
     @classmethod
-    def from_config(cls, cfg: "DownloaderConfig") -> "DomainConfig":
+    def from_config(cls, cfg: DownloaderConfig) -> DomainConfig:
         return cls(
             proxy_domains=cfg.proxy_domains,
         )
@@ -85,7 +85,4 @@ def extract_domain(url: str) -> str:
 
 def domain_matches(domain: str, patterns: list[str]) -> bool:
     """True if domain equals or is a subdomain of any pattern."""
-    for p in patterns:
-        if domain == p or domain.endswith("." + p):
-            return True
-    return False
+    return any(domain == p or domain.endswith("." + p) for p in patterns)

@@ -1,12 +1,15 @@
 """Cookie and NSFW repositories."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from yoink_dl.storage.models import Cookie, NsfwDomain, NsfwKeyword
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
 
 class CookieRepo:
@@ -33,7 +36,7 @@ class CookieRepo:
                 s.add(cookie)
             else:
                 cookie.content = content
-                cookie.updated_at = datetime.now(timezone.utc)
+                cookie.updated_at = datetime.now(UTC)
             await s.commit()
             await s.refresh(cookie)
             return cookie

@@ -6,10 +6,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
-from telegram import Bot, Message
-from telegram.error import RetryAfter, BadRequest, TimedOut
-from telegram.ext import ContextTypes
+from telegram.error import BadRequest, RetryAfter, TimedOut
+
+if TYPE_CHECKING:
+    from telegram import Bot, Message
+    from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +44,7 @@ async def safe_edit(
     text: str,
     **kwargs,
 ) -> Message | None:
-    for attempt in range(_MAX_RETRIES):
+    for _attempt in range(_MAX_RETRIES):
         try:
             return await message.edit_text(text, **kwargs)
         except RetryAfter as e:
@@ -85,7 +88,7 @@ async def delete_many(bot: Bot, chat_id: int, message_ids: list[int]) -> None:
             *(bot.delete_message(chat_id=chat_id, message_id=mid) for mid in ids),
             return_exceptions=True,
         )
-        for mid, res in zip(ids, results):
+        for mid, res in zip(ids, results, strict=False):
             if isinstance(res, Exception):
                 logger.debug("delete_message failed (chat=%s, msg=%s): %s", chat_id, mid, res)
 

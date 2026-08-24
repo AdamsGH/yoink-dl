@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
-from .domains import DomainConfig, extract_domain, domain_matches
+from .domains import DomainConfig, domain_matches, extract_domain
 from .normalizer import normalize
 
 

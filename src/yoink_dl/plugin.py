@@ -2,11 +2,23 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from fastapi import APIRouter
-
-from yoink.core.plugin import InlineHandlerSpec, JobSpec, PluginContext, WebManifest, WebPage, SidebarEntry
+from yoink.core.plugin import (
+    InlineHandlerSpec,
+    JobSpec,
+    PluginContext,
+    SidebarEntry,
+    WebManifest,
+    WebPage,
+)
 from yoink_dl.config import DownloaderConfig
+
+if TYPE_CHECKING:
+    from fastapi import APIRouter
+
+    from yoink_dl.services.cookies import CookieManager
+    from yoink_dl.storage.repos import FileCacheRepo
 
 
 class DownloaderPlugin:
@@ -21,7 +33,13 @@ class DownloaderPlugin:
 
     def get_models(self) -> list:
         from yoink_dl.storage.models import (
-            Cookie, DownloadLog, FileCache, NsfwDomain, NsfwKeyword, RateLimit, UserSettings,
+            Cookie,
+            DownloadLog,
+            FileCache,
+            NsfwDomain,
+            NsfwKeyword,
+            RateLimit,
+            UserSettings,
         )
         return [UserSettings, DownloadLog, FileCache, RateLimit, Cookie, NsfwDomain, NsfwKeyword]
 
@@ -90,9 +108,9 @@ class DownloaderPlugin:
 
     def get_help_section(self, role: str, lang: str, granted_features: set[str] | None = None) -> str:
         import yaml
-        from yoink.core.plugin import CommandSpec
 
         from yoink.core.auth.rbac import ROLE_RANK as _ROLE_RANK  # noqa: PLC0415
+        from yoink.core.plugin import CommandSpec
         rank = _ROLE_RANK.get(role, 0)
 
         locales_dir = Path(__file__).parent / "i18n" / "locales"
@@ -166,6 +184,7 @@ class DownloaderPlugin:
 
     def get_commands(self) -> list:
         import yaml
+
         from yoink.core.plugin import CommandSpec
 
         locales_dir = Path(__file__).parent / "i18n" / "locales"
@@ -200,7 +219,6 @@ class DownloaderPlugin:
 
     def get_jobs(self) -> list[JobSpec]:
         from yoink_dl.bot.progress import _flush_job
-        from yoink_dl.storage.repos import FileCacheRepo
 
         async def _evict_cache(context: object) -> None:
             repo: FileCacheRepo | None = None
@@ -216,9 +234,10 @@ class DownloaderPlugin:
 
         async def _warmup_cookies(context: object) -> None:
             import logging
-            from yoink_dl.services.cookies import CookieManager
-            from yoink_dl.storage.models import Cookie
+
             from sqlalchemy import select
+
+            from yoink_dl.storage.models import Cookie
             log = logging.getLogger(__name__)
 
             mgr: CookieManager | None = None
@@ -257,7 +276,10 @@ class DownloaderPlugin:
         from yoink_dl.services.cookies import CookieManager
         from yoink_dl.services.nsfw import NsfwChecker
         from yoink_dl.storage.repos import (
-            DownloadLogRepo, FileCacheRepo, RateLimitRepo, UserSettingsRepo,
+            DownloadLogRepo,
+            FileCacheRepo,
+            RateLimitRepo,
+            UserSettingsRepo,
         )
 
         sf = ctx.session_factory
@@ -282,7 +304,10 @@ class DownloaderPlugin:
         bd["settings"] = self._config
         bd["user_dl_semaphores"] = {}  # user_id -> asyncio.Semaphore(3)
 
-        from yoink.core.activity import register_activity_provider, register_list_users_provider  # noqa: PLC0415
+        from yoink.core.activity import (  # noqa: PLC0415
+            register_activity_provider,
+            register_list_users_provider,
+        )
         from yoink_dl.activity import dl_activity_provider  # noqa: PLC0415
         from yoink_dl.list_provider import dl_list_users_provider  # noqa: PLC0415
         register_activity_provider("dl", dl_activity_provider)

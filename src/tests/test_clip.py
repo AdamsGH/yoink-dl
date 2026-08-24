@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-
 from yoink_dl.config import DownloaderConfig
 from yoink_dl.download.ytdlp import build_ytdlp_opts
 from yoink_dl.storage.repos import UserSettings

@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from yoink.core.db.models import User
 from yoink_dl.storage.models import DownloadLog, RateLimit
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +105,7 @@ class RateLimitRepo:
         limit_day: int,
     ) -> tuple[bool, str]:
         """Return (allowed, exceeded_window_name). Increments all windows atomically."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         windows = [
             ("minute", timedelta(minutes=1), limit_minute),
             ("hour",   timedelta(hours=1),   limit_hour),

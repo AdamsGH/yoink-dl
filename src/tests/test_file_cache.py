@@ -1,7 +1,6 @@
 """Tests for file cache repository."""
 from __future__ import annotations
 
-
 from yoink_dl.storage.repos import FileCacheRepo, make_cache_key
 
 

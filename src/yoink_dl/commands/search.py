@@ -6,18 +6,18 @@ Shows top 5 results as inline keyboard buttons. User picks one → downloads.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
 import yt_dlp
-
 from telegram import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 from yoink.core.bot.access import AccessPolicy, require_access
 from yoink.core.db.models import UserRole
-from yoink_dl.bot.middleware import get_user_repo
 from yoink.core.i18n import t
+from yoink_dl.bot.middleware import get_user_repo
 
 logger = logging.getLogger(__name__)
 
@@ -123,10 +123,8 @@ async def _cb_search_pick(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     # Delete the search results message
-    try:
+    with contextlib.suppress(Exception):
         await qmsg.delete()
-    except Exception:
-        pass
 
     # Clear any lingering force_mode (e.g. from a previous /audio command)
     # so the search pick always downloads as video.
