@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -13,7 +14,11 @@ from yoink_dl.storage.models import FileCache
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
+logger = logging.getLogger(__name__)
+
 _FILE_CACHE_TTL_DAYS = 30
+_MIN_CACHEABLE_MEDIA_BYTES = 1024
+_MEDIA_FILE_TYPES = frozenset({"animation", "audio", "video", "voice"})
 
 
 @dataclass
@@ -68,6 +73,14 @@ class FileCacheRepo:
             file_size=row.file_size,
         )
 
+    @staticmethod
+    def _is_usable(row: FileCache) -> bool:
+        return not (
+            row.file_type in _MEDIA_FILE_TYPES
+            and row.file_size is not None
+            and row.file_size < _MIN_CACHEABLE_MEDIA_BYTES
+        )
+
     async def get(self, base_key: str) -> list[CachedFile]:
         """Return cached files for a URL.
 
@@ -82,8 +95,15 @@ class FileCacheRepo:
                 expires = row.expires_at
                 if expires.tzinfo is None:
                     expires = expires.replace(tzinfo=UTC)
-                if expires > now:
+                if expires > now and self._is_usable(row):
                     return [self._row_to_cached(row)]
+                if not self._is_usable(row):
+                    logger.warning(
+                        "Evicting invalid media cache entry %s: type=%s size=%s",
+                        row.cache_key, row.file_type, row.file_size,
+                    )
+                    await s.delete(row)
+                    await s.commit()
 
             prefix = f"{base_key}:%"
             result = await s.execute(
@@ -92,6 +112,11 @@ class FileCacheRepo:
                 .order_by(FileCache.cache_key)
             )
             rows = result.scalars().all()
+            if rows and not all(self._is_usable(item) for item in rows):
+                logger.warning("Evicting invalid media-group cache entries for %s", base_key)
+                await s.execute(delete(FileCache).where(FileCache.cache_key.like(prefix)))
+                await s.commit()
+                return []
             return [self._row_to_cached(r) for r in rows]
 
     async def get_by_file_id(self, file_id: str) -> CachedFile | None:

@@ -86,3 +86,31 @@ class TestFileCacheRepo:
         assert len(cached) == 1
         assert cached[0].file_id == "new_id"
         assert cached[0].file_type == "audio"
+
+    async def test_evicts_tiny_cached_video(self, session_factory):
+        cache = FileCacheRepo(session_factory)
+        key = make_cache_key("https://example.com/broken_video")
+        await cache.put(
+            key,
+            file_id="broken_file_id",
+            file_type="video",
+            file_size=262,
+            duration=177.0,
+        )
+
+        assert await cache.get(key) == []
+        assert await cache.delete(key) is False
+
+    async def test_keeps_tiny_non_media_cache_entry(self, session_factory):
+        cache = FileCacheRepo(session_factory)
+        key = make_cache_key("https://example.com/tiny_document")
+        await cache.put(
+            key,
+            file_id="document_file_id",
+            file_type="document",
+            file_size=262,
+        )
+
+        cached = await cache.get(key)
+        assert len(cached) == 1
+        assert cached[0].file_id == "document_file_id"

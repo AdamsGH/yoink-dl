@@ -15,7 +15,12 @@ from typing import TYPE_CHECKING, Any, cast
 from yoink_dl.services.ipv6_pool import IPv6Binding, IPv6Pool
 from yoink_dl.services.proxy import ProxyConfig, ProxyManager
 from yoink_dl.url.resolver import Engine, ResolvedUrl
-from yoink_dl.utils.errors import DownloadError, FileTooLargeError
+from yoink_dl.utils.errors import (
+    DownloadError,
+    FileTooLargeError,
+    InvalidMediaError,
+    PostLiveProcessingError,
+)
 from yoink_dl.utils.formatting import humanbytes
 
 from . import ytdlp as ytdlp_mod
@@ -93,6 +98,7 @@ class DownloadManager:
                 await self._extract_info(job)
                 await self._download(job, progress_cb)
 
+            await self._validate_files(job)
             await self._check_file_sizes(job)
             job.status = "uploading"
         except Exception as e:
@@ -123,6 +129,8 @@ class DownloadManager:
         info = await ytdlp_mod.extract_info(opts, job.resolved.url)
         job.info = info
         job.title = info.get("title") or info.get("webpage_url_basename") or ""
+        if (job.clip or job.clips) and info.get("live_status") == "post_live":
+            raise PostLiveProcessingError()
         full_duration = float(info.get("duration") or 0)
         # For clips, use the clip duration instead of the full video duration
         if job.clip:
@@ -177,6 +185,29 @@ class DownloadManager:
             "Download done: user=%s files=%s",
             job.user_id, [f.name for f in job.files],
         )
+
+    async def _validate_files(self, job: DownloadJob) -> None:
+        from yoink_dl.download.ffmpeg import probe  # noqa: PLC0415
+
+        video_extensions = {".3gp", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mp4", ".ts", ".webm"}
+        audio_extensions = {".aac", ".flac", ".m4a", ".mp3", ".ogg", ".opus", ".wav"}
+        for path in job.files:
+            suffix = path.suffix.lower()
+            if suffix not in video_extensions | audio_extensions:
+                continue
+            try:
+                info = await probe(path)
+            except Exception as exc:
+                logger.warning("Downloaded media validation failed for %s: %s", path.name, exc)
+                raise InvalidMediaError() from exc
+            stream_types = {stream.get("codec_type") for stream in info.get("streams", [])}
+            expected_type = "audio" if job.audio_only or suffix in audio_extensions else "video"
+            if expected_type not in stream_types:
+                logger.warning(
+                    "Downloaded media %s has no %s stream: %s",
+                    path.name, expected_type, sorted(str(item) for item in stream_types),
+                )
+                raise InvalidMediaError()
 
     async def _check_file_sizes(self, job: DownloadJob) -> None:
         max_bytes = self._settings.max_file_size_bytes

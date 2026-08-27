@@ -241,6 +241,8 @@ errors:
   no_video: "❌ No video found in this post. The link may point to a text or image-only post, or the video is behind a login (try /cookie)."
   connection_failed: "❌ Could not reach the site. The server timed out or refused the connection; it may be down or blocking this network. Try again, or enable /proxy."
   media_download_timeout: "❌ The media server stopped responding during the download. Please try again later."
+  post_live_processing: "❌ YouTube is still processing this recently ended stream. Clips are not available yet. Please try again later."
+  invalid_media: "❌ The download produced an invalid media file. Please try again later."
 
 help_sections:
   guide:

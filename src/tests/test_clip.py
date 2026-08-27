@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import pytest
 from yoink_dl.config import DownloaderConfig
+from yoink_dl.download.manager import DownloadJob, DownloadManager
 from yoink_dl.download.ytdlp import build_ytdlp_opts
 from yoink_dl.storage.repos import UserSettings
 from yoink_dl.url.clip import ClipSpec, extract_t_param, parse_clip_spec, parse_time
 from yoink_dl.url.resolver import Engine, ResolvedUrl
+from yoink_dl.utils.errors import InvalidMediaError, PostLiveProcessingError
 
 
 class TestParseTime:
@@ -147,3 +149,59 @@ class TestClipDownloaderOptions:
         )
 
         assert "youtube" not in opts["extractor_args"]
+
+
+class TestClipDownloadValidation:
+    @pytest.mark.asyncio
+    async def test_rejects_clip_while_youtube_is_processing_post_live_stream(
+        self, monkeypatch, tmp_path,
+    ):
+        async def fake_extract_info(opts, url):
+            return {
+                "title": "Recently ended stream",
+                "duration": 18208,
+                "live_status": "post_live",
+            }
+
+        monkeypatch.setattr("yoink_dl.download.manager.ytdlp_mod.extract_info", fake_extract_info)
+        job = DownloadJob(
+            user_id=1,
+            resolved=ResolvedUrl(
+                url="https://www.youtube.com/live/at53hgmi6L0?t=5397",
+                engine=Engine.YTDLP,
+                domain="youtube.com",
+                use_proxy=False,
+            ),
+            settings=UserSettings(user_id=1),
+            download_dir=tmp_path,
+            clip=ClipSpec(start_sec=5397, end_sec=5574),
+        )
+
+        with pytest.raises(PostLiveProcessingError):
+            await DownloadManager(DownloaderConfig())._extract_info(job)
+
+    @pytest.mark.asyncio
+    async def test_rejects_downloaded_video_without_video_stream(
+        self, monkeypatch, tmp_path,
+    ):
+        async def fake_probe(path):
+            return {"streams": []}
+
+        monkeypatch.setattr("yoink_dl.download.ffmpeg.probe", fake_probe)
+        path = tmp_path / "broken.mp4"
+        path.write_bytes(b"not a video")
+        job = DownloadJob(
+            user_id=1,
+            resolved=ResolvedUrl(
+                url="https://example.com/video",
+                engine=Engine.YTDLP,
+                domain="example.com",
+                use_proxy=False,
+            ),
+            settings=UserSettings(user_id=1),
+            download_dir=tmp_path,
+            files=[path],
+        )
+
+        with pytest.raises(InvalidMediaError):
+            await DownloadManager(DownloaderConfig())._validate_files(job)

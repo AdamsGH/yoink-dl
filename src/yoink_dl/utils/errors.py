@@ -47,6 +47,18 @@ class MediaDownloadTimeoutError(BotError):
         super().__init__("errors.media_download_timeout", **kwargs)
 
 
+class PostLiveProcessingError(BotError):
+    """YouTube has not finished processing a recently ended livestream."""
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__("errors.post_live_processing", **kwargs)
+
+
+class InvalidMediaError(BotError):
+    """The downloader produced a file without the expected media stream."""
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__("errors.invalid_media", **kwargs)
+
+
 class AgeRestrictedError(BotError):
     def __init__(self, **kwargs: object) -> None:
         super().__init__("errors.age_restricted", **kwargs)
