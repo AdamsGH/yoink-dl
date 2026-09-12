@@ -192,6 +192,26 @@ def build_format_string(settings: UserSettings) -> str:
     return fmt
 
 
+def _build_youtube_clip_format(settings: UserSettings) -> str:
+    """Select a combined stream that ffmpeg can seek without draining DASH files."""
+    quality = "best" if settings.quality == "ask" else settings.quality
+    height_map = {"4k": 2160, "8k": 4320}
+    height = height_map.get(quality.lower())
+    if height is None and quality.rstrip("p").isdigit():
+        height = int(quality.rstrip("p"))
+
+    codec = settings.codec if settings.codec in {"av01", "vp9", "avc1"} else None
+    constraints = []
+    if height is not None:
+        constraints.append(f"height<={height}")
+    if codec:
+        constraints.append(f"vcodec^={codec}")
+
+    preferred = "best" + "".join(f"[{constraint}]" for constraint in constraints)
+    height_fallback = f"/best[height<={height}]" if height is not None else ""
+    return f"{preferred}{height_fallback}/best"
+
+
 def build_ytdlp_opts(
     resolved: ResolvedUrl,
     settings: UserSettings,
@@ -312,6 +332,12 @@ def build_ytdlp_opts(
             opts.setdefault("extractor_args", {}).setdefault("youtube", {})[
                 "player_client"
             ] = ["web_embedded"]
+            # Separate high-resolution DASH streams are fragmented MP4 files.
+            # ffmpeg cannot timestamp-seek them and instead drains the entire
+            # stream up to the requested offset (hundreds of MiB for long videos).
+            # A combined/progressive stream remains byte-seekable and makes clip
+            # latency depend on clip length rather than source duration.
+            opts["format"] = _build_youtube_clip_format(settings)
         if app_settings:
             opts["external_downloader_args"] = {
                 "ffmpeg_i": [

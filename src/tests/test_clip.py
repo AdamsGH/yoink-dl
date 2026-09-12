@@ -114,6 +114,26 @@ class TestClipDownloaderOptions:
             "-rw_timeout", "45000000",
         ]
         assert opts["extractor_args"]["youtube"]["player_client"] == ["web_embedded"]
+        assert opts["format"] == "best[vcodec^=avc1]/best"
+
+    def test_youtube_clip_keeps_quality_cap_on_progressive_format(self, tmp_path):
+        resolved = ResolvedUrl(
+            url="https://youtu.be/abc",
+            engine=Engine.YTDLP,
+            domain="youtu.be",
+            use_proxy=False,
+        )
+        settings = UserSettings(user_id=1, quality="720", codec="vp9")
+
+        opts = build_ytdlp_opts(
+            resolved,
+            settings,
+            tmp_path,
+            app_settings=DownloaderConfig(),
+            clip=ClipSpec(start_sec=60, end_sec=90),
+        )
+
+        assert opts["format"] == "best[height<=720][vcodec^=vp9]/best[height<=720]/best"
 
     def test_regular_youtube_download_keeps_default_player_clients(self, tmp_path):
         resolved = ResolvedUrl(
