@@ -28,7 +28,7 @@ export interface UserSettings {
 }
 
 export interface DownloadLog {
-  id: number
+  id: number | string
   user_id: number
   url: string
   domain: string | null

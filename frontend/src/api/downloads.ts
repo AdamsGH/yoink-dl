@@ -11,12 +11,14 @@ export interface RetryResponse {
 
 export interface DownloadsQuery {
   page?: number
+  offset?: number
   limit?: number
   search?: string
   domain?: string
   status?: string
   media_type?: string
   period?: string
+  date_from?: string
 }
 
 export const downloadsApi = {
@@ -26,6 +28,6 @@ export const downloadsApi = {
   getDomains: () =>
     apiClient.get<{ domains: string[] }>('/dl/downloads/domains'),
 
-  retry: (id: number) =>
+  retry: (id: DownloadLog['id']) =>
     apiClient.post<RetryResponse>(`/dl/downloads/${id}/retry`),
 }

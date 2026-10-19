@@ -266,7 +266,7 @@ export default function HistoryPage() {
   const [page, setPage] = useState(1)
   const [initialLoading, setInitialLoading] = useState(true)
   const [fetching, setFetching] = useState(false)
-  const [expanded, setExpanded] = useState<number | null>(null)
+  const [expanded, setExpanded] = useState<DownloadLog['id'] | null>(null)
   const [domains, setDomains] = useState<string[]>([])
   const [filtersOpen, setFiltersOpen] = useState(false)
 
