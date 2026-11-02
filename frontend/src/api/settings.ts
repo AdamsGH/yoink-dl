@@ -1,5 +1,6 @@
 import { apiClient } from '@core/lib/api-client'
 import type { UserSettings as DlUserSettings } from '@dl/types'
+import type { SettingsPatch } from './settings-values'
 
 export type { DlUserSettings }
 
@@ -18,8 +19,8 @@ export const dlSettingsApi = {
   getMine: () =>
     apiClient.get<DlUserSettings>('/dl/settings'),
 
-  patchMine: (body: Partial<DlUserSettings>) =>
-    apiClient.patch<DlUserSettings>('/dl/settings', body),
+  patchMine: (body: SettingsPatch, etag: string) =>
+    apiClient.patch<DlUserSettings>('/dl/settings', body, { headers: { 'If-Match': etag } }),
 
   getAdmin: () =>
     apiClient.get<DlAdminSettings>('/dl/admin/settings'),

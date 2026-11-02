@@ -1,23 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { isAxiosError } from 'axios'
 import { useForm, Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useGetIdentity } from '@refinedev/core'
 import { Coffee, Ghost, Moon, ShieldCheck, Sun } from 'lucide-react'
 
 import { dlSettingsApi } from '@dl/api/settings'
+import { CODEC_OPTIONS, CONTAINER_OPTIONS, SPLIT_OPTIONS, settingsChanges, settingsEtag, settingsValues, type SettingsValues } from '@dl/api/settings-values'
 import { cookiesApi } from '@dl/api/cookies'
 import { userSettingsApi } from '@core/lib/api/user-settings'
 import { cn } from '@core/lib/utils'
 import { setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@core/lib/i18n'
 import { PageContainer, SettingRow } from '@app'
 import { ControlledSelect, ControlledSwitch } from '@core/components/form'
-import type { UserSettings } from '@dl/types'
 import type { User } from '@core/types/api'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton } from '@ui'
 import { toast } from '@core/components/ui/toast'
 import { useTelegram, type CatppuccinFlavor } from '@core/layout/TelegramProvider'
-
-type FormValues = Omit<UserSettings, 'user_id' | 'args_json' | 'theme' | 'language' | 'updated_at' | 'has_pool_access'>
 
 const THEME_OPTIONS: { value: CatppuccinFlavor; label: string; icon: React.ReactNode }[] = [
   { value: 'latte',     label: 'Latte',     icon: <Sun className="h-3.5 w-3.5" /> },
@@ -37,31 +36,11 @@ const QUALITY_OPTIONS = [
   { value: '360',   label: '360p' },
 ]
 
-const CODEC_OPTIONS = [
-  { value: 'avc1', label: 'H.264' },
-  { value: 'av01', label: 'AV1' },
-  { value: 'vp9',  label: 'VP9' },
-  { value: 'any',  label: 'Any' },
-]
-
-const CONTAINER_OPTIONS = [
-  { value: 'mp4',  label: 'MP4' },
-  { value: 'mkv',  label: 'MKV' },
-  { value: 'webm', label: 'WebM' },
-]
-
 const AUDIO_CODEC_OPTIONS = [
   { value: 'best', label: 'Best' },
   { value: 'opus', label: 'Opus' },
   { value: 'mp4a', label: 'AAC' },
   { value: 'mp3',  label: 'MP3' },
-]
-
-const SPLIT_OPTIONS = [
-  { value: String(500 * 1024 * 1024),  label: '500 MB' },
-  { value: String(1000 * 1024 * 1024), label: '1 GB' },
-  { value: String(1500 * 1024 * 1024), label: '1.5 GB' },
-  { value: '2043000000',               label: '2 GB' },
 ]
 
 const KEYBOARD_OPTIONS = [
@@ -108,10 +87,13 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>('en')
   const [langSaving, setLangSaving] = useState(false)
-  const { t } = useTranslation()
+  const [snapshot, setSnapshot] = useState<{ values: SettingsValues; etag: string } | null>(null)
+  const [conflict, setConflict] = useState(false)
+  const [reloading, setReloading] = useState(false)
+  const { t, i18n } = useTranslation()
   const { flavor, setFlavor } = useTelegram()
   const { data: identity } = useGetIdentity<User>()
-  const { handleSubmit, reset, watch, control, formState: { isSubmitting, isDirty } } = useForm<FormValues>({
+  const { handleSubmit, reset, watch, control, formState: { isSubmitting, isDirty } } = useForm<SettingsValues>({
     defaultValues: { quality: 'best', codec: 'avc1', container: 'mp4', audio_codec: 'best' },
   })
 
@@ -121,15 +103,19 @@ export default function SettingsPage() {
   const [hasPoolAccess, setHasPoolAccess] = useState(false)
   const [hasOAuthCookie, setHasOAuthCookie] = useState(false)
 
+  const loadSettings = useCallback(async () => {
+    const res = await dlSettingsApi.getMine()
+    const values = settingsValues(res.data)
+    const etag = settingsEtag(res.headers)
+    setSnapshot({ values, etag })
+    reset(values)
+    setHasPoolAccess(res.data.has_pool_access === true)
+    setConflict(false)
+  }, [reset])
+
   useEffect(() => {
-    const dlPromise = dlSettingsApi
-      .getMine()
-      .then((res) => {
-        const { user_id: _uid, args_json: _args, theme: _theme, language: _lang, updated_at: _ua, has_pool_access: _hpa, ...rest } = res.data
-        reset(rest)
-        setHasPoolAccess(res.data.has_pool_access === true)
-      })
-      .catch(() => toast.error(t('settings.save_error')))
+    const dlPromise = loadSettings()
+      .catch(() => toast.error(i18n.t('settings.load_error')))
 
     const oauthPromise = cookiesApi.listMine()
       .then((res) => {
@@ -148,15 +134,34 @@ export default function SettingsPage() {
       .catch(() => {})
 
     Promise.all([dlPromise, corePromise, oauthPromise]).finally(() => setLoading(false))
-  }, [reset, t, identity?.role])
+  }, [loadSettings, i18n, identity?.role])
 
-  const onSubmit = async (values: FormValues) => {
+  const reloadSettings = async () => {
+    setReloading(true)
     try {
-      await dlSettingsApi.patchMine(values)
-      toast.success(t('settings.saved'))
-      reset(values)
+      await loadSettings()
     } catch {
-      toast.error(t('settings.save_error'))
+      toast.error(t('settings.load_error'))
+    } finally {
+      setReloading(false)
+    }
+  }
+
+  const onSubmit = async (values: SettingsValues) => {
+    if (!snapshot || conflict || reloading) return
+    try {
+      const res = await dlSettingsApi.patchMine(settingsChanges(values, snapshot.values), snapshot.etag)
+      const saved = settingsValues(res.data)
+      setSnapshot({ values: saved, etag: settingsEtag(res.headers) })
+      reset(saved)
+      toast.success(t('settings.saved'))
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 409) {
+        setConflict(true)
+        toast.error(t('settings.conflict'))
+      } else {
+        toast.error(t('settings.save_error'))
+      }
     }
   }
 
@@ -176,9 +181,25 @@ export default function SettingsPage() {
 
   if (loading) return <PageContainer><SettingsSkeleton /></PageContainer>
 
+  if (!snapshot) return (
+    <PageContainer>
+      <p role="alert">{t('settings.load_error')}</p>
+      <Button onClick={reloadSettings} disabled={reloading}>{t('settings.retry_load')}</Button>
+    </PageContainer>
+  )
+
   return (
     <PageContainer>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+
+      {conflict && (
+        <div role="alert" className="space-y-2">
+          <p>{t('settings.conflict')}</p>
+          <Button type="button" onClick={reloadSettings} disabled={reloading}>{t('settings.reload')}</Button>
+        </div>
+      )}
+
+      <fieldset disabled={isSubmitting || reloading} className="space-y-3">
 
       {/* Video + Audio - merged */}
       <Card>
@@ -315,7 +336,7 @@ export default function SettingsPage() {
                   <Input
                     id="proxy_url"
                     className="h-8 text-xs font-mono"
-                    placeholder="socks5://user:pass@host:port"
+                    placeholder="http://user:pass@host:port"
                     value={field.value ?? ''}
                     onChange={(e) => field.onChange(e.target.value || null)}
                   />
@@ -379,10 +400,11 @@ export default function SettingsPage() {
         'pb-4 transition-opacity',
         isDirty ? 'opacity-100' : 'pointer-events-none opacity-0',
       )}>
-        <Button type="submit" disabled={isSubmitting || !isDirty} className="w-full">
+        <Button type="submit" disabled={isSubmitting || !isDirty || conflict || reloading} className="w-full">
           {isSubmitting ? t('common.loading') : t('common.save')}
         </Button>
       </div>
+      </fieldset>
     </form>
     </PageContainer>
   )

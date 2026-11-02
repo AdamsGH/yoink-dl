@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, ChevronDown, Copy, CookieIcon, ExternalLink, Key, LogIn, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react'
 
 import { cookiesApi } from '@dl/api/cookies'
 import type { CookieTokenResponse, YttvOAuthStartResponse } from '@dl/api/cookies'
 import { dlSettingsApi } from '@dl/api/settings'
+import { settingsEtag } from '@dl/api/settings-values'
 import { formatDate } from '@core/lib/utils'
 import { Button, Card, CardContent, CardHeader, CardTitle, Collapsible, CollapsibleContent, CollapsibleTrigger, DividedList, Input, Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Label, Skeleton, SkeletonList, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@ui'
 import { CookieStatusBadge, EmptyState, PageContainer } from '@app'
@@ -73,6 +75,7 @@ export default function CookiesPage() {
   const [usePool, setUsePool] = useState<boolean | null>(null)
   const [hasPoolAccess, setHasPoolAccess] = useState(false)
   const [poolSaving, setPoolSaving] = useState(false)
+  const [poolEtag, setPoolEtag] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -140,18 +143,35 @@ export default function CookiesPage() {
 
   useEffect(() => {
     load()
-    dlSettingsApi.getMine()
-      .then(r => { setHasPoolAccess(r.data.has_pool_access === true); setUsePool(r.data.use_pool_cookies) })
+    loadPoolSettings()
       .catch(() => {})
   }, [])
 
+  const loadPoolSettings = async () => {
+    const r = await dlSettingsApi.getMine()
+    setPoolEtag(settingsEtag(r.headers))
+    setHasPoolAccess(r.data.has_pool_access === true)
+    setUsePool(r.data.use_pool_cookies)
+  }
+
   const togglePool = async (val: boolean) => {
+    if (!poolEtag || poolSaving) return
     setPoolSaving(true)
     try {
-      await dlSettingsApi.patchMine({ use_pool_cookies: val })
-      setUsePool(val)
-    } catch {
-      toast.error(t('common.error', { defaultValue: 'Error' }))
+      const r = await dlSettingsApi.patchMine({ use_pool_cookies: val }, poolEtag)
+      setPoolEtag(settingsEtag(r.headers))
+      setUsePool(r.data.use_pool_cookies)
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 409) {
+        try {
+          await loadPoolSettings()
+          toast.error(t('settings.conflict_reloaded'))
+        } catch {
+          toast.error(t('settings.load_error'))
+        }
+      } else {
+        toast.error(t('settings.save_error'))
+      }
     } finally {
       setPoolSaving(false)
     }
